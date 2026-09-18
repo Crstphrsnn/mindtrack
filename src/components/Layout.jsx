@@ -18,7 +18,7 @@ import psuLogo from "../assets/psu-logo.jpg";
 
 const menu = {
   student: [
-    ["/dashboard", "Dashboard", Home],
+    ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
     ["/consultations", "Counseling", Calendar],
     ["/history", "History", FileText],
@@ -27,7 +27,7 @@ const menu = {
   ],
 
   faculty: [
-    ["/dashboard", "Dashboard", Home],
+    ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
     ["/consultations", "Counseling", Calendar],
     ["/referrals", "Referrals", Users],
@@ -37,7 +37,7 @@ const menu = {
   ],
 
   personnel: [
-    ["/dashboard", "Dashboard", Home],
+    ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
     ["/consultations", "Counseling", Calendar],
     ["/referrals", "Referrals", Users],
@@ -48,7 +48,8 @@ const menu = {
 
   counselor: [
     ["/dashboard", "Dashboard", Home],
-    ["/cases", "Cases", ClipboardList],
+    ["/cases", "Assessment Cases", ClipboardList],
+    ["/counseling-requests", "Counseling Requests", Calendar],
     ["/user-profiles", "User Profiles", Users],
     ["/schedule", "Schedule", Calendar],
     ["/reports", "Reports", BarChart3],
@@ -58,16 +59,19 @@ const menu = {
     ["/dashboard", "Dashboard", Shield],
     ["/accounts", "Accounts", Users],
     ["/user-profiles", "User Profiles", Users],
-    ["/cases", "All Cases", ClipboardList],
+    ["/cases", "Assessment Cases", ClipboardList],
+    ["/counseling-requests", "Counseling Requests", Calendar],
     ["/reports", "Reports", BarChart3],
   ],
 };
 
 export default function Layout({ children }) {
-  const { user, logout, firebaseEnabled } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const links = menu[user?.role] || menu.student;
+  const links =
+    menu[user?.role] ||
+    menu.student;
 
   async function handleLogout() {
     await logout();
@@ -89,6 +93,7 @@ export default function Layout({ children }) {
 
           <div>
             <strong>MindTrack</strong>
+
             <small>
               {user?.role
                 ? user.role.replace("_", " ")
@@ -100,22 +105,24 @@ export default function Layout({ children }) {
 
         <nav>
 
-          {links.map(([to, label, Icon]) => (
+          {links.map(
+            ([to, label, Icon]) => (
 
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                isActive
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-            </NavLink>
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  isActive
+                    ? "nav-link active"
+                    : "nav-link"
+                }
+              >
+                <Icon size={19} />
+                <span>{label}</span>
+              </NavLink>
 
-          ))}
+            )
+          )}
 
         </nav>
 
@@ -139,18 +146,6 @@ export default function Layout({ children }) {
             <strong>
               Mental Health Monitoring System
             </strong>
-
-            <span
-              className={
-                firebaseEnabled
-                  ? "live-pill"
-                  : "demo-pill"
-              }
-            >
-              {firebaseEnabled
-                ? "● Firebase real-time"
-                : "Demo mode"}
-            </span>
 
           </div>
 

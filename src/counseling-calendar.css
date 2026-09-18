@@ -1,0 +1,192 @@
+.counseling-date-field {
+  display: grid;
+  gap: 8px;
+}
+
+.counseling-date-picker {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #d7e3f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.counseling-calendar-header {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.counseling-calendar-header strong {
+  color: #173f8f;
+  text-align: center;
+  font-size: 17px;
+}
+
+.calendar-nav-button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #d7e3f0;
+  border-radius: 10px;
+  background: #f7fbff;
+  color: #173f8f;
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calendar-nav-button:hover:not(:disabled) {
+  background: #eaf4ff;
+}
+
+.calendar-nav-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.counseling-calendar-weekdays,
+.counseling-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.counseling-calendar-weekdays {
+  margin-bottom: 6px;
+}
+
+.counseling-calendar-weekdays span {
+  padding: 4px 2px;
+  color: #6a7f9e;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.counseling-calendar-empty {
+  min-height: 56px;
+}
+
+.counseling-calendar-day {
+  min-height: 56px;
+  padding: 6px 4px;
+  border: 1px solid #dce7f3;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: #ffffff;
+  color: #173f8f;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.counseling-calendar-day:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #6fa5e4;
+  background: #f3f8ff;
+}
+
+.calendar-day-number {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.calendar-day-marker {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.counseling-calendar-day.selected {
+  border-color: #173f8f;
+  background: #173f8f;
+  color: #ffffff;
+  box-shadow: 0 5px 14px rgba(23, 63, 143, 0.20);
+}
+
+.counseling-calendar-day.holiday {
+  border-color: #f0b9b9;
+  background: #fff0f0;
+  color: #b42318;
+  cursor: not-allowed;
+}
+
+.counseling-calendar-day.past {
+  border-color: #e6e9ee;
+  background: #f4f5f7;
+  color: #a2a9b3;
+  cursor: not-allowed;
+}
+
+.counseling-calendar-day.weekend {
+  border-color: #e2e6ec;
+  background: #f5f6f8;
+  color: #9aa3af;
+  cursor: not-allowed;
+}
+
+.counseling-calendar-day:disabled {
+  opacity: 1;
+}
+
+.selected-counseling-date {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eaf4ff;
+  color: #314d72;
+  font-size: 13px;
+}
+
+.calendar-holiday-list {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #f2cccc;
+  border-radius: 10px;
+  background: #fff8f8;
+}
+
+.calendar-holiday-list > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #9f1c1c;
+  font-size: 13px;
+}
+
+.calendar-holiday-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  padding: 5px 0;
+  color: #7f2e2e;
+  font-size: 12px;
+}
+
+
+@media (max-width: 650px) {
+  .counseling-date-picker {
+    padding: 12px;
+  }
+
+  .counseling-calendar-grid,
+  .counseling-calendar-weekdays {
+    gap: 4px;
+  }
+
+  .counseling-calendar-day,
+  .counseling-calendar-empty {
+    min-height: 48px;
+  }
+
+  .calendar-day-marker {
+    font-size: 7px;
+  }
+}

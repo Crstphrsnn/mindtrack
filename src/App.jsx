@@ -33,6 +33,8 @@ import {
 
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
+import Home from "./components/Home";
+import "./counseling-calendar.css";
 
 import {
   addRecord,
@@ -71,6 +73,16 @@ function Protected({ children }) {
 
 
 // ======================================================
+// DEFAULT PAGE BY ROLE
+// ======================================================
+
+function getDefaultPage() {
+
+  return "/dashboard";
+}
+
+
+// ======================================================
 // LOGIN
 // ======================================================
 
@@ -78,6 +90,7 @@ function Login() {
   const {
     user,
     login,
+    resendVerificationEmail,
     firebaseEnabled
   } = useAuth();
 
@@ -95,11 +108,21 @@ function Login() {
   const [loading, setLoading] =
     useState(false);
 
+  const [
+    needsVerification,
+    setNeedsVerification
+  ] = useState(false);
+
+  const [
+    verificationMessage,
+    setVerificationMessage
+  ] = useState("");
+
 
   if (user) {
     return (
       <Navigate
-        to="/dashboard"
+        to={getDefaultPage(user)}
         replace
       />
     );
@@ -110,6 +133,8 @@ function Login() {
     e.preventDefault();
 
     setError("");
+    setNeedsVerification(false);
+    setVerificationMessage("");
     setLoading(true);
 
     try {
@@ -154,6 +179,26 @@ function Login() {
 
       } else if (
         err.code ===
+        "auth/email-not-verified"
+      ) {
+
+        setError(
+          "Your institutional email has not been verified yet. Open the verification email sent to your PSU account, then try logging in again."
+        );
+
+        setNeedsVerification(true);
+
+      } else if (
+        err.code ===
+        "auth/institutional-email-required"
+      ) {
+
+        setError(
+          "This account does not use an approved PSU institutional email address."
+        );
+
+      } else if (
+        err.code ===
         "auth/too-many-requests"
       ) {
         setError(
@@ -173,6 +218,74 @@ function Login() {
 
       setLoading(false);
 
+    }
+  }
+
+
+  async function resendVerification() {
+
+    setError("");
+    setVerificationMessage("");
+
+
+    if (!email.trim() || !password) {
+
+      setError(
+        "Enter your institutional email and password first, then resend the verification email."
+      );
+
+      return;
+    }
+
+
+    try {
+
+      setLoading(true);
+
+
+      const result =
+        await resendVerificationEmail(
+          email,
+          password
+        );
+
+
+      if (
+        result ===
+        "already-verified"
+      ) {
+
+        setNeedsVerification(false);
+
+        setVerificationMessage(
+          "Your email is already verified. You can now log in."
+        );
+
+      } else {
+
+        setNeedsVerification(true);
+
+        setVerificationMessage(
+          "A new verification email was sent to your institutional email address."
+        );
+      }
+
+    } catch (err) {
+
+      console.error(
+        "Resend verification error:",
+        err
+      );
+
+
+      setError(
+        err?.message ||
+        "Unable to resend the verification email."
+      );
+
+    } finally {
+
+      setLoading(false);
     }
   }
 
@@ -212,7 +325,7 @@ function Login() {
               }
               type="email"
               name="mindtrack-login-email"
-              placeholder="Enter your email"
+              placeholder="yourname@psu.edu.ph"
               autoComplete="off"
               required
             />
@@ -243,6 +356,27 @@ function Login() {
             <div className="error-box">
               {error}
             </div>
+          )}
+
+
+          {verificationMessage && (
+            <div className="success-box">
+              {verificationMessage}
+            </div>
+          )}
+
+
+          {needsVerification && (
+
+            <button
+              type="button"
+              className="secondary-button auth-resend-button"
+              disabled={loading}
+              onClick={resendVerification}
+            >
+              Resend verification email
+            </button>
+
           )}
 
 
@@ -329,6 +463,160 @@ function Login() {
 // ======================================================
 // REGISTER
 // ======================================================
+
+// ======================================================
+// INSTITUTIONAL EMAIL POLICY
+// ======================================================
+
+// Confirm the exact PSU account domain with your ICT office.
+// Add another domain here if PSU uses more than one institutional domain.
+const INSTITUTIONAL_EMAIL_DOMAINS = [
+  "psu.edu.ph"
+];
+
+
+function isInstitutionalEmail(email) {
+
+  const cleanEmail =
+    String(
+      email || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const parts =
+    cleanEmail.split("@");
+
+
+  if (parts.length !== 2) {
+    return false;
+  }
+
+
+  const domain =
+    parts[1];
+
+
+  return INSTITUTIONAL_EMAIL_DOMAINS.includes(
+    domain
+  );
+}
+
+
+function isValidStudentInstitutionalEmail(
+  email
+) {
+
+  const cleanEmail =
+    String(
+      email || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  return /^\d{2}ln\d{4}_ms@psu\.edu\.ph$/.test(
+    cleanEmail
+  );
+}
+
+
+// ======================================================
+// PSU LINGAYEN COLLEGES AND PROGRAMS
+// ======================================================
+
+const PROGRAMS_BY_COLLEGE = {
+  "College of Arts, Sciences and Letters": [
+    "Bachelor of Arts in English Language",
+    "Bachelor of Arts in Economics",
+    "Bachelor of Science in Biology",
+    "Bachelor of Science in Nutrition and Dietetics",
+    "Bachelor of Science in Social Work"
+  ],
+
+  "College of Business and Public Administration": [
+    "Bachelor of Public Administration",
+    "Bachelor of Science in Business Administration - Major in Financial Management",
+    "Bachelor of Science in Business Administration - Major in Operations Management"
+  ],
+
+  "College of Computing Sciences": [
+    "Bachelor of Science in Computer Science",
+    "Bachelor of Science in Information Technology",
+    "Bachelor of Science in Mathematics - Major in Pure Math",
+    "Bachelor of Science in Mathematics - Major in Statistics",
+    "Bachelor of Science in Mathematics - Major in CIT"
+  ],
+
+  "College of Tourism and Hospitality Management": [
+    "Bachelor of Science in Hospitality Management"
+  ],
+
+  "College of Education": [
+    "Bachelor of Secondary Education",
+    "Bachelor of Technical-Vocational Teacher Education",
+    "Bachelor of Technology and Livelihood Education"
+  ],
+
+  "College of Industrial Technology": [
+    "Bachelor of Industrial Technology - Major in Automotive Technology",
+    "Bachelor of Industrial Technology - Major in Ceramics Technology",
+    "Bachelor of Industrial Technology - Major in Civil Technology",
+    "Bachelor of Industrial Technology - Major in Drafting Technology",
+    "Bachelor of Industrial Technology - Major in Electrical Technology",
+    "Bachelor of Industrial Technology - Major in Electronics Technology",
+    "Bachelor of Industrial Technology - Major in Food Service Management",
+    "Bachelor of Industrial Technology - Major in Garments, Fashion and Design",
+    "Bachelor of Industrial Technology - Major in Mechanical Technology"
+  ]
+};
+
+
+function collegePrograms(college) {
+
+  return (
+    PROGRAMS_BY_COLLEGE[
+      college
+    ] || []
+  );
+}
+
+
+const PSGC_API =
+  "https://psgc.cloud/api/v2";
+
+
+async function fetchPsgcItems(path) {
+
+  const response =
+    await fetch(
+      `${PSGC_API}${path}`
+    );
+
+
+  if (!response.ok) {
+
+    throw new Error(
+      "Unable to load Philippine address data."
+    );
+  }
+
+
+  const result =
+    await response.json();
+
+
+  return Array.isArray(result)
+    ? result
+    : (
+        Array.isArray(result?.data)
+          ? result.data
+          : []
+      );
+}
+
+
 function Register() {
   const {
     register,
@@ -338,13 +626,30 @@ function Register() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     email: "",
     role: "",
     department: "",
+    program: "",
     userNumber: "",
     phoneNumber: "",
-    address: "",
+
+    regionCode: "",
+    regionName: "",
+
+    provinceCode: "",
+    provinceName: "",
+
+    municipalityCode: "",
+    municipalityName: "",
+
+    barangayCode: "",
+    barangayName: "",
+
+    streetName: "",
+
     facebookAccount: "",
     contactPersonName: "",
     contactPersonPhone: "",
@@ -352,49 +657,576 @@ function Register() {
     confirmPassword: ""
   });
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [regions, setRegions] =
+    useState([]);
+
+  const [provinces, setProvinces] =
+    useState([]);
+
+  const [
+    municipalities,
+    setMunicipalities
+  ] = useState([]);
+
+  const [barangays, setBarangays] =
+    useState([]);
+
+  const [
+    addressLoading,
+    setAddressLoading
+  ] = useState(false);
+
+  const [
+    addressError,
+    setAddressError
+  ] = useState("");
+
+  const [error, setError] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+
+  useEffect(() => {
+
+    let active = true;
+
+
+    async function loadRegions() {
+
+      try {
+
+        setAddressLoading(true);
+        setAddressError("");
+
+
+        const rows =
+          await fetchPsgcItems(
+            "/regions"
+          );
+
+
+        if (active) {
+
+          setRegions(rows);
+
+        }
+
+      } catch (err) {
+
+        console.error(
+          "Unable to load regions:",
+          err
+        );
+
+
+        if (active) {
+
+          setAddressError(
+            "Unable to load the Philippine address list. Please check your internet connection and refresh the page."
+          );
+
+        }
+
+      } finally {
+
+        if (active) {
+
+          setAddressLoading(false);
+
+        }
+      }
+    }
+
+
+    loadRegions();
+
+
+    return () => {
+
+      active = false;
+
+    };
+
+  }, []);
+
 
   function change(e) {
-    const { name, value } = e.target;
+
+    const {
+      name,
+      value
+    } = e.target;
+
 
     const numericFields = [
       "phoneNumber",
       "contactPersonPhone"
     ];
 
+
     const nextValue =
       numericFields.includes(name)
-        ? value.replace(/\D/g, "")
+        ? value
+            .replace(/\D/g, "")
+            .slice(0, 11)
         : value;
+
+
+    setForm(current => {
+
+      if (name === "role") {
+
+        return {
+          ...current,
+          role: nextValue,
+          program:
+            nextValue === "student"
+              ? current.program
+              : ""
+        };
+      }
+
+
+      if (name === "department") {
+
+        return {
+          ...current,
+          department: nextValue,
+          program: ""
+        };
+      }
+
+
+      return {
+        ...current,
+        [name]: nextValue
+      };
+    });
+  }
+
+  async function changeRegion(e) {
+
+    const regionCode =
+      e.target.value;
+
+
+    const selectedRegion =
+      regions.find(
+        item =>
+          item.code ===
+          regionCode
+      );
+
 
     setForm(current => ({
       ...current,
-      [name]: nextValue
+
+      regionCode,
+
+      regionName:
+        selectedRegion?.name ||
+        "",
+
+      provinceCode: "",
+      provinceName: "",
+
+      municipalityCode: "",
+      municipalityName: "",
+
+      barangayCode: "",
+      barangayName: ""
+    }));
+
+
+    setProvinces([]);
+    setMunicipalities([]);
+    setBarangays([]);
+
+
+    if (!regionCode) {
+      return;
+    }
+
+
+    try {
+
+      setAddressLoading(true);
+      setAddressError("");
+
+
+      const regionProvinces =
+        await fetchPsgcItems(
+          `/regions/${encodeURIComponent(
+            regionCode
+          )}/provinces`
+        );
+
+
+      setProvinces(
+        regionProvinces
+      );
+
+
+      // NCR has no province level.
+      // Load its cities/municipalities directly.
+      if (
+        regionProvinces.length ===
+        0
+      ) {
+
+        const regionPlaces =
+          await fetchPsgcItems(
+            `/regions/${encodeURIComponent(
+              regionCode
+            )}/cities-municipalities`
+          );
+
+
+        setMunicipalities(
+          regionPlaces
+        );
+
+
+        setForm(current => ({
+          ...current,
+
+          provinceCode:
+            "__NOT_APPLICABLE__",
+
+          provinceName:
+            "Not Applicable"
+        }));
+      }
+
+    } catch (err) {
+
+      console.error(
+        "Unable to load provinces:",
+        err
+      );
+
+
+      setAddressError(
+        "Unable to load provinces for the selected region."
+      );
+
+    } finally {
+
+      setAddressLoading(false);
+
+    }
+  }
+
+
+  async function changeProvince(e) {
+
+    const provinceCode =
+      e.target.value;
+
+
+    setMunicipalities([]);
+    setBarangays([]);
+
+
+    if (
+      provinceCode ===
+      "__REGION_DIRECT__"
+    ) {
+
+      setForm(current => ({
+        ...current,
+
+        provinceCode,
+
+        provinceName:
+          "Not Applicable",
+
+        municipalityCode: "",
+        municipalityName: "",
+
+        barangayCode: "",
+        barangayName: ""
+      }));
+
+
+      try {
+
+        setAddressLoading(true);
+        setAddressError("");
+
+
+        const regionPlaces =
+          await fetchPsgcItems(
+            `/regions/${encodeURIComponent(
+              form.regionCode
+            )}/cities-municipalities`
+          );
+
+
+        setMunicipalities(
+          regionPlaces
+        );
+
+      } catch (err) {
+
+        console.error(
+          "Unable to load cities and municipalities:",
+          err
+        );
+
+
+        setAddressError(
+          "Unable to load cities or municipalities for the selected region."
+        );
+
+      } finally {
+
+        setAddressLoading(false);
+
+      }
+
+
+      return;
+    }
+
+
+    const selectedProvince =
+      provinces.find(
+        item =>
+          item.code ===
+          provinceCode
+      );
+
+
+    setForm(current => ({
+      ...current,
+
+      provinceCode,
+
+      provinceName:
+        selectedProvince?.name ||
+        "",
+
+      municipalityCode: "",
+      municipalityName: "",
+
+      barangayCode: "",
+      barangayName: ""
+    }));
+
+
+    if (!provinceCode) {
+      return;
+    }
+
+
+    try {
+
+      setAddressLoading(true);
+      setAddressError("");
+
+
+      const places =
+        await fetchPsgcItems(
+          `/provinces/${encodeURIComponent(
+            provinceCode
+          )}/cities-municipalities`
+        );
+
+
+      setMunicipalities(
+        places
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Unable to load cities and municipalities:",
+        err
+      );
+
+
+      setAddressError(
+        "Unable to load cities or municipalities for the selected province."
+      );
+
+    } finally {
+
+      setAddressLoading(false);
+
+    }
+  }
+
+
+  async function changeMunicipality(e) {
+
+    const municipalityCode =
+      e.target.value;
+
+
+    const selectedMunicipality =
+      municipalities.find(
+        item =>
+          item.code ===
+          municipalityCode
+      );
+
+
+    setForm(current => ({
+      ...current,
+
+      municipalityCode,
+
+      municipalityName:
+        selectedMunicipality?.name ||
+        "",
+
+      barangayCode: "",
+      barangayName: ""
+    }));
+
+
+    setBarangays([]);
+
+
+    if (!municipalityCode) {
+      return;
+    }
+
+
+    try {
+
+      setAddressLoading(true);
+      setAddressError("");
+
+
+      const rows =
+        await fetchPsgcItems(
+          `/cities-municipalities/${encodeURIComponent(
+            municipalityCode
+          )}/barangays`
+        );
+
+
+      setBarangays(rows);
+
+    } catch (err) {
+
+      console.error(
+        "Unable to load barangays:",
+        err
+      );
+
+
+      setAddressError(
+        "Unable to load barangays for the selected city or municipality."
+      );
+
+    } finally {
+
+      setAddressLoading(false);
+
+    }
+  }
+
+
+  function changeBarangay(e) {
+
+    const barangayCode =
+      e.target.value;
+
+
+    const selectedBarangay =
+      barangays.find(
+        item =>
+          item.code ===
+          barangayCode
+      );
+
+
+    setForm(current => ({
+      ...current,
+
+      barangayCode,
+
+      barangayName:
+        selectedBarangay?.name ||
+        ""
     }));
   }
+
 
   async function submit(e) {
     e.preventDefault();
     setError("");
 
-    if (!form.name.trim()) {
-      setError("Please enter your full name.");
+    if (!form.firstName.trim()) {
+      setError(
+        "Please enter your first name."
+      );
+      return;
+    }
+
+    if (!form.lastName.trim()) {
+      setError(
+        "Please enter your last name."
+      );
       return;
     }
 
     if (!form.email.trim()) {
-      setError("Please enter your email address.");
+      setError(
+        "Please enter your institutional email address."
+      );
+      return;
+    }
+
+    if (
+      !isInstitutionalEmail(
+        form.email
+      )
+    ) {
+      setError(
+        "Please use your official PSU institutional email address ending in @psu.edu.ph."
+      );
+      return;
+    }
+
+    if (
+      form.role === "student" &&
+      !isValidStudentInstitutionalEmail(
+        form.email
+      )
+    ) {
+      setError(
+        "Student institutional email must follow the format: 00ln0000_ms@psu.edu.ph."
+      );
       return;
     }
 
     if (!form.role) {
-      setError("Please select your account type.");
+      setError(
+        "Please select your account type."
+      );
       return;
     }
 
     if (!form.department) {
-      setError("Please select your college or office.");
+      setError(
+        "Please select your college or office."
+      );
+      return;
+    }
+
+    if (
+      form.role === "student" &&
+      !form.program
+    ) {
+      setError(
+        "Please select your program."
+      );
       return;
     }
 
@@ -408,44 +1240,139 @@ function Register() {
     }
 
     if (!form.phoneNumber.trim()) {
-      setError("Please enter your phone number.");
+      setError(
+        "Please enter your phone number."
+      );
       return;
     }
 
-    if (!form.address.trim()) {
-      setError("Please enter your address.");
+    if (form.phoneNumber.length !== 11) {
+      setError(
+        "Phone number must contain exactly 11 digits."
+      );
+      return;
+    }
+
+    if (
+      form.contactPersonPhone &&
+      form.contactPersonPhone.length !== 11
+    ) {
+      setError(
+        "Contact person phone number must contain exactly 11 digits."
+      );
+      return;
+    }
+
+    if (!form.regionCode) {
+      setError(
+        "Please select your region."
+      );
+      return;
+    }
+
+    if (!form.provinceCode) {
+      setError(
+        "Please select your province."
+      );
+      return;
+    }
+
+    if (!form.municipalityCode) {
+      setError(
+        "Please select your city or municipality."
+      );
+      return;
+    }
+
+    if (!form.barangayCode) {
+      setError(
+        "Please select your barangay."
+      );
+      return;
+    }
+
+    if (!form.streetName.trim()) {
+      setError(
+        "Please enter your street name, house number, or purok."
+      );
       return;
     }
 
     if (form.password.length < 6) {
-      setError("Password must contain at least 6 characters.");
+      setError(
+        "Password must contain at least 6 characters."
+      );
       return;
     }
 
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
+    if (
+      form.password !==
+      form.confirmPassword
+    ) {
+      setError(
+        "Passwords do not match."
+      );
       return;
     }
+
+
+    const fullName =
+      [
+        form.firstName.trim(),
+        form.middleName.trim(),
+        form.lastName.trim()
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+
+    const fullAddress =
+      [
+        form.streetName.trim(),
+
+        form.barangayName
+          ? `Barangay ${form.barangayName}`
+          : "",
+
+        form.municipalityName,
+
+        form.provinceName ===
+          "Not Applicable"
+          ? ""
+          : form.provinceName,
+
+        form.regionName
+      ]
+        .filter(Boolean)
+        .join(", ");
+
 
     try {
       setLoading(true);
 
       await register({
-        name: form.name,
+        name: fullName,
         email: form.email,
         password: form.password,
         role: form.role,
         department: form.department,
+        program:
+          form.role === "student"
+            ? form.program
+            : "",
         userNumber: form.userNumber,
         phoneNumber: form.phoneNumber,
-        address: form.address,
-        facebookAccount: form.facebookAccount,
-        contactPersonName: form.contactPersonName,
-        contactPersonPhone: form.contactPersonPhone
+        address: fullAddress,
+        facebookAccount:
+          form.facebookAccount,
+        contactPersonName:
+          form.contactPersonName,
+        contactPersonPhone:
+          form.contactPersonPhone
       });
 
       alert(
-        "Registration successful! Please login using your new account."
+        "Registration successful. A verification link was sent to your PSU institutional email. Verify your email first before logging in."
       );
 
       navigate("/login");
@@ -461,7 +1388,7 @@ function Register() {
         "auth/email-already-in-use"
       ) {
         setError(
-          "This email address is already registered."
+          "This institutional email is already registered and can only be used for one MindTrack account."
         );
 
       } else if (
@@ -502,10 +1429,13 @@ function Register() {
     }
   }
 
+
   if (!firebaseEnabled) {
     return (
       <div className="auth-page">
+
         <div className="auth-card">
+
           <img
             src={psuLogo}
             alt="Pangasinan State University Logo"
@@ -530,10 +1460,13 @@ function Register() {
           >
             Back to Login
           </button>
+
         </div>
+
       </div>
     );
   }
+
 
   return (
     <div className="auth-page">
@@ -554,6 +1487,7 @@ function Register() {
           PSU Lingayen Mental Health Monitoring System
         </p>
 
+
         <form
           onSubmit={submit}
           autoComplete="off"
@@ -565,31 +1499,69 @@ function Register() {
               Account Information
             </h2>
 
+
             <div className="registration-grid">
 
               <label>
-                Full Name
+                First Name
 
                 <input
                   type="text"
-                  name="name"
-                  value={form.name}
+                  name="firstName"
+                  value={form.firstName}
                   onChange={change}
+                  placeholder="Enter first name"
                   required
                 />
               </label>
 
+
               <label>
-                Email
+                Middle Name
+                {" "}
+
+                <span className="optional-text">
+                  (Optional)
+                </span>
+
+                <input
+                  type="text"
+                  name="middleName"
+                  value={form.middleName}
+                  onChange={change}
+                  placeholder="Enter middle name"
+                />
+              </label>
+
+
+              <label>
+                Last Name
+
+                <input
+                  type="text"
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={change}
+                  placeholder="Enter last name"
+                  required
+                />
+              </label>
+
+
+              <label>
+                Institutional Email
 
                 <input
                   type="email"
                   name="email"
                   value={form.email}
                   onChange={change}
+                  placeholder="00ln0000_ms@psu.edu.ph"
+                  autoComplete="email"
                   required
                 />
               </label>
+
 
               <label>
                 Account Type
@@ -622,6 +1594,7 @@ function Register() {
 
                 </select>
               </label>
+
 
               <label>
                 College / Office
@@ -667,6 +1640,54 @@ function Register() {
                 </select>
               </label>
 
+
+              {form.role === "student" && (
+
+                <label>
+                  Program
+
+                  <select
+                    name="program"
+                    value={form.program}
+                    onChange={change}
+                    disabled={!form.department}
+                    required
+                  >
+
+                    <option
+                      value=""
+                      disabled
+                    >
+                      {
+                        form.department
+                          ? "Select program"
+                          : "Select college first"
+                      }
+                    </option>
+
+
+                    {collegePrograms(
+                      form.department
+                    ).map(
+                      program => (
+
+                        <option
+                          key={program}
+                          value={program}
+                        >
+                          {program}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </label>
+
+              )}
+
+
               <label>
 
                 {form.role === "student"
@@ -687,6 +1708,7 @@ function Register() {
               </label>
 
             </div>
+
           </div>
 
 
@@ -695,6 +1717,7 @@ function Register() {
             <h2>
               Personal Information
             </h2>
+
 
             <div className="registration-grid">
 
@@ -707,15 +1730,19 @@ function Register() {
                   value={form.phoneNumber}
                   onChange={change}
                   inputMode="numeric"
-                  pattern="[0-9]*"
+                  pattern="[0-9]{11}"
+                  minLength={11}
+                  maxLength={11}
                   placeholder="09XXXXXXXXX"
                   required
                 />
               </label>
 
+
               <label>
                 Facebook Account
                 {" "}
+
                 <span className="optional-text">
                   (Optional)
                 </span>
@@ -729,20 +1756,254 @@ function Register() {
                 />
               </label>
 
-              <label className="full-width-field">
-                Address
+            </div>
 
-                <textarea
-                  name="address"
-                  rows="3"
-                  value={form.address}
+
+            <h3 className="registration-subheading">
+              Home Address
+            </h3>
+
+
+            {addressError && (
+              <div className="error-box">
+                {addressError}
+              </div>
+            )}
+
+
+            <div className="registration-grid">
+
+              <label>
+                Region
+
+                <select
+                  value={form.regionCode}
+                  onChange={changeRegion}
+                  disabled={
+                    addressLoading &&
+                    regions.length === 0
+                  }
+                  required
+                >
+
+                  <option value="">
+                    {addressLoading &&
+                    regions.length === 0
+                      ? "Loading regions..."
+                      : "Select region"}
+                  </option>
+
+
+                  {regions.map(
+                    item => (
+
+                      <option
+                        key={item.code}
+                        value={item.code}
+                      >
+                        {item.name}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+              </label>
+
+
+              <label>
+                Province
+
+                <select
+                  value={form.provinceCode}
+                  onChange={changeProvince}
+                  disabled={
+                    !form.regionCode ||
+                    (
+                      provinces.length === 0 &&
+                      form.provinceCode ===
+                        "__NOT_APPLICABLE__"
+                    )
+                  }
+                  required
+                >
+
+                  {form.provinceCode ===
+                    "__NOT_APPLICABLE__"
+                    ? (
+                      <option
+                        value="__NOT_APPLICABLE__"
+                      >
+                        Not Applicable
+                      </option>
+                    )
+                    : (
+                      <>
+                        <option value="">
+                          Select province
+                        </option>
+
+
+                        {provinces.map(
+                          item => (
+
+                            <option
+                              key={item.code}
+                              value={item.code}
+                            >
+                              {item.name}
+                            </option>
+
+                          )
+                        )}
+
+
+                        {provinces.length > 0 && (
+                          <option
+                            value="__REGION_DIRECT__"
+                          >
+                            Independent City / No Province
+                          </option>
+                        )}
+
+                      </>
+                    )
+                  }
+
+                </select>
+              </label>
+
+
+              <label>
+                City / Municipality
+
+                <select
+                  value={
+                    form.municipalityCode
+                  }
+                  onChange={
+                    changeMunicipality
+                  }
+                  disabled={
+                    !form.provinceCode ||
+                    municipalities.length ===
+                      0
+                  }
+                  required
+                >
+
+                  <option value="">
+                    {addressLoading &&
+                    form.provinceCode &&
+                    municipalities.length === 0
+                      ? "Loading cities / municipalities..."
+                      : "Select city / municipality"}
+                  </option>
+
+
+                  {municipalities.map(
+                    item => (
+
+                      <option
+                        key={item.code}
+                        value={item.code}
+                      >
+                        {item.name}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+              </label>
+
+
+              <label>
+                Barangay
+
+                <select
+                  value={form.barangayCode}
+                  onChange={changeBarangay}
+                  disabled={
+                    !form.municipalityCode ||
+                    barangays.length === 0
+                  }
+                  required
+                >
+
+                  <option value="">
+                    {addressLoading &&
+                    form.municipalityCode &&
+                    barangays.length === 0
+                      ? "Loading barangays..."
+                      : "Select barangay"}
+                  </option>
+
+
+                  {barangays.map(
+                    item => (
+
+                      <option
+                        key={item.code}
+                        value={item.code}
+                      >
+                        {item.name}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+              </label>
+
+
+              <label className="full-width-field">
+                Street Name / House No. / Purok
+
+                <input
+                  type="text"
+                  name="streetName"
+                  value={form.streetName}
                   onChange={change}
-                  placeholder="Enter your complete address"
+                  placeholder="Example: 123 Rizal Street, Purok 2"
                   required
                 />
               </label>
 
             </div>
+
+
+            <div className="profile-note">
+
+              Address preview:
+              {" "}
+
+              <strong>
+                {
+                  [
+                    form.streetName.trim(),
+
+                    form.barangayName
+                      ? `Barangay ${form.barangayName}`
+                      : "",
+
+                    form.municipalityName,
+
+                    form.provinceName ===
+                      "Not Applicable"
+                      ? ""
+                      : form.provinceName,
+
+                    form.regionName
+                  ]
+                    .filter(Boolean)
+                    .join(", ") ||
+                  "Complete the address fields above."
+                }
+              </strong>
+
+            </div>
+
           </div>
 
 
@@ -751,10 +2012,12 @@ function Register() {
             <h2>
               Contact Person
               {" "}
+
               <span className="optional-text">
                 (If applicable)
               </span>
             </h2>
+
 
             <div className="registration-grid">
 
@@ -769,6 +2032,7 @@ function Register() {
                 />
               </label>
 
+
               <label>
                 Contact Person Phone Number
 
@@ -778,11 +2042,15 @@ function Register() {
                   value={form.contactPersonPhone}
                   onChange={change}
                   inputMode="numeric"
-                  pattern="[0-9]*"
+                  pattern="[0-9]{11}"
+                  minLength={11}
+                  maxLength={11}
+                  placeholder="09XXXXXXXXX"
                 />
               </label>
 
             </div>
+
           </div>
 
 
@@ -791,6 +2059,7 @@ function Register() {
             <h2>
               Security
             </h2>
+
 
             <div className="registration-grid">
 
@@ -807,6 +2076,7 @@ function Register() {
                 />
               </label>
 
+
               <label>
                 Confirm Password
 
@@ -821,6 +2091,7 @@ function Register() {
               </label>
 
             </div>
+
           </div>
 
 
@@ -833,7 +2104,10 @@ function Register() {
 
           <button
             className="primary-button"
-            disabled={loading}
+            disabled={
+              loading ||
+              addressLoading
+            }
           >
 
             {loading
@@ -870,6 +2144,7 @@ function Register() {
   );
 }
 
+
 // ======================================================
 // FIRESTORE COLLECTION HOOK
 // ======================================================
@@ -900,6 +2175,18 @@ function useRows(
 
 
   return rows;
+}
+
+
+// ======================================================
+// DASHBOARD ACCESS
+// Student / Faculty / Personnel do not use Dashboard.
+// Counselor and Super Admin keep Dashboard access.
+// ======================================================
+
+function DashboardRoute() {
+
+  return <Dashboard />;
 }
 
 
@@ -1122,69 +2409,15 @@ function Dashboard() {
           `Welcome, ${user.name}`
         }
 
-        subtitle="Your private wellness and counseling dashboard"
+        subtitle="Access your MindTrack services and personal wellness tools."
 
       />
-
-
-      <div className="stat-grid">
-
-        <Stat
-          title="Assessments"
-          value={
-            ownAssessments.length
-          }
-          icon={
-            <ClipboardList />
-          }
-        />
-
-
-        <Stat
-          title="Consultations"
-          value={
-            ownConsultations.length
-          }
-          icon={
-            <Calendar />
-          }
-        />
-
-
-        <Stat
-          title="Referrals submitted"
-          value={
-            referrals.filter(
-              r =>
-                r.referrerId ===
-                user.id
-            ).length
-          }
-          icon={
-            <UserPlus />
-          }
-        />
-
-
-        <Stat
-          title="Latest priority"
-          value={
-            ownAssessments[0]
-              ?.priority ||
-            "None"
-          }
-          icon={
-            <Shield />
-          }
-        />
-
-      </div>
 
 
       <section className="panel">
 
         <h2>
-          Quick start
+          Quick Actions
         </h2>
 
 
@@ -1192,15 +2425,15 @@ function Dashboard() {
 
           <ActionLink
             href="/assessment"
-            title="Take assessment"
-            text="Complete the guided psychological screening."
+            title="Assessment"
+            text="Complete your guided psychological screening."
           />
 
 
           <ActionLink
             href="/consultations"
-            title="Request counseling"
-            text="Choose a preferred schedule and counseling mode."
+            title="Counseling"
+            text="Request counseling and manage your submitted requests."
           />
 
 
@@ -1213,11 +2446,32 @@ function Dashboard() {
 
             <ActionLink
               href="/referrals"
-              title="Submit referral"
-              text="Refer a student or employee while respecting confidentiality."
+              title="Referrals"
+              text="Refer a student or employee who may benefit from guidance support."
             />
 
           )}
+
+
+          <ActionLink
+            href="/history"
+            title="History"
+            text="View your previous assessments and MindTrack activity."
+          />
+
+
+          <ActionLink
+            href="/feedback"
+            title="Ratings & Feedback"
+            text="Rate your MindTrack experience and submit feedback."
+          />
+
+
+          <ActionLink
+            href="/profile"
+            title="Profile"
+            text="View and update your personal contact information."
+          />
 
         </div>
 
@@ -1291,6 +2545,9 @@ function Assessment() {
 
       department:
         user.department,
+
+      program:
+        user.program || "",
 
       answers,
 
@@ -1547,6 +2804,546 @@ function Assessment() {
 
 
 // ======================================================
+// COUNSELING DATE AVAILABILITY
+// ======================================================
+
+// National regular and special non-working holidays.
+// 2026 dates follow Proclamation No. 1006 plus the
+// separately declared Eid'l Fitr and Eid'l Adha holidays.
+// 2027 dates follow Proclamation No. 1427.
+// Eid holidays for 2027 can be added here once officially declared.
+const COUNSELING_HOLIDAYS = {
+  "2026-01-01": "New Year's Day",
+  "2026-02-17": "Chinese New Year",
+  "2026-03-20": "Eid'l Fitr",
+  "2026-04-02": "Maundy Thursday",
+  "2026-04-03": "Good Friday",
+  "2026-04-04": "Black Saturday",
+  "2026-04-09": "Araw ng Kagitingan",
+  "2026-05-01": "Labor Day",
+  "2026-05-27": "Eid'l Adha",
+  "2026-06-12": "Independence Day",
+  "2026-08-21": "Ninoy Aquino Day",
+  "2026-08-31": "National Heroes Day",
+  "2026-11-01": "All Saints' Day",
+  "2026-11-02": "All Souls' Day",
+  "2026-11-30": "Bonifacio Day",
+  "2026-12-08": "Feast of the Immaculate Conception of Mary",
+  "2026-12-24": "Christmas Eve",
+  "2026-12-25": "Christmas Day",
+  "2026-12-30": "Rizal Day",
+  "2026-12-31": "Last Day of the Year",
+
+  "2027-01-01": "New Year's Day",
+  "2027-02-06": "Chinese New Year",
+  "2027-03-25": "Maundy Thursday",
+  "2027-03-26": "Good Friday",
+  "2027-03-27": "Black Saturday",
+  "2027-04-09": "Araw ng Kagitingan",
+  "2027-05-01": "Labor Day",
+  "2027-06-12": "Independence Day",
+  "2027-08-21": "Ninoy Aquino Day",
+  "2027-08-30": "National Heroes Day",
+  "2027-11-01": "All Saints' Day",
+  "2027-11-02": "All Souls' Day",
+  "2027-11-30": "Bonifacio Day",
+  "2027-12-08": "Feast of the Immaculate Conception of Mary",
+  "2027-12-24": "Christmas Eve",
+  "2027-12-25": "Christmas Day",
+  "2027-12-30": "Rizal Day",
+  "2027-12-31": "Last Day of the Year"
+};
+
+
+// Convert a local Date object to YYYY-MM-DD without UTC shifting.
+function localDateKey(date) {
+
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
+
+
+  return `${year}-${month}-${day}`;
+}
+
+
+function todayDateKey() {
+
+  return localDateKey(
+    new Date()
+  );
+}
+
+
+function isPastCounselingDate(dateKey) {
+
+  return Boolean(
+    dateKey &&
+    dateKey < todayDateKey()
+  );
+}
+
+
+function counselingHolidayName(dateKey) {
+
+  return (
+    COUNSELING_HOLIDAYS[
+      dateKey
+    ] || ""
+  );
+}
+
+
+function isWeekendCounselingDate(dateKey) {
+
+  if (!dateKey) {
+    return false;
+  }
+
+
+  const date =
+    new Date(
+      `${dateKey}T00:00:00`
+    );
+
+
+  const day =
+    date.getDay();
+
+
+  return (
+    day === 0 ||
+    day === 6
+  );
+}
+
+
+function isUnavailableCounselingDate(dateKey) {
+
+  return (
+    isPastCounselingDate(
+      dateKey
+    ) ||
+    isWeekendCounselingDate(
+      dateKey
+    ) ||
+    Boolean(
+      counselingHolidayName(
+        dateKey
+      )
+    )
+  );
+}
+
+
+function CounselingDatePicker({
+  value,
+  onChange
+}) {
+
+  const initialDate =
+    value
+      ? new Date(
+          `${value}T00:00:00`
+        )
+      : new Date();
+
+
+  const [
+    visibleMonth,
+    setVisibleMonth
+  ] = useState(
+    new Date(
+      initialDate.getFullYear(),
+      initialDate.getMonth(),
+      1
+    )
+  );
+
+
+  const year =
+    visibleMonth.getFullYear();
+
+  const month =
+    visibleMonth.getMonth();
+
+
+  const firstWeekday =
+    new Date(
+      year,
+      month,
+      1
+    ).getDay();
+
+
+  const numberOfDays =
+    new Date(
+      year,
+      month + 1,
+      0
+    ).getDate();
+
+
+  const monthName =
+    visibleMonth.toLocaleDateString(
+      "en-PH",
+      {
+        month: "long",
+        year: "numeric"
+      }
+    );
+
+
+  const calendarCells = [];
+
+
+  for (
+    let blank = 0;
+    blank < firstWeekday;
+    blank += 1
+  ) {
+
+    calendarCells.push(
+      <div
+        key={`blank-${blank}`}
+        className="counseling-calendar-empty"
+      />
+    );
+  }
+
+
+  for (
+    let day = 1;
+    day <= numberOfDays;
+    day += 1
+  ) {
+
+    const date =
+      new Date(
+        year,
+        month,
+        day
+      );
+
+
+    const dateKey =
+      localDateKey(
+        date
+      );
+
+
+    const holidayName =
+      counselingHolidayName(
+        dateKey
+      );
+
+
+    const past =
+      isPastCounselingDate(
+        dateKey
+      );
+
+
+    const weekend =
+      isWeekendCounselingDate(
+        dateKey
+      );
+
+
+    const unavailable =
+      past ||
+      weekend ||
+      Boolean(
+        holidayName
+      );
+
+
+    const selected =
+      value ===
+      dateKey;
+
+
+    calendarCells.push(
+
+      <button
+
+        key={dateKey}
+
+        type="button"
+
+        className={[
+          "counseling-calendar-day",
+          past
+            ? "past"
+            : "",
+          weekend && !past
+            ? "weekend"
+            : "",
+          holidayName
+            ? "holiday"
+            : "",
+          selected
+            ? "selected"
+            : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
+
+        disabled={
+          unavailable
+        }
+
+        title={
+          holidayName
+            ? `${holidayName} — unavailable`
+            : past
+              ? "Past date — unavailable"
+              : weekend
+                ? "Weekend — unavailable"
+                : "Available"
+        }
+
+        onClick={
+          () =>
+            onChange(
+              dateKey
+            )
+        }
+
+      >
+
+        <span className="calendar-day-number">
+          {day}
+        </span>
+
+
+        {holidayName && (
+
+          <span className="calendar-day-marker">
+            Holiday
+          </span>
+
+        )}
+
+      </button>
+
+    );
+  }
+
+
+  const holidaysThisMonth =
+    Object.entries(
+      COUNSELING_HOLIDAYS
+    )
+      .filter(
+        ([dateKey]) => {
+
+          const date =
+            new Date(
+              `${dateKey}T00:00:00`
+            );
+
+
+          return (
+            date.getFullYear() ===
+              year &&
+            date.getMonth() ===
+              month
+          );
+        }
+      )
+      .sort(
+        ([dateA], [dateB]) =>
+          dateA.localeCompare(
+            dateB
+          )
+      );
+
+
+  const currentMonthStart =
+    new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1
+    );
+
+
+  const previousMonth =
+    new Date(
+      year,
+      month - 1,
+      1
+    );
+
+
+  const previousDisabled =
+    previousMonth <
+    currentMonthStart;
+
+
+  return (
+
+    <div className="counseling-date-picker">
+
+      <div className="counseling-calendar-header">
+
+        <button
+          type="button"
+          className="calendar-nav-button"
+          disabled={
+            previousDisabled
+          }
+          onClick={
+            () =>
+              setVisibleMonth(
+                previousMonth
+              )
+          }
+        >
+          ‹
+        </button>
+
+
+        <strong>
+          {monthName}
+        </strong>
+
+
+        <button
+          type="button"
+          className="calendar-nav-button"
+          onClick={
+            () =>
+              setVisibleMonth(
+                new Date(
+                  year,
+                  month + 1,
+                  1
+                )
+              )
+          }
+        >
+          ›
+        </button>
+
+      </div>
+
+
+      <div className="counseling-calendar-weekdays">
+
+        {[
+          "Sun",
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat"
+        ].map(
+          weekday => (
+            <span key={weekday}>
+              {weekday}
+            </span>
+          )
+        )}
+
+      </div>
+
+
+      <div className="counseling-calendar-grid">
+        {calendarCells}
+      </div>
+
+
+      {value && (
+
+        <div className="selected-counseling-date">
+
+          Selected date:
+          {" "}
+
+          <strong>
+            {
+              new Date(
+                `${value}T00:00:00`
+              ).toLocaleDateString(
+                "en-PH",
+                {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric"
+                }
+              )
+            }
+          </strong>
+
+        </div>
+
+      )}
+
+
+      {holidaysThisMonth.length > 0 && (
+
+        <div className="calendar-holiday-list">
+
+          <strong>
+            Marked holidays this month
+          </strong>
+
+
+          {holidaysThisMonth.map(
+            ([dateKey, name]) => (
+
+              <div
+                key={dateKey}
+                className="calendar-holiday-row"
+              >
+
+                <span>
+                  {
+                    new Date(
+                      `${dateKey}T00:00:00`
+                    ).toLocaleDateString(
+                      "en-PH",
+                      {
+                        month: "short",
+                        day: "numeric"
+                      }
+                    )
+                  }
+                </span>
+
+                <span>
+                  {name}
+                </span>
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      )}
+
+
+    </div>
+
+  );
+}
+
+
+// ======================================================
 // CONSULTATIONS
 // ======================================================
 
@@ -1566,25 +3363,123 @@ function Consultations() {
     );
 
 
+  const emptyRequest = {
+    mode:
+      "Face-to-face",
+
+    date:
+      "",
+
+    time:
+      "",
+
+    category:
+      "Academic concern",
+
+    message:
+      ""
+  };
+
+
   const [form, setForm] =
-    useState({
+    useState(
+      emptyRequest
+    );
 
-      mode:
-        "Face-to-face",
 
-      date:
-        "",
+  const [
+    editingId,
+    setEditingId
+  ] = useState(null);
 
-      time:
-        "",
 
-      category:
-        "Academic concern",
+  const [
+    editForm,
+    setEditForm
+  ] = useState(null);
 
-      message:
-        ""
 
-    });
+  const [
+    savingEdit,
+    setSavingEdit
+  ] = useState(false);
+
+
+  function validateRequestDate(
+    date
+  ) {
+
+    if (!date) {
+
+      return (
+        "Please select an available counseling date."
+      );
+    }
+
+
+    if (
+      isPastCounselingDate(
+        date
+      )
+    ) {
+
+      return (
+        "Past dates cannot be selected for counseling."
+      );
+    }
+
+
+    if (
+      isWeekendCounselingDate(
+        date
+      )
+    ) {
+
+      return (
+        "Weekends are unavailable for counseling. Please choose a weekday."
+      );
+    }
+
+
+    const holidayName =
+      counselingHolidayName(
+        date
+      );
+
+
+    if (holidayName) {
+
+      return (
+        `${holidayName} is a holiday and is unavailable for counseling. Please choose another date.`
+      );
+    }
+
+
+    return "";
+  }
+
+
+  function formattedRequestDate(
+    date
+  ) {
+
+    if (!date) {
+      return "No date selected";
+    }
+
+
+    return new Date(
+      `${date}T00:00:00`
+    ).toLocaleDateString(
+      "en-PH",
+      {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+      }
+    );
+  }
 
 
   async function submit(e) {
@@ -1592,50 +3487,258 @@ function Consultations() {
     e.preventDefault();
 
 
-    await addRecord(
-      "consultations",
-      {
+    const dateError =
+      validateRequestDate(
+        form.date
+      );
 
-        ...form,
 
-        ownerId:
-          user.id,
+    if (dateError) {
 
-        ownerName:
-          user.name,
+      alert(dateError);
 
-        department:
-          user.department,
+      return;
+    }
 
-        status:
-          "Pending approval",
 
-        source:
-          "Self-request"
+    if (!form.time) {
 
-      }
+      alert(
+        "Please select your preferred counseling time."
+      );
+
+      return;
+    }
+
+
+    const confirmed =
+      window.confirm(
+        [
+          "Are you sure you want to submit this counseling request?",
+          "",
+          `Concern: ${form.category}`,
+          `Date: ${formattedRequestDate(form.date)}`,
+          `Time: ${form.time}`,
+          `Mode: ${form.mode}`
+        ].join("\n")
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    try {
+
+      await addRecord(
+        "consultations",
+        {
+
+          ...form,
+
+          ownerId:
+            user.id,
+
+          ownerName:
+            user.name,
+
+          department:
+            user.department,
+
+          program:
+            user.program || "",
+
+          status:
+            "Pending approval",
+
+          source:
+            "Self-request"
+
+        }
+      );
+
+
+      setForm({
+        ...emptyRequest
+      });
+
+
+      alert(
+        "Your counseling request was submitted successfully."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Counseling request error:",
+        err
+      );
+
+
+      alert(
+        err?.message ||
+        "Unable to submit your counseling request."
+      );
+    }
+  }
+
+
+  function startEdit(row) {
+
+    setEditingId(
+      row.id
     );
 
 
-    setForm({
+    setEditForm({
 
       mode:
+        row.mode ||
         "Face-to-face",
 
       date:
+        row.date ||
         "",
 
       time:
+        row.time ||
         "",
 
       category:
+        row.category ||
         "Academic concern",
 
       message:
+        row.message ||
         ""
 
     });
+  }
 
+
+  function cancelEdit() {
+
+    setEditingId(null);
+    setEditForm(null);
+  }
+
+
+  async function saveEdit(
+    e,
+    row
+  ) {
+
+    e.preventDefault();
+
+
+    if (!editForm) {
+      return;
+    }
+
+
+    const dateError =
+      validateRequestDate(
+        editForm.date
+      );
+
+
+    if (dateError) {
+
+      alert(dateError);
+
+      return;
+    }
+
+
+    if (!editForm.time) {
+
+      alert(
+        "Please select your preferred counseling time."
+      );
+
+      return;
+    }
+
+
+    const confirmed =
+      window.confirm(
+        [
+          "Are you sure you want to save these changes?",
+          "",
+          `Concern: ${editForm.category}`,
+          `Date: ${formattedRequestDate(editForm.date)}`,
+          `Time: ${editForm.time}`,
+          `Mode: ${editForm.mode}`,
+          "",
+          "The request will return to Pending approval so the counselor can review the changes."
+        ].join("\n")
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    try {
+
+      setSavingEdit(true);
+
+
+      await updateRecord(
+        "consultations",
+        row.id,
+        {
+
+          mode:
+            editForm.mode,
+
+          date:
+            editForm.date,
+
+          time:
+            editForm.time,
+
+          category:
+            editForm.category,
+
+          message:
+            editForm.message,
+
+          status:
+            "Pending approval"
+
+        }
+      );
+
+
+      setEditingId(null);
+      setEditForm(null);
+
+
+      alert(
+        "Your counseling request was updated successfully."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Counseling request update error:",
+        err
+      );
+
+
+      alert(
+        err?.message ||
+        "Unable to update your counseling request."
+      );
+
+    } finally {
+
+      setSavingEdit(false);
+
+    }
   }
 
 
@@ -1703,32 +3806,31 @@ function Consultations() {
           </label>
 
 
-          <label>
+          <div className="counseling-date-field">
 
-            Preferred date
+            <label>
+              Preferred date
+            </label>
 
-            <input
 
-              type="date"
-
-              required
+            <CounselingDatePicker
 
               value={
                 form.date
               }
 
               onChange={
-                e =>
+                selectedDate =>
                   setForm({
                     ...form,
                     date:
-                      e.target.value
+                      selectedDate
                   })
               }
 
             />
 
-          </label>
+          </div>
 
 
           <label>
@@ -1831,7 +3933,7 @@ function Consultations() {
 
           <label>
 
-            Message
+            Details
 
             <textarea
 
@@ -1849,6 +3951,8 @@ function Consultations() {
                       e.target.value
                   })
               }
+
+              placeholder="Provide additional details about your concern."
 
             />
 
@@ -1871,63 +3975,428 @@ function Consultations() {
           </h2>
 
 
+          <p
+            style={{
+              color: "#6a7283",
+              marginTop: 0
+            }}
+          >
+            You may edit a request after submitting it.
+            Changes are sent back for counselor review.
+            Completed or cancelled requests can no longer be edited.
+          </p>
+
+
           {rows.length === 0
 
             ? (
 
               <Empty
-                text="No consultation request yet."
+                text="No counseling request yet."
               />
 
             )
 
             : rows.map(
-                row => (
+                row => {
 
-                  <article
-                    className="record-card"
-                    key={
-                      row.id
-                    }
-                  >
-
-                    <strong>
-                      {row.category}
-                    </strong>
-
-                    <span className="status">
-                      {row.status}
-                    </span>
+                  const isEditing =
+                    editingId ===
+                    row.id;
 
 
-                    <p>
-
-                      {row.date}
-                      {" · "}
-                      {row.time}
-                      {" · "}
-                      {row.mode}
-
-                    </p>
+                  const canEdit =
+                    ![
+                      "Completed",
+                      "Cancelled"
+                    ].includes(
+                      row.status
+                    );
 
 
-                    {row.counselorRemarks && (
+                  return (
 
-                      <small>
+                    <article
 
-                        Counselor:
-                        {" "}
-                        {
-                          row.counselorRemarks
-                        }
+                      className="record-card"
 
-                      </small>
+                      key={
+                        row.id
+                      }
 
-                    )}
+                    >
 
-                  </article>
 
-                )
+                      {isEditing &&
+                      editForm
+
+                        ? (
+
+                          <form
+                            onSubmit={
+                              e =>
+                                saveEdit(
+                                  e,
+                                  row
+                                )
+                            }
+                          >
+
+                            <h3
+                              style={{
+                                marginTop: 0,
+                                color: "#173f8f"
+                              }}
+                            >
+                              Edit counseling request
+                            </h3>
+
+
+                            <label>
+
+                              Mode
+
+                              <select
+
+                                value={
+                                  editForm.mode
+                                }
+
+                                onChange={
+                                  e =>
+                                    setEditForm({
+                                      ...editForm,
+                                      mode:
+                                        e.target.value
+                                    })
+                                }
+
+                              >
+
+                                <option>
+                                  Face-to-face
+                                </option>
+
+                                <option>
+                                  Online
+                                </option>
+
+                                <option>
+                                  Follow-up
+                                </option>
+
+                              </select>
+
+                            </label>
+
+
+                            <div className="counseling-date-field">
+
+                              <label>
+                                Preferred date
+                              </label>
+
+
+                              <CounselingDatePicker
+
+                                value={
+                                  editForm.date
+                                }
+
+                                onChange={
+                                  selectedDate =>
+                                    setEditForm({
+                                      ...editForm,
+                                      date:
+                                        selectedDate
+                                    })
+                                }
+
+                              />
+
+                            </div>
+
+
+                            <label>
+
+                              Preferred time
+
+                              <select
+
+                                value={
+                                  editForm.time
+                                }
+
+                                required
+
+                                onChange={
+                                  e =>
+                                    setEditForm({
+                                      ...editForm,
+                                      time:
+                                        e.target.value
+                                    })
+                                }
+
+                              >
+
+                                <option value="">
+                                  Choose
+                                </option>
+
+                                <option>
+                                  9:00 AM
+                                </option>
+
+                                <option>
+                                  10:30 AM
+                                </option>
+
+                                <option>
+                                  1:30 PM
+                                </option>
+
+                                <option>
+                                  3:00 PM
+                                </option>
+
+                              </select>
+
+                            </label>
+
+
+                            <label>
+
+                              Concern
+
+                              <select
+
+                                value={
+                                  editForm.category
+                                }
+
+                                onChange={
+                                  e =>
+                                    setEditForm({
+                                      ...editForm,
+                                      category:
+                                        e.target.value
+                                    })
+                                }
+
+                              >
+
+                                <option>
+                                  Academic concern
+                                </option>
+
+                                <option>
+                                  Anxiety or stress
+                                </option>
+
+                                <option>
+                                  Family concern
+                                </option>
+
+                                <option>
+                                  Workplace concern
+                                </option>
+
+                                <option>
+                                  Financial concern
+                                </option>
+
+                                <option>
+                                  Other
+                                </option>
+
+                              </select>
+
+                            </label>
+
+
+                            <label>
+
+                              Details
+
+                              <textarea
+
+                                rows="4"
+
+                                value={
+                                  editForm.message
+                                }
+
+                                onChange={
+                                  e =>
+                                    setEditForm({
+                                      ...editForm,
+                                      message:
+                                        e.target.value
+                                    })
+                                }
+
+                                placeholder="Provide additional details about your concern."
+
+                              />
+
+                            </label>
+
+
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "10px",
+                                flexWrap: "wrap",
+                                marginTop: "16px"
+                              }}
+                            >
+
+                              <button
+                                className="primary-button"
+                                disabled={
+                                  savingEdit
+                                }
+                              >
+                                {
+                                  savingEdit
+                                    ? "Saving..."
+                                    : "Save changes"
+                                }
+                              </button>
+
+
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                disabled={
+                                  savingEdit
+                                }
+                                onClick={
+                                  cancelEdit
+                                }
+                              >
+                                Cancel
+                              </button>
+
+                            </div>
+
+                          </form>
+
+                        )
+
+                        : (
+
+                          <>
+
+                            <strong>
+                              {row.category}
+                            </strong>
+
+
+                            <span className="status">
+                              {row.status}
+                            </span>
+
+
+                            <p>
+
+                              {row.date}
+                              {" · "}
+                              {row.time}
+                              {" · "}
+                              {row.mode}
+
+                            </p>
+
+
+                            {row.message && (
+
+                              <p
+                                style={{
+                                  whiteSpace:
+                                    "pre-wrap"
+                                }}
+                              >
+                                <strong>
+                                  Details:
+                                </strong>
+                                {" "}
+                                {row.message}
+                              </p>
+
+                            )}
+
+
+                            {row.counselorRemarks && (
+
+                              <small>
+
+                                Counselor:
+                                {" "}
+                                {
+                                  row.counselorRemarks
+                                }
+
+                              </small>
+
+                            )}
+
+
+                            {canEdit && (
+
+                              <div
+                                style={{
+                                  marginTop:
+                                    "14px"
+                                }}
+                              >
+
+                                <button
+
+                                  type="button"
+
+                                  className="secondary-button"
+
+                                  onClick={
+                                    () =>
+                                      startEdit(
+                                        row
+                                      )
+                                  }
+
+                                >
+                                  Edit request
+                                </button>
+
+                              </div>
+
+                            )}
+
+
+                            {!canEdit && (
+
+                              <small
+                                style={{
+                                  display: "block",
+                                  marginTop: "12px",
+                                  color: "#7b8495"
+                                }}
+                              >
+                                This request can no longer be edited because it is {String(row.status).toLowerCase()}.
+                              </small>
+
+                            )}
+
+                          </>
+
+                        )
+                      }
+
+                    </article>
+
+                  );
+                }
               )
           }
 
@@ -3087,6 +5556,31 @@ function Profile() {
 
 
     if (
+      form.phoneNumber.length !== 11
+    ) {
+
+      setError(
+        "Phone number must contain exactly 11 digits."
+      );
+
+      return;
+    }
+
+
+    if (
+      form.contactPersonPhone &&
+      form.contactPersonPhone.length !== 11
+    ) {
+
+      setError(
+        "Contact person phone number must contain exactly 11 digits."
+      );
+
+      return;
+    }
+
+
+    if (
       !form.address.trim()
     ) {
 
@@ -3276,6 +5770,23 @@ function Profile() {
             </label>
 
 
+            {user.role === "student" && (
+
+              <label className="full-width-field">
+                Program
+
+                <input
+                  value={
+                    user.program ||
+                    "Not provided"
+                  }
+                  readOnly
+                />
+              </label>
+
+            )}
+
+
             <label>
 
               {
@@ -3301,7 +5812,7 @@ function Profile() {
 
           <div className="profile-note">
 
-            Account type, college/office, email, and student/employee number are locked here to protect account and department records.
+            Account type, college/office, program, email, and student/employee number are locked here to protect account and department records.
 
           </div>
 
@@ -3326,7 +5837,10 @@ function Profile() {
                   }
                   onChange={change}
                   inputMode="numeric"
-                  pattern="[0-9]*"
+                  pattern="[0-9]{11}"
+                  minLength={11}
+                  maxLength={11}
+                  placeholder="09XXXXXXXXX"
                   required
                 />
               </label>
@@ -3408,7 +5922,10 @@ function Profile() {
                   }
                   onChange={change}
                   inputMode="numeric"
-                  pattern="[0-9]*"
+                  pattern="[0-9]{11}"
+                  minLength={11}
+                  maxLength={11}
+                  placeholder="09XXXXXXXXX"
                 />
               </label>
 
@@ -3528,9 +6045,6 @@ function UserProfilesContent({
         );
 
 
-      // Firestore rules are not filters.
-      // Counselor queries must include the same department
-      // restriction that exists in the Firestore rules.
       if (!isSuperAdmin) {
 
         usersQuery =
@@ -3542,7 +6056,6 @@ function UserProfilesContent({
               currentUser.department
             )
           );
-
       }
 
 
@@ -3561,10 +6074,20 @@ function UserProfilesContent({
               );
 
 
+            data.sort(
+              (a, b) =>
+                String(
+                  a.name || ""
+                ).localeCompare(
+                  String(
+                    b.name || ""
+                  )
+                )
+            );
+
+
             setRows(data);
-
             setLoadingUsers(false);
-
           },
 
           error => {
@@ -3577,11 +6100,12 @@ function UserProfilesContent({
 
             setRows([]);
 
+
             setUsersError(
               error?.code ===
               "permission-denied"
 
-                ? "Firestore denied access to the users collection. Check that the logged-in account has role super_admin, or that the counselor department matches the user department."
+                ? "Firestore denied access to the users collection. Check the account role and department access."
 
                 : (
                     error?.message ||
@@ -3589,8 +6113,8 @@ function UserProfilesContent({
                   )
             );
 
-            setLoadingUsers(false);
 
+            setLoadingUsers(false);
           }
         );
 
@@ -3617,12 +6141,12 @@ function UserProfilesContent({
             .trim()
             .toLowerCase();
 
+
         return [
           "student",
           "faculty",
           "personnel"
         ].includes(role);
-
       }
     );
 
@@ -3631,18 +6155,64 @@ function UserProfilesContent({
     useState(null);
 
 
-  const [selectedDepartment, setSelectedDepartment] =
-    useState("All Departments");
+  const [
+    selectedCollege,
+    setSelectedCollege
+  ] = useState(
+    isSuperAdmin
+      ? "All Colleges / Offices"
+      : currentUser.department
+  );
 
 
-  const departmentCategories =
+  const [
+    selectedProgram,
+    setSelectedProgram
+  ] = useState("All Programs");
+
+
+  const collegeOptions =
     Array.from(
       new Set(
         users.map(
           account =>
             String(
               account.department || ""
-            ).trim() || "Unassigned"
+            ).trim()
+        ).filter(Boolean)
+      )
+    ).sort(
+      (a, b) =>
+        a.localeCompare(b)
+    );
+
+
+  const usersForProgramOptions =
+    users.filter(
+      account =>
+        (
+          !isSuperAdmin ||
+          selectedCollege ===
+            "All Colleges / Offices" ||
+          account.department ===
+            selectedCollege
+        ) &&
+        account.role ===
+          "student" &&
+        String(
+          account.program || ""
+        ).trim()
+    );
+
+
+  const programOptions =
+    Array.from(
+      new Set(
+        usersForProgramOptions.map(
+          account =>
+            String(
+              account.program
+            ).trim()
         )
       )
     ).sort(
@@ -3652,59 +6222,54 @@ function UserProfilesContent({
 
 
   const visibleUsers =
-    isSuperAdmin &&
-    selectedDepartment !== "All Departments"
+    users.filter(
+      account => {
 
-      ? users.filter(
-          account =>
-            (
-              String(
-                account.department || ""
-              ).trim() ||
-              "Unassigned"
-            ) ===
-            selectedDepartment
-        )
-
-      : users;
+        const collegeMatches =
+          !isSuperAdmin ||
+          selectedCollege ===
+            "All Colleges / Offices" ||
+          account.department ===
+            selectedCollege;
 
 
-  function selectDepartment(
-    department
-  ) {
+        const programMatches =
+          selectedProgram ===
+            "All Programs" ||
+          (
+            account.role ===
+              "student" &&
+            account.program ===
+              selectedProgram
+          );
 
-    setSelectedDepartment(
-      department
+
+        return (
+          collegeMatches &&
+          programMatches
+        );
+      }
     );
 
-    // Clear the old profile when changing category
-    // so the detail panel always matches the active department.
+
+  function changeCollegeFilter(
+    value
+  ) {
+
+    setSelectedCollege(value);
+    setSelectedProgram(
+      "All Programs"
+    );
     setSelected(null);
   }
 
 
-  function departmentCount(
-    department
+  function changeProgramFilter(
+    value
   ) {
 
-    if (
-      department ===
-      "All Departments"
-    ) {
-      return users.length;
-    }
-
-
-    return users.filter(
-      account =>
-        (
-          String(
-            account.department || ""
-          ).trim() ||
-          "Unassigned"
-        ) ===
-        department
-    ).length;
+    setSelectedProgram(value);
+    setSelected(null);
   }
 
 
@@ -3733,6 +6298,7 @@ function UserProfilesContent({
         value || ""
       ).trim();
 
+
     return clean ||
       "Not provided";
   }
@@ -3748,8 +6314,10 @@ function UserProfilesContent({
 
         subtitle={
           isSuperAdmin
-            ? "View Student, Faculty, and Personnel profile information. This page is read-only."
-            : `View Student, Faculty, and Personnel profiles from ${currentUser.department}. This page is read-only.`
+
+            ? "Filter users by college/office and student program, then open a profile for read-only viewing."
+
+            : `Filter users from ${currentUser.department} by student program, then open a profile for read-only viewing.`
         }
 
       />
@@ -3768,6 +6336,107 @@ function UserProfilesContent({
       </div>
 
 
+      <section className="panel profile-filter-panel">
+
+        <div className="profile-filter-heading">
+
+          <div>
+            <h2>
+              Find Users
+            </h2>
+
+            <p>
+              Use the filters below to narrow the list without changing any account information.
+            </p>
+          </div>
+
+          <span className="profile-result-count">
+            {visibleUsers.length} result{visibleUsers.length === 1 ? "" : "s"}
+          </span>
+
+        </div>
+
+
+        <div className="profile-filter-grid">
+
+          {isSuperAdmin && (
+
+            <label>
+              College / Office
+
+              <select
+                value={selectedCollege}
+                onChange={
+                  e =>
+                    changeCollegeFilter(
+                      e.target.value
+                    )
+                }
+              >
+
+                <option>
+                  All Colleges / Offices
+                </option>
+
+
+                {collegeOptions.map(
+                  college => (
+
+                    <option
+                      key={college}
+                      value={college}
+                    >
+                      {college}
+                    </option>
+
+                  )
+                )}
+
+              </select>
+            </label>
+
+          )}
+
+
+          <label>
+            Program
+
+            <select
+              value={selectedProgram}
+              onChange={
+                e =>
+                  changeProgramFilter(
+                    e.target.value
+                  )
+              }
+            >
+
+              <option>
+                All Programs
+              </option>
+
+
+              {programOptions.map(
+                program => (
+
+                  <option
+                    key={program}
+                    value={program}
+                  >
+                    {program}
+                  </option>
+
+                )
+              )}
+
+            </select>
+          </label>
+
+        </div>
+
+      </section>
+
+
       <div className="user-profile-view-layout">
 
 
@@ -3778,106 +6447,16 @@ function UserProfilesContent({
             <div>
 
               <h2>
-                {
-                  isSuperAdmin
-                    ? selectedDepartment ===
-                      "All Departments"
-
-                      ? "Users by Department"
-
-                      : selectedDepartment
-
-                    : "Users"
-                }
+                User List
               </h2>
 
-              {isSuperAdmin && (
-                <p>
-                  Select a department category to view its Student, Faculty, and Personnel profiles.
-                </p>
-              )}
+              <p>
+                Student programs are shown when available.
+              </p>
 
             </div>
 
           </div>
-
-
-          {isSuperAdmin &&
-           !loadingUsers &&
-           !usersError &&
-           users.length > 0 && (
-
-            <div className="department-category-list">
-
-              <button
-                type="button"
-                className={
-                  selectedDepartment ===
-                  "All Departments"
-                    ? "department-category active"
-                    : "department-category"
-                }
-                onClick={
-                  () =>
-                    selectDepartment(
-                      "All Departments"
-                    )
-                }
-              >
-                <span>
-                  All Departments
-                </span>
-
-                <strong>
-                  {
-                    departmentCount(
-                      "All Departments"
-                    )
-                  }
-                </strong>
-              </button>
-
-
-              {departmentCategories.map(
-                department => (
-
-                  <button
-                    key={department}
-                    type="button"
-                    className={
-                      selectedDepartment ===
-                      department
-                        ? "department-category active"
-                        : "department-category"
-                    }
-                    onClick={
-                      () =>
-                        selectDepartment(
-                          department
-                        )
-                    }
-                  >
-
-                    <span>
-                      {department}
-                    </span>
-
-                    <strong>
-                      {
-                        departmentCount(
-                          department
-                        )
-                      }
-                    </strong>
-
-                  </button>
-
-                )
-              )}
-
-            </div>
-
-          )}
 
 
           {loadingUsers
@@ -3900,126 +6479,133 @@ function UserProfilesContent({
 
               )
 
-              : users.length === 0
+              : visibleUsers.length === 0
 
                 ? (
 
                   <Empty
-                    text="No Student, Faculty, or Personnel profiles were found in the users collection."
+                    text="No users match the selected filters."
                   />
 
                 )
 
-                : visibleUsers.length === 0
+                : (
 
-                  ? (
+                  <div className="table-wrap">
 
-                    <Empty
-                      text="No user profiles are available in this department."
-                    />
+                    <table>
 
-                  )
+                      <thead>
 
-                  : (
+                        <tr>
 
-                    <div className="table-wrap">
+                          <th>
+                            Name
+                          </th>
 
-                <table>
+                          <th>
+                            Role
+                          </th>
 
-                  <thead>
+                          <th>
+                            College / Office
+                          </th>
 
-                    <tr>
+                          <th>
+                            Program
+                          </th>
 
-                      <th>
-                        Name
-                      </th>
+                          <th>
+                            Student / Employee No.
+                          </th>
 
-                      <th>
-                        Role
-                      </th>
-
-                      <th>
-                        College / Office
-                      </th>
-
-                      <th>
-                        Student / Employee No.
-                      </th>
-
-                      <th>
-                        Action
-                      </th>
-
-                    </tr>
-
-                  </thead>
-
-
-                  <tbody>
-
-                    {visibleUsers.map(
-                      account => (
-
-                        <tr
-                          key={
-                            account.id
-                          }
-                        >
-
-                          <td>
-                            {
-                              account.name
-                            }
-                          </td>
-
-                          <td>
-                            {
-                              displayRole(
-                                account.role
-                              )
-                            }
-                          </td>
-
-                          <td>
-                            {
-                              account.department
-                            }
-                          </td>
-
-                          <td>
-                            {
-                              account.userNumber ||
-                              "—"
-                            }
-                          </td>
-
-                          <td>
-
-                            <button
-                              type="button"
-                              className="text-button"
-                              onClick={
-                                () =>
-                                  setSelected(
-                                    account
-                                  )
-                              }
-                            >
-                              View Profile
-                            </button>
-
-                          </td>
+                          <th>
+                            Action
+                          </th>
 
                         </tr>
 
-                      )
-                    )}
+                      </thead>
 
-                  </tbody>
 
-                </table>
+                      <tbody>
 
-              </div>
+                        {visibleUsers.map(
+                          account => (
+
+                            <tr
+                              key={
+                                account.id
+                              }
+                            >
+
+                              <td>
+                                {
+                                  account.name
+                                }
+                              </td>
+
+                              <td>
+                                {
+                                  displayRole(
+                                    account.role
+                                  )
+                                }
+                              </td>
+
+                              <td>
+                                {
+                                  account.department ||
+                                  "—"
+                                }
+                              </td>
+
+                              <td>
+                                {
+                                  account.role ===
+                                    "student"
+                                    ? (
+                                        account.program ||
+                                        "Not provided"
+                                      )
+                                    : "—"
+                                }
+                              </td>
+
+                              <td>
+                                {
+                                  account.userNumber ||
+                                  "—"
+                                }
+                              </td>
+
+                              <td>
+
+                                <button
+                                  type="button"
+                                  className="text-button"
+                                  onClick={
+                                    () =>
+                                      setSelected(
+                                        account
+                                      )
+                                  }
+                                >
+                                  View Profile
+                                </button>
+
+                              </td>
+
+                            </tr>
+
+                          )
+                        )}
+
+                      </tbody>
+
+                    </table>
+
+                  </div>
 
                 )
           }
@@ -4080,13 +6666,11 @@ function UserProfilesContent({
                     </p>
 
                     <span className="profile-role-badge">
-
                       {
                         displayRole(
                           selected.role
                         )
                       }
-
                     </span>
 
                   </div>
@@ -4163,6 +6747,28 @@ function UserProfilesContent({
                     </strong>
 
                   </div>
+
+
+                  {selected.role ===
+                    "student" && (
+
+                    <div className="readonly-profile-item full">
+
+                      <span>
+                        Program
+                      </span>
+
+                      <strong>
+                        {
+                          displayValue(
+                            selected.program
+                          )
+                        }
+                      </strong>
+
+                    </div>
+
+                  )}
 
 
                   <div className="readonly-profile-item">
@@ -4270,7 +6876,6 @@ function UserProfilesContent({
                     </strong>
 
                   </div>
-
 
                 </div>
 
@@ -4445,31 +7050,11 @@ function Cases() {
         };
 
 
-  const consultationFilters =
-    isSuperAdmin
-      ? {}
-      : {
-          department:
-            user.department
-        };
-
-
-  const all =
+  const rows =
     useRows(
       "assessments",
       assessmentFilters
     );
-
-
-  const consultations =
-    useRows(
-      "consultations",
-      consultationFilters
-    );
-
-
-  const rows =
-    all;
 
 
   const [selected, setSelected] =
@@ -4482,9 +7067,13 @@ function Cases() {
 
       <PageTitle
 
-        title="Case Management"
+        title={
+          isSuperAdmin
+            ? "All Psychological Assessment Cases"
+            : "Psychological Assessment Cases"
+        }
 
-        subtitle="Review assessment results and update intervention status."
+        subtitle="Review psychological assessment results and update intervention status."
 
       />
 
@@ -4493,6 +7082,11 @@ function Cases() {
 
 
         <section className="panel">
+
+          <h2>
+            Assessment Cases
+          </h2>
+
 
           <CaseTable
 
@@ -4515,7 +7109,7 @@ function Cases() {
             ? (
 
               <Empty
-                text="Select a case to review."
+                text="Select an assessment case to review."
               />
 
             )
@@ -4719,67 +7313,437 @@ function Cases() {
 
       </div>
 
+    </>
 
-      <section className="panel">
-
-        <h2>
-          Consultation requests
-        </h2>
+  );
+}
 
 
-        {consultations.length === 0
+// ======================================================
+// COUNSELING REQUEST MANAGEMENT
+// Counselor / Super Admin
+// ======================================================
 
-          ? (
+function CounselingRequestsManagement() {
 
-            <Empty
-              text="No consultation requests."
-            />
+  const { user } =
+    useAuth();
 
-          )
 
-          : consultations.map(
-              row => (
+  const allowedRoles = [
+    "counselor",
+    "super_admin"
+  ];
 
-                <article
 
-                  className="record-card"
+  const hasAccess =
+    allowedRoles.includes(
+      user.role
+    );
 
-                  key={
-                    row.id
+
+  const isSuperAdmin =
+    user.role ===
+    "super_admin";
+
+
+  const consultationFilters =
+    !hasAccess
+      ? {
+          ownerId:
+            "__NO_ACCESS__"
+        }
+      : isSuperAdmin
+        ? {}
+        : {
+            department:
+              user.department
+          };
+
+
+  const rows =
+    useRows(
+      "consultations",
+      consultationFilters
+    );
+
+
+  const [selected, setSelected] =
+    useState(null);
+
+
+  const [
+    statusDraft,
+    setStatusDraft
+  ] = useState("");
+
+
+  const [
+    remarksDraft,
+    setRemarksDraft
+  ] = useState("");
+
+
+  const [
+    saving,
+    setSaving
+  ] = useState(false);
+
+
+  if (!hasAccess) {
+
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+  }
+
+
+  function selectRequest(row) {
+
+    setSelected(row);
+
+    setStatusDraft(
+      row.status ||
+      "Pending approval"
+    );
+
+    setRemarksDraft(
+      row.counselorRemarks ||
+      ""
+    );
+  }
+
+
+  async function saveRequestUpdate() {
+
+    if (!selected) {
+      return;
+    }
+
+
+    try {
+
+      setSaving(true);
+
+
+      await updateRecord(
+        "consultations",
+        selected.id,
+        {
+          status:
+            statusDraft,
+
+          counselorRemarks:
+            remarksDraft
+        }
+      );
+
+
+      setSelected({
+        ...selected,
+
+        status:
+          statusDraft,
+
+        counselorRemarks:
+          remarksDraft
+      });
+
+
+      alert(
+        "Counseling request updated successfully."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Counseling request update error:",
+        err
+      );
+
+
+      alert(
+        err?.message ||
+        "Unable to update the counseling request."
+      );
+
+    } finally {
+
+      setSaving(false);
+
+    }
+  }
+
+
+  return (
+
+    <>
+
+      <PageTitle
+
+        title="Counseling Requests"
+
+        subtitle={
+          isSuperAdmin
+            ? "Review counseling requests from all departments."
+            : `Review counseling requests for ${user.department}.`
+        }
+
+      />
+
+
+      <div className="case-layout">
+
+
+        <section className="panel">
+
+          <h2>
+            Request List
+          </h2>
+
+
+          {rows.length === 0
+
+            ? (
+
+              <Empty
+                text="No counseling requests."
+              />
+
+            )
+
+            : rows.map(
+                row => (
+
+                  <article
+
+                    className="record-card"
+
+                    key={
+                      row.id
+                    }
+
+                  >
+
+                    <strong>
+                      {
+                        row.ownerName ||
+                        "User"
+                      }
+                    </strong>
+
+
+                    <span className="status">
+                      {
+                        row.status ||
+                        "Pending approval"
+                      }
+                    </span>
+
+
+                    <p>
+
+                      {
+                        row.category ||
+                        "Counseling concern"
+                      }
+
+                      {" · "}
+
+                      {
+                        row.date ||
+                        "No date"
+                      }
+
+                      {" · "}
+
+                      {
+                        row.time ||
+                        "No time"
+                      }
+
+                    </p>
+
+
+                    <small>
+                      {
+                        row.department ||
+                        "No department"
+                      }
+
+                      {" · "}
+
+                      {
+                        row.mode ||
+                        "No mode"
+                      }
+                    </small>
+
+
+                    <div
+                      style={{
+                        marginTop:
+                          "14px"
+                      }}
+                    >
+
+                      <button
+
+                        type="button"
+
+                        className="secondary-button"
+
+                        onClick={
+                          () =>
+                            selectRequest(
+                              row
+                            )
+                        }
+
+                      >
+                        Review request
+                      </button>
+
+                    </div>
+
+                  </article>
+
+                )
+              )
+          }
+
+        </section>
+
+
+        <section className="panel detail-panel">
+
+
+          {!selected
+
+            ? (
+
+              <Empty
+                text="Select a counseling request to review."
+              />
+
+            )
+
+            : (
+
+              <>
+
+                <h2>
+                  {
+                    selected.ownerName ||
+                    "User"
+                  }
+                </h2>
+
+
+                <p>
+
+                  <b>
+                    Concern:
+                  </b>
+
+                  {" "}
+
+                  {
+                    selected.category ||
+                    "Not provided"
                   }
 
-                >
+                </p>
 
-                  <strong>
 
-                    {
-                      row.ownerName
-                    }
+                <p>
 
-                    {" — "}
+                  <b>
+                    Department:
+                  </b>
 
-                    {
-                      row.category
-                    }
+                  {" "}
 
-                  </strong>
+                  {
+                    selected.department ||
+                    "Not provided"
+                  }
 
+                </p>
+
+
+                <p>
+
+                  <b>
+                    Preferred schedule:
+                  </b>
+
+                  {" "}
+
+                  {
+                    selected.date ||
+                    "No date"
+                  }
+
+                  {" · "}
+
+                  {
+                    selected.time ||
+                    "No time"
+                  }
+
+                </p>
+
+
+                <p>
+
+                  <b>
+                    Mode:
+                  </b>
+
+                  {" "}
+
+                  {
+                    selected.mode ||
+                    "Not provided"
+                  }
+
+                </p>
+
+
+                <p>
+
+                  <b>
+                    Details:
+                  </b>
+
+                  {" "}
+
+                  {
+                    selected.message ||
+                    "No additional details."
+                  }
+
+                </p>
+
+
+                <label>
+
+                  Status
 
                   <select
 
                     value={
-                      row.status
+                      statusDraft
                     }
 
                     onChange={
                       e =>
-                        updateRecord(
-                          "consultations",
-                          row.id,
-                          {
-                            status:
-                              e.target.value
-                          }
+                        setStatusDraft(
+                          e.target.value
                         )
                     }
 
@@ -4807,34 +7771,67 @@ function Cases() {
 
                   </select>
 
+                </label>
 
-                  <p>
 
-                    {
-                      row.date
+                <label>
+
+                  Counselor remarks
+
+                  <textarea
+
+                    rows="5"
+
+                    value={
+                      remarksDraft
                     }
 
-                    {" · "}
-
-                    {
-                      row.time
+                    onChange={
+                      e =>
+                        setRemarksDraft(
+                          e.target.value
+                        )
                     }
 
-                    {" · "}
+                    placeholder="Add remarks or instructions for the user."
 
-                    {
-                      row.mode
-                    }
+                  />
 
-                  </p>
+                </label>
 
-                </article>
 
-              )
+                <button
+
+                  type="button"
+
+                  className="primary-button"
+
+                  disabled={
+                    saving
+                  }
+
+                  onClick={
+                    saveRequestUpdate
+                  }
+
+                >
+
+                  {
+                    saving
+                      ? "Saving..."
+                      : "Save request update"
+                  }
+
+                </button>
+
+              </>
+
             )
-        }
+          }
 
-      </section>
+        </section>
+
+      </div>
 
     </>
 
@@ -6110,6 +9107,19 @@ export default function App() {
     <Routes>
 
 
+      {/* PUBLIC HOME PAGE */}
+
+      <Route
+
+        path="/"
+
+        element={
+          <Home />
+        }
+
+      />
+
+
       {/* PUBLIC LOGIN */}
 
       <Route
@@ -6156,7 +9166,7 @@ export default function App() {
                   path="/dashboard"
 
                   element={
-                    <Dashboard />
+                    <DashboardRoute />
                   }
 
                 />
@@ -6243,6 +9253,17 @@ export default function App() {
 
                   element={
                     <Cases />
+                  }
+
+                />
+
+
+                <Route
+
+                  path="/counseling-requests"
+
+                  element={
+                    <CounselingRequestsManagement />
                   }
 
                 />
