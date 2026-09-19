@@ -3371,6 +3371,9 @@ function Consultations() {
 
 
   const emptyRequest = {
+    mode:
+      "",
+
     date:
       "",
 
@@ -3491,6 +3494,16 @@ function Consultations() {
     e.preventDefault();
 
 
+    if (!form.mode) {
+
+      alert(
+        "Please select the counseling mode."
+      );
+
+      return;
+    }
+
+
     const dateError =
       validateRequestDate(
         form.date
@@ -3521,6 +3534,7 @@ function Consultations() {
           "Are you sure you want to submit this counseling request?",
           "",
           `Concern: ${form.category}`,
+          `Mode: ${form.mode}`,
           `Date: ${formattedRequestDate(form.date)}`,
           `Time: ${form.time}`
         ].join("\n")
@@ -3596,6 +3610,10 @@ function Consultations() {
 
     setEditForm({
 
+      mode:
+        row.mode ||
+        "",
+
       date:
         row.date ||
         "",
@@ -3636,6 +3654,16 @@ function Consultations() {
     }
 
 
+    if (!editForm.mode) {
+
+      alert(
+        "Please select the counseling mode."
+      );
+
+      return;
+    }
+
+
     const dateError =
       validateRequestDate(
         editForm.date
@@ -3666,6 +3694,7 @@ function Consultations() {
           "Are you sure you want to save these changes?",
           "",
           `Concern: ${editForm.category}`,
+          `Mode: ${editForm.mode}`,
           `Date: ${formattedRequestDate(editForm.date)}`,
           `Time: ${editForm.time}`,
           "",
@@ -3688,6 +3717,9 @@ function Consultations() {
         "consultations",
         row.id,
         {
+
+          mode:
+            editForm.mode,
 
           date:
             editForm.date,
@@ -3761,6 +3793,42 @@ function Consultations() {
           <h2>
             New request
           </h2>
+
+
+          <label>
+
+            Mode
+
+            <select
+
+              value={
+                form.mode
+              }
+
+              required
+
+              onChange={
+                e =>
+                  setForm({
+                    ...form,
+                    mode:
+                      e.target.value
+                  })
+              }
+
+            >
+
+              <option value="">
+                Choose counseling mode
+              </option>
+
+              <option value="Face-to-face">
+                Face-to-face
+              </option>
+
+            </select>
+
+          </label>
 
 
           <div className="counseling-date-field">
@@ -4009,6 +4077,42 @@ function Consultations() {
                             </h3>
 
 
+                            <label>
+
+                              Mode
+
+                              <select
+
+                                value={
+                                  editForm.mode
+                                }
+
+                                required
+
+                                onChange={
+                                  e =>
+                                    setEditForm({
+                                      ...editForm,
+                                      mode:
+                                        e.target.value
+                                    })
+                                }
+
+                              >
+
+                                <option value="">
+                                  Choose counseling mode
+                                </option>
+
+                                <option value="Face-to-face">
+                                  Face-to-face
+                                </option>
+
+                              </select>
+
+                            </label>
+
+
                             <div className="counseling-date-field">
 
                               <label>
@@ -4223,6 +4327,13 @@ function Consultations() {
                               {row.date}
                               {" · "}
                               {row.time}
+
+                              {row.mode && (
+                                <>
+                                  {" · "}
+                                  {row.mode}
+                                </>
+                              )}
 
                             </p>
 
@@ -7490,6 +7601,13 @@ function CounselingRequestsManagement() {
                         row.department ||
                         "No department"
                       }
+
+                      {row.mode && (
+                        <>
+                          {" · "}
+                          {row.mode}
+                        </>
+                      )}
                     </small>
 
 
@@ -7583,6 +7701,25 @@ function CounselingRequestsManagement() {
                   }
 
                 </p>
+
+
+                {selected.mode && (
+
+                  <p>
+
+                    <b>
+                      Mode:
+                    </b>
+
+                    {" "}
+
+                    {
+                      selected.mode
+                    }
+
+                  </p>
+
+                )}
 
 
                 <p>
@@ -7830,6 +7967,13 @@ function Schedule() {
                         {
                           row.ownerName
                         }
+
+                        {row.mode && (
+                          <>
+                            {" · "}
+                            {row.mode}
+                          </>
+                        )}
 
                       </p>
 
