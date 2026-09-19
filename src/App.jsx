@@ -26,8 +26,10 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  MessageCircle,
   Shield,
   Star,
+  User,
   UserPlus
 } from "lucide-react";
 
@@ -313,7 +315,7 @@ function Login() {
         <form onSubmit={submit} autoComplete="off">
 
           <label>
-            Email
+            Institutional Email
 
             <input
               value={email}
@@ -325,7 +327,6 @@ function Login() {
               }
               type="email"
               name="mindtrack-login-email"
-              placeholder="yourname@psu.edu.ph"
               autoComplete="off"
               required
             />
@@ -2427,6 +2428,7 @@ function Dashboard() {
             href="/assessment"
             title="Assessment"
             text="Complete your guided psychological screening."
+            icon={ClipboardList}
           />
 
 
@@ -2434,6 +2436,7 @@ function Dashboard() {
             href="/consultations"
             title="Counseling"
             text="Request counseling and manage your submitted requests."
+            icon={MessageCircle}
           />
 
 
@@ -2448,6 +2451,7 @@ function Dashboard() {
               href="/referrals"
               title="Referrals"
               text="Refer a student or employee who may benefit from guidance support."
+              icon={UserPlus}
             />
 
           )}
@@ -2457,6 +2461,7 @@ function Dashboard() {
             href="/history"
             title="History"
             text="View your previous assessments and MindTrack activity."
+            icon={Clock3}
           />
 
 
@@ -2464,6 +2469,7 @@ function Dashboard() {
             href="/feedback"
             title="Ratings & Feedback"
             text="Rate your MindTrack experience and submit feedback."
+            icon={Star}
           />
 
 
@@ -2471,6 +2477,7 @@ function Dashboard() {
             href="/profile"
             title="Profile"
             text="View and update your personal contact information."
+            icon={User}
           />
 
         </div>
@@ -3364,9 +3371,6 @@ function Consultations() {
 
 
   const emptyRequest = {
-    mode:
-      "Face-to-face",
-
     date:
       "",
 
@@ -3518,8 +3522,7 @@ function Consultations() {
           "",
           `Concern: ${form.category}`,
           `Date: ${formattedRequestDate(form.date)}`,
-          `Time: ${form.time}`,
-          `Mode: ${form.mode}`
+          `Time: ${form.time}`
         ].join("\n")
       );
 
@@ -3593,10 +3596,6 @@ function Consultations() {
 
     setEditForm({
 
-      mode:
-        row.mode ||
-        "Face-to-face",
-
       date:
         row.date ||
         "",
@@ -3669,7 +3668,6 @@ function Consultations() {
           `Concern: ${editForm.category}`,
           `Date: ${formattedRequestDate(editForm.date)}`,
           `Time: ${editForm.time}`,
-          `Mode: ${editForm.mode}`,
           "",
           "The request will return to Pending approval so the counselor can review the changes."
         ].join("\n")
@@ -3690,9 +3688,6 @@ function Consultations() {
         "consultations",
         row.id,
         {
-
-          mode:
-            editForm.mode,
 
           date:
             editForm.date,
@@ -3766,44 +3761,6 @@ function Consultations() {
           <h2>
             New request
           </h2>
-
-
-          <label>
-
-            Mode
-
-            <select
-
-              value={
-                form.mode
-              }
-
-              onChange={
-                e =>
-                  setForm({
-                    ...form,
-                    mode:
-                      e.target.value
-                  })
-              }
-
-            >
-
-              <option>
-                Face-to-face
-              </option>
-
-              <option>
-                Online
-              </option>
-
-              <option>
-                Follow-up
-              </option>
-
-            </select>
-
-          </label>
 
 
           <div className="counseling-date-field">
@@ -4052,44 +4009,6 @@ function Consultations() {
                             </h3>
 
 
-                            <label>
-
-                              Mode
-
-                              <select
-
-                                value={
-                                  editForm.mode
-                                }
-
-                                onChange={
-                                  e =>
-                                    setEditForm({
-                                      ...editForm,
-                                      mode:
-                                        e.target.value
-                                    })
-                                }
-
-                              >
-
-                                <option>
-                                  Face-to-face
-                                </option>
-
-                                <option>
-                                  Online
-                                </option>
-
-                                <option>
-                                  Follow-up
-                                </option>
-
-                              </select>
-
-                            </label>
-
-
                             <div className="counseling-date-field">
 
                               <label>
@@ -4304,8 +4223,6 @@ function Consultations() {
                               {row.date}
                               {" · "}
                               {row.time}
-                              {" · "}
-                              {row.mode}
 
                             </p>
 
@@ -6939,7 +6856,7 @@ function History() {
 
         title="History"
 
-        subtitle="Your own assessment and consultation records."
+        subtitle="Your own assessment and counseling request records."
 
       />
 
@@ -6971,7 +6888,7 @@ function History() {
           ? (
 
             <Empty
-              text="No consultation records yet."
+              text="No counseling request records yet."
             />
 
           )
@@ -7573,13 +7490,6 @@ function CounselingRequestsManagement() {
                         row.department ||
                         "No department"
                       }
-
-                      {" · "}
-
-                      {
-                        row.mode ||
-                        "No mode"
-                      }
                     </small>
 
 
@@ -7693,22 +7603,6 @@ function CounselingRequestsManagement() {
                   {
                     selected.time ||
                     "No time"
-                  }
-
-                </p>
-
-
-                <p>
-
-                  <b>
-                    Mode:
-                  </b>
-
-                  {" "}
-
-                  {
-                    selected.mode ||
-                    "Not provided"
                   }
 
                 </p>
@@ -7935,12 +7829,6 @@ function Schedule() {
 
                         {
                           row.ownerName
-                        }
-
-                        {" · "}
-
-                        {
-                          row.mode
                         }
 
                       </p>
@@ -8895,7 +8783,8 @@ function Stat({
 function ActionLink({
   href,
   title,
-  text
+  text,
+  icon: Icon
 }) {
 
   return (
@@ -8905,13 +8794,29 @@ function ActionLink({
       className="action-card"
     >
 
-      <strong>
-        {title}
-      </strong>
+      {Icon && (
 
-      <p>
-        {text}
-      </p>
+        <span className="action-card-icon">
+          <Icon
+            size={28}
+            strokeWidth={2.2}
+          />
+        </span>
+
+      )}
+
+
+      <span className="action-card-copy">
+
+        <strong>
+          {title}
+        </strong>
+
+        <p>
+          {text}
+        </p>
+
+      </span>
 
     </a>
 

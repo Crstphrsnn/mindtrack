@@ -6,8 +6,6 @@ import {
   ChevronRight,
   ClipboardList,
   MessageCircle,
-  Star,
-  User,
   Users
 } from "lucide-react";
 
@@ -43,18 +41,6 @@ export default function Home() {
       text: "Track the status of your requests, cases, and follow-ups.",
       icon: Activity,
       color: "violet"
-    },
-    {
-      title: "Ratings & Feedback",
-      text: "Share your experience to help improve MindTrack services.",
-      icon: Star,
-      color: "pink"
-    },
-    {
-      title: "User Profile Management",
-      text: "Manage your personal information securely and privately.",
-      icon: User,
-      color: "mint"
     }
   ];
 
@@ -94,9 +80,10 @@ export default function Home() {
               </h1>
 
               <p className="home-description">
-                MindTrack helps students, faculty, and personnel access mental
-                health support, submit assessments, request counseling, receive
-                referrals, and connect with PSU Lingayen guidance services.
+                MindTrack provides students, faculty, and personnel with a
+                private and accessible way to complete mental health assessments,
+                request counseling, and stay connected
+                with the PSU Lingayen Guidance and Counseling Office.
               </p>
 
               <div className="home-actions">

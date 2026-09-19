@@ -501,20 +501,52 @@ nav {
 .action-card {
   border: 1px solid #dce2eb;
   border-radius: 14px;
-  padding: 20px;
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: inherit;
+  text-decoration: none;
   transition:
+    transform 0.2s,
     border-color 0.2s,
-    background 0.2s;
+    background 0.2s,
+    box-shadow 0.2s;
 }
 
 .action-card:hover {
+  transform: translateY(-2px);
   border-color: #173f8f;
   background: #f6f9ff;
+  box-shadow: 0 8px 20px rgba(23, 63, 143, 0.08);
+}
+
+.action-card-icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #173f8f;
+  background: #eaf1ff;
+}
+
+.action-card-copy {
+  min-width: 0;
+}
+
+.action-card-copy strong {
+  display: block;
+  color: #17233f;
+  font-size: 15px;
+  line-height: 1.3;
 }
 
 .action-card p {
+  margin: 6px 0 0;
   color: #6e7687;
-  margin-bottom: 0;
+  line-height: 1.45;
 }
 
 
