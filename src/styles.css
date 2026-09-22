@@ -1779,3 +1779,888 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =====================================================
+   FULL-SCREEN USER PROFILE
+   Counselor / Super Admin
+===================================================== */
+
+.user-profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(12, 25, 48, 0.56);
+  backdrop-filter: blur(4px);
+}
+
+.user-profile-modal {
+  width: min(1480px, calc(100vw - 40px));
+  height: min(94vh, 980px);
+  overflow: hidden;
+  border: 1px solid #d8e2f0;
+  border-radius: 22px;
+  background: #f7fbff;
+  box-shadow: 0 30px 90px rgba(10, 29, 62, 0.30);
+}
+
+.user-profile-modal-header {
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #dfe7f1;
+  background: #ffffff;
+}
+
+.user-profile-modal-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-profile-modal-identity .profile-avatar {
+  width: 76px;
+  height: 76px;
+  margin: 0;
+  flex: 0 0 76px;
+  font-size: 30px;
+}
+
+.user-profile-modal-name {
+  min-width: 0;
+  flex: 1;
+}
+
+.user-profile-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+
+.user-profile-name-row h2 {
+  min-width: 0;
+  margin: 0;
+  color: #172033;
+  font-size: 26px;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-name-row .priority {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.priority.none {
+  background: #edf0f4;
+  color: #697286;
+}
+
+.user-profile-modal-name > p {
+  margin: 5px 0 0;
+  color: #687084;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-header-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.user-profile-header-badges .profile-role-badge {
+  margin-top: 0;
+}
+
+.assigned-counselor-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #f0f4f9;
+  color: #536174;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-profile-close-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8e1ec;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #344158;
+  cursor: pointer;
+}
+
+.user-profile-close-button:hover {
+  border-color: #173f8f;
+  color: #173f8f;
+  background: #f5f8ff;
+}
+
+.user-profile-modal-body {
+  height: calc(100% - 112px);
+  overflow-y: auto;
+  padding: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-content: start;
+}
+
+.user-profile-modal-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #dfe6f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.user-profile-modal-card > h3,
+.user-profile-section-title h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 19px;
+}
+
+.user-profile-section-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.user-profile-section-title p {
+  margin: 5px 0 0;
+  color: #6a7283;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.user-profile-section-title > svg {
+  flex-shrink: 0;
+  color: #173f8f;
+}
+
+.counseling-notes-card {
+  grid-column: 1 / -1;
+}
+
+.profile-schedule-list,
+.profile-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-schedule-card,
+.profile-history-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.profile-schedule-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-schedule-card > div {
+  min-width: 0;
+}
+
+.profile-schedule-card strong,
+.profile-history-card strong {
+  color: #172033;
+}
+
+.profile-schedule-card span:not(.status) {
+  display: block;
+  margin-top: 5px;
+  color: #687084;
+  font-size: 13px;
+}
+
+.profile-history-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-history-card p {
+  margin: 8px 0;
+  color: #687084;
+  font-size: 13px;
+}
+
+.profile-history-card small {
+  display: block;
+  margin-top: 6px;
+  color: #536174;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-empty {
+  padding: 28px 18px;
+  border: 1px dashed #ccd6e3;
+  border-radius: 12px;
+  color: #7b8495;
+  text-align: center;
+  background: #fafcff;
+}
+
+.counseling-notes-card textarea[readonly] {
+  background: #f3f5f8;
+  color: #5f6879;
+  cursor: not-allowed;
+}
+
+.counseling-notes-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 18px;
+  margin-top: 10px;
+  color: #6a7283;
+  font-size: 12px;
+}
+
+.counseling-notes-save {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* The old side detail panel is no longer needed once the
+   full-screen profile viewer is enabled. */
+.user-profile-view-layout {
+  grid-template-columns: 1fr;
+}
+
+.readonly-profile-panel {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .user-profile-modal-backdrop {
+    padding: 10px;
+  }
+
+  .user-profile-modal {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+    border-radius: 16px;
+  }
+
+  .user-profile-modal-body {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .counseling-notes-card {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .user-profile-modal-header {
+    align-items: flex-start;
+    padding: 15px;
+  }
+
+  .user-profile-modal-identity {
+    align-items: flex-start;
+  }
+
+  .user-profile-modal-identity .profile-avatar {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+    font-size: 23px;
+  }
+
+  .user-profile-name-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .user-profile-name-row h2 {
+    font-size: 20px;
+  }
+
+  .user-profile-name-row .priority {
+    margin-left: 0;
+  }
+
+  .user-profile-header-badges {
+    display: grid;
+  }
+
+  .readonly-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .readonly-profile-item.full {
+    grid-column: auto;
+  }
+
+  .profile-schedule-card {
+    display: block;
+  }
+
+  .profile-schedule-card .status {
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .profile-history-card-top {
+    display: block;
+  }
+
+  .profile-history-card-top .status {
+    display: inline-block;
+    margin-top: 8px;
+  }
+}
+
+
+/* =====================================================
+   FULL-SCREEN COUNSELING REQUEST REVIEW
+   Counselor / Super Admin
+===================================================== */
+
+.counseling-request-list-panel {
+  max-width: 1180px;
+}
+
+.counseling-request-list-card {
+  padding: 20px;
+}
+
+.counseling-request-list-actions {
+  margin-top: 14px;
+}
+
+.review-request-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(12, 25, 48, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.review-request-modal {
+  width: min(1480px, calc(100vw - 36px));
+  height: min(94vh, 980px);
+  overflow: hidden;
+  border: 1px solid #d8e2f0;
+  border-radius: 22px;
+  background: #f7fbff;
+  box-shadow: 0 30px 90px rgba(10, 29, 62, 0.30);
+}
+
+.review-request-modal-header {
+  min-height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 26px;
+  border-bottom: 1px solid #dfe7f1;
+  background: #ffffff;
+}
+
+.review-request-modal-header > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.review-request-modal-eyebrow {
+  margin: 0 0 6px;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.review-request-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.review-request-modal-title-row h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 28px;
+  overflow-wrap: anywhere;
+}
+
+.review-request-modal-subtitle {
+  margin: 7px 0 0;
+  color: #687084;
+  line-height: 1.45;
+}
+
+.review-request-close-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8e1ec;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #344158;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-request-close-button:hover {
+  border-color: #173f8f;
+  color: #173f8f;
+  background: #f5f8ff;
+}
+
+.review-request-modal-body {
+  height: calc(100% - 118px);
+  overflow-y: auto;
+  padding: 22px;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.15fr)
+    minmax(360px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.review-request-modal-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #dfe6f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.review-request-modal-card h3 {
+  margin: 0 0 18px;
+  color: #172033;
+  font-size: 20px;
+}
+
+.review-request-detail-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.review-request-detail-item {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.review-request-detail-item.full {
+  grid-column: 1 / -1;
+}
+
+.review-request-detail-item span {
+  display: block;
+  margin-bottom: 6px;
+  color: #737d8f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.review-request-detail-item strong {
+  display: block;
+  color: #172033;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.review-request-details-text {
+  white-space: pre-wrap;
+}
+
+.review-request-update-card label:first-of-type {
+  margin-top: 0;
+}
+
+.review-request-update-card textarea {
+  min-height: 220px;
+}
+
+.review-request-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.review-request-modal-actions .primary-button,
+.review-request-modal-actions .secondary-button {
+  min-width: 150px;
+}
+
+@media (max-width: 900px) {
+
+  .review-request-modal-backdrop {
+    padding: 10px;
+  }
+
+  .review-request-modal {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+    border-radius: 16px;
+  }
+
+  .review-request-modal-body {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+
+  .review-request-modal-header {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .review-request-modal-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .review-request-modal-title-row h2 {
+    font-size: 22px;
+  }
+
+  .review-request-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-request-detail-item.full {
+    grid-column: auto;
+  }
+
+  .review-request-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .review-request-modal-actions .primary-button,
+  .review-request-modal-actions .secondary-button {
+    width: 100%;
+  }
+}
+
+
+/* =====================================================
+   STANDARDIZED PSYCHOLOGICAL ASSESSMENTS
+   WHO-5 / PHQ-9 / GAD-7
+===================================================== */
+
+.standardized-assessment-form {
+  display: grid;
+  gap: 22px;
+}
+
+.standardized-assessment-form .panel {
+  margin-top: 0;
+}
+
+.assessment-instrument-card {
+  max-width: 1100px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.assessment-instrument-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4e8ef;
+}
+
+.assessment-instrument-heading h2 {
+  margin: 5px 0 0;
+  color: #172033;
+}
+
+.assessment-instrument-code {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.assessment-score-range {
+  flex-shrink: 0;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: #f3f6fb;
+  color: #536174;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-instructions {
+  margin: 17px 0 4px;
+  color: #536174;
+  line-height: 1.6;
+}
+
+.assessment-source-note {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border: 1px solid #dbe6f5;
+  border-radius: 11px;
+  background: #f5f9ff;
+  color: #405571;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.assessment-choice-row-wide {
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+}
+
+.assessment-difficulty-field {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #e4e8ef;
+}
+
+.assessment-final-section {
+  max-width: 1100px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.assessment-final-section .primary-button {
+  margin-top: 18px;
+}
+
+.standardized-result-card {
+  max-width: 980px;
+}
+
+.assessment-result-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.assessment-result-item {
+  padding: 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.assessment-result-item > span {
+  display: block;
+  color: #173f8f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.assessment-result-item > strong {
+  display: block;
+  margin-top: 6px;
+  color: #172033;
+  font-size: 28px;
+}
+
+.assessment-result-item > small {
+  display: block;
+  margin-top: 5px;
+  color: #687084;
+  line-height: 1.4;
+}
+
+.assessment-result-item > p {
+  margin: 10px 0 0;
+  color: #536174;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.assessment-monitoring-recommendation {
+  margin: 18px 0;
+  color: #344158;
+  line-height: 1.65;
+}
+
+.assessment-review-score-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item {
+  min-height: 150px;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item strong {
+  margin-top: 4px;
+  font-size: 24px;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item small {
+  display: block;
+  margin-top: 5px;
+  color: #687084;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item p {
+  margin: 9px 0 0;
+  color: #536174;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.assessment-review-meta-grid {
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+
+  .assessment-choice-row-wide {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .assessment-result-grid,
+  .assessment-review-score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-review-score-grid
+  .review-request-detail-item {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+
+  .assessment-instrument-heading {
+    display: block;
+  }
+
+  .assessment-score-range {
+    display: inline-block;
+    margin-top: 12px;
+  }
+
+  .assessment-choice-row-wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   REGISTRATION - FIXED PSU EMAIL DOMAIN
+===================================================== */
+
+.institutional-email-composite {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  margin-top: 7px;
+}
+
+.institutional-email-composite input {
+  min-width: 0;
+  flex: 1;
+  margin-top: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.institutional-email-suffix {
+  display: flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid #ccd6e4;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: #eef3f9;
+  color: #344158;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.registration-field-help,
+.registration-section-note {
+  display: block;
+  margin-top: 7px;
+  color: #687084;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.registration-section-note {
+  margin-top: -4px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 560px) {
+  .institutional-email-composite {
+    align-items: stretch;
+  }
+
+  .institutional-email-suffix {
+    padding: 0 9px;
+    font-size: 12px;
+  }
+}

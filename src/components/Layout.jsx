@@ -74,8 +74,38 @@ export default function Layout({ children }) {
     menu.student;
 
   async function handleLogout() {
-    await logout();
-    navigate("/login");
+
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to log out?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+
+      await logout();
+
+      navigate(
+        "/login",
+        {
+          replace: true
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Logout error:",
+        error
+      );
+
+      alert(
+        "Unable to log out. Please try again."
+      );
+    }
   }
 
   return (

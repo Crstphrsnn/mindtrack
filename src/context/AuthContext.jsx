@@ -435,9 +435,34 @@ export function AuthProvider({ children }) {
 
 
     if (
-      contactPersonPhone?.trim() &&
+      !String(
+        contactPersonName || ""
+      ).trim()
+    ) {
+
+      throw new Error(
+        "Contact person name is required."
+      );
+    }
+
+
+    if (
+      !String(
+        contactPersonPhone || ""
+      ).trim()
+    ) {
+
+      throw new Error(
+        "Contact person phone number is required."
+      );
+    }
+
+
+    if (
       !/^\d{11}$/.test(
-        contactPersonPhone.trim()
+        String(
+          contactPersonPhone || ""
+        ).trim()
       )
     ) {
 
@@ -483,6 +508,7 @@ export function AuthProvider({ children }) {
 
       throw createAuthError(
         "auth/invalid-student-institutional-email",
+        "Student institutional email must follow the format 00ln0000_ms@psu.edu.ph."
       );
     }
 
@@ -676,7 +702,26 @@ export function AuthProvider({ children }) {
 
 
     if (
-      safeChanges.contactPersonPhone &&
+      !safeChanges.contactPersonName
+    ) {
+
+      throw new Error(
+        "Contact person name is required."
+      );
+    }
+
+
+    if (
+      !safeChanges.contactPersonPhone
+    ) {
+
+      throw new Error(
+        "Contact person phone number is required."
+      );
+    }
+
+
+    if (
       !/^\d{11}$/.test(
         safeChanges.contactPersonPhone
       )

@@ -36,6 +36,7 @@ import {
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import Home from "./components/Home";
+import UserProfileFullScreen from "./components/UserProfileFullScreen";
 import "./counseling-calendar.css";
 
 import {
@@ -46,8 +47,20 @@ import {
 
 import {
   calculateAssessment,
-  choices,
-  questions
+  dass21Choices,
+  dass21Questions,
+  DASS21_TITLE,
+  gad7Choices,
+  gad7Questions,
+  GAD7_TITLE,
+  phq9Choices,
+  phq9DifficultyChoices,
+  phq9Questions,
+  PHQ9_TITLE,
+  scoredQuestionIds,
+  who5Choices,
+  who5Questions,
+  WHO5_TITLE
 } from "./utils/assessment";
 
 
@@ -317,19 +330,53 @@ function Login() {
           <label>
             Institutional Email
 
-            <input
-              value={email}
-              onChange={
-                e =>
-                  setEmail(
-                    e.target.value
+            <div className="institutional-email-composite">
+
+              <input
+                type="text"
+                name="mindtrack-login-email"
+                value={
+                  email.replace(
+                    /@psu\.edu\.ph$/i,
+                    ""
                   )
-              }
-              type="email"
-              name="mindtrack-login-email"
-              autoComplete="off"
-              required
-            />
+                }
+                onChange={
+                  event => {
+
+                    const localPart =
+                      event.target.value
+                        .replace(
+                          /@.*$/,
+                          ""
+                        )
+                        .replace(
+                          /\s/g,
+                          ""
+                        );
+
+
+                    setEmail(
+                      localPart
+                        ? `${localPart}@psu.edu.ph`
+                        : ""
+                    );
+                  }
+                }
+                placeholder="Enter institutional username"
+                autoComplete="username"
+                required
+              />
+
+              <span
+                className="institutional-email-suffix"
+                aria-hidden="true"
+              >
+                @psu.edu.ph
+              </span>
+
+            </div>
+
           </label>
 
 
@@ -1254,8 +1301,21 @@ function Register() {
       return;
     }
 
+    if (!form.contactPersonName.trim()) {
+      setError(
+        "Please enter your contact person's name."
+      );
+      return;
+    }
+
+    if (!form.contactPersonPhone.trim()) {
+      setError(
+        "Please enter your contact person's phone number."
+      );
+      return;
+    }
+
     if (
-      form.contactPersonPhone &&
       form.contactPersonPhone.length !== 11
     ) {
       setError(
@@ -1552,15 +1612,67 @@ function Register() {
               <label>
                 Institutional Email
 
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={change}
-                  placeholder="00ln0000_ms@psu.edu.ph"
-                  autoComplete="email"
-                  required
-                />
+                <div className="institutional-email-composite">
+
+                  <input
+                    type="text"
+                    name="emailUsername"
+                    value={
+                      form.email
+                        .replace(
+                          /@psu\.edu\.ph$/i,
+                          ""
+                        )
+                    }
+                    onChange={
+                      event => {
+
+                        const localPart =
+                          event.target.value
+                            .replace(
+                              /@.*$/,
+                              ""
+                            )
+                            .replace(
+                              /\s/g,
+                              ""
+                            );
+
+
+                        setForm(
+                          current => ({
+                            ...current,
+
+                            email:
+                              localPart
+                                ? `${localPart}@psu.edu.ph`
+                                : ""
+                          })
+                        );
+                      }
+                    }
+                    placeholder={
+                      form.role === "student"
+                        ? "00ln0000_ms"
+                        : "institutional username"
+                    }
+                    autoComplete="email"
+                    required
+                  />
+
+                  <span
+                    className="institutional-email-suffix"
+                    aria-hidden="true"
+                  >
+                    @psu.edu.ph
+                  </span>
+
+                </div>
+
+                <small className="registration-field-help">
+                  Your account will use the PSU institutional email domain.
+                </small>
+
               </label>
 
 
@@ -2012,12 +2124,11 @@ function Register() {
 
             <h2>
               Contact Person
-              {" "}
-
-              <span className="optional-text">
-                (If applicable)
-              </span>
             </h2>
+
+            <p className="registration-section-note">
+              Required for user safety and emergency contact purposes.
+            </p>
 
 
             <div className="registration-grid">
@@ -2030,6 +2141,8 @@ function Register() {
                   name="contactPersonName"
                   value={form.contactPersonName}
                   onChange={change}
+                  placeholder="Enter contact person's full name"
+                  required
                 />
               </label>
 
@@ -2047,6 +2160,7 @@ function Register() {
                   minLength={11}
                   maxLength={11}
                   placeholder="09XXXXXXXXX"
+                  required
                 />
               </label>
 
@@ -2504,6 +2618,12 @@ function Assessment() {
     useState({});
 
 
+  const [
+    phq9Difficulty,
+    setPhq9Difficulty
+  ] = useState("");
+
+
   const [notes, setNotes] =
     useState("");
 
@@ -2512,30 +2632,175 @@ function Assessment() {
     useState(null);
 
 
+  function answerQuestion(
+    questionId,
+    value
+  ) {
+
+    setAnswers(
+      current => ({
+        ...current,
+        [questionId]:
+          value
+      })
+    );
+  }
+
+
+  function renderInstrumentQuestions(
+    questionsList,
+    choicesList
+  ) {
+
+    return questionsList.map(
+      (question, index) => (
+
+        <div
+          className="question"
+          key={
+            question.id
+          }
+        >
+
+          <strong>
+
+            {index + 1}.
+            {" "}
+            {question.text}
+
+          </strong>
+
+
+          <div
+            className={
+              choicesList.length > 4
+                ? "choice-row assessment-choice-row-wide"
+                : "choice-row"
+            }
+          >
+
+            {choicesList.map(
+              choice => (
+
+                <label
+
+                  key={
+                    `${question.id}-${choice.value}`
+                  }
+
+                  className={
+                    answers[
+                      question.id
+                    ] ===
+                    choice.value
+
+                      ? "choice selected"
+
+                      : "choice"
+                  }
+
+                >
+
+                  <input
+
+                    type="radio"
+
+                    name={
+                      question.id
+                    }
+
+                    value={
+                      choice.value
+                    }
+
+                    checked={
+                      answers[
+                        question.id
+                      ] ===
+                      choice.value
+                    }
+
+                    onChange={
+                      () =>
+                        answerQuestion(
+                          question.id,
+                          choice.value
+                        )
+                    }
+
+                  />
+
+                  {choice.label}
+
+                </label>
+
+              )
+            )}
+
+          </div>
+
+        </div>
+
+      )
+    );
+  }
+
+
   async function submit(e) {
 
     e.preventDefault();
 
 
+    const answeredScoredQuestions =
+      scoredQuestionIds.filter(
+        questionId =>
+          answers[
+            questionId
+          ] !== undefined
+      ).length;
+
+
     if (
-      Object.keys(
-        answers
-      ).length !==
-      questions.length
+      answeredScoredQuestions !==
+      scoredQuestionIds.length
     ) {
 
       alert(
-        "Please answer every question."
+        "Please answer every WHO-5, PHQ-9, GAD-7, and DASS-21 question."
       );
 
       return;
+    }
 
+
+    const phqHasProblems =
+      phq9Questions.some(
+        question =>
+          Number(
+            answers[
+              question.id
+            ] ?? 0
+          ) > 0
+      );
+
+
+    if (
+      phqHasProblems &&
+      !phq9Difficulty
+    ) {
+
+      alert(
+        "Please answer the PHQ-9 difficulty question."
+      );
+
+      return;
     }
 
 
     const result =
       calculateAssessment(
-        answers
+        answers,
+        phq9Difficulty
       );
 
 
@@ -2556,7 +2821,21 @@ function Assessment() {
       program:
         user.program || "",
 
+      assessmentVersion:
+        "WHO5-PHQ9-GAD7-DASS21-2026-09",
+
+      instrumentTitles: [
+        WHO5_TITLE,
+        PHQ9_TITLE,
+        GAD7_TITLE,
+        DASS21_TITLE
+      ],
+
       answers,
+
+      phq9Difficulty:
+        phq9Difficulty ||
+        "Not applicable",
 
       notes,
 
@@ -2585,7 +2864,7 @@ function Assessment() {
           "Assessment submitted",
 
         message:
-          `Your monitoring result is ${result.priority} priority.`,
+          `Your psychological assessment was submitted. MindTrack monitoring priority: ${result.priority}.`,
 
         read:
           false
@@ -2605,7 +2884,7 @@ function Assessment() {
 
     return (
 
-      <div className="result-card">
+      <div className="result-card standardized-result-card">
 
         <CheckCircle2
           size={58}
@@ -2613,7 +2892,7 @@ function Assessment() {
 
 
         <h1>
-          Assessment submitted
+          Psychological assessment submitted
         </h1>
 
 
@@ -2623,25 +2902,139 @@ function Assessment() {
           }
         >
           {saved.priority}
+          {" "}
+          monitoring priority
         </div>
 
 
-        <h2>
-          Monitoring score:
-          {" "}
-          {saved.score}/100
-        </h2>
+        <div className="assessment-result-grid">
+
+          <section className="assessment-result-item">
+
+            <span>
+              WHO-5
+            </span>
+
+            <strong>
+              {
+                saved.instrumentResults
+                  .who5
+                  .percentageScore
+              }/100
+            </strong>
+
+            <small>
+              Raw:
+              {" "}
+              {
+                saved.instrumentResults
+                  .who5
+                  .rawScore
+              }/25
+            </small>
+
+            <p>
+              {
+                saved.instrumentResults
+                  .who5
+                  .interpretation
+              }
+            </p>
+
+          </section>
 
 
-        <p>
+          <section className="assessment-result-item">
+
+            <span>
+              PHQ-9
+            </span>
+
+            <strong>
+              {
+                saved.instrumentResults
+                  .phq9
+                  .totalScore
+              }/27
+            </strong>
+
+            <small>
+              {
+                saved.instrumentResults
+                  .phq9
+                  .severity
+              }
+              {" "}
+              symptom range
+            </small>
+
+          </section>
+
+
+          <section className="assessment-result-item">
+
+            <span>
+              GAD-7
+            </span>
+
+            <strong>
+              {
+                saved.instrumentResults
+                  .gad7
+                  .totalScore
+              }/21
+            </strong>
+
+            <small>
+              {
+                saved.instrumentResults
+                  .gad7
+                  .severity
+              }
+              {" "}
+              symptom range
+            </small>
+
+          </section>
+
+          <section className="assessment-result-item">
+
+            <span>
+              DASS-21
+            </span>
+
+            <strong>
+              {
+                saved.instrumentResults
+                  .dass21
+                  .totalScore
+              }/63
+            </strong>
+
+            <small>
+              Project raw total
+            </small>
+
+            <p>
+              Sum of all 21 responses using the requested 0-3 scoring rule.
+            </p>
+
+          </section>
+
+        </div>
+
+
+        <p className="assessment-monitoring-recommendation">
           {saved.recommendation}
         </p>
 
 
         <div className="notice">
 
-          This is a screening and decision-support result only.
-          It is not a medical diagnosis.
+          WHO-5, PHQ-9, GAD-7, and DASS-21 are screening tools.
+          These results do not provide a medical diagnosis.
+          The MindTrack priority is an internal monitoring aid
+          and is not an official category of the instruments.
 
         </div>
 
@@ -2650,9 +3043,10 @@ function Assessment() {
 
           <div className="critical-notice">
 
-            A counselor should review this submission immediately.
-            For immediate danger, contact local emergency services
-            or a trusted person nearby.
+            Your PHQ-9 response indicates that a counselor should
+            review the safety-related item promptly. If you are in
+            immediate danger or may act on thoughts of self-harm,
+            contact local emergency services or a trusted person nearby.
 
           </div>
 
@@ -2673,133 +3067,343 @@ function Assessment() {
 
         title="Psychological Assessment"
 
-        subtitle="Answer honestly. Your responses are confidential and used for monitoring and counseling support."
+        subtitle="Complete all four screening tools. Each section has its own title, questions, response scale, and scoring method."
 
       />
 
 
       <form
-        className="panel assessment-form"
+        className="assessment-form standardized-assessment-form"
         onSubmit={submit}
       >
 
 
-        {questions.map(
-          (question, index) => (
+        <section className="panel assessment-instrument-card">
 
-            <div
-              className="question"
-              key={
-                question.id
-              }
-            >
+          <div className="assessment-instrument-heading">
 
-              <strong>
+            <div>
 
-                {index + 1}.
-                {" "}
-                {question.text}
+              <span className="assessment-instrument-code">
+                WHO-5
+              </span>
 
-              </strong>
-
-
-              <div className="choice-row">
-
-
-                {choices.map(
-                  choice => (
-
-                    <label
-
-                      key={
-                        choice.value
-                      }
-
-                      className={
-                        answers[
-                          question.id
-                        ] ===
-                        choice.value
-
-                          ? "choice selected"
-
-                          : "choice"
-                      }
-
-                    >
-
-                      <input
-
-                        type="radio"
-
-                        name={
-                          question.id
-                        }
-
-                        value={
-                          choice.value
-                        }
-
-                        onChange={
-                          () =>
-                            setAnswers(
-                              current => ({
-                                ...current,
-
-                                [
-                                  question.id
-                                ]:
-                                  choice.value
-                              })
-                            )
-                        }
-
-                      />
-
-                      {choice.label}
-
-                    </label>
-
-                  )
-                )}
-
-              </div>
+              <h2>
+                {WHO5_TITLE}
+              </h2>
 
             </div>
 
-          )
-        )}
+
+            <div className="assessment-score-range">
+              Score: 0-25 raw / 0-100 percentage
+            </div>
+
+          </div>
 
 
-        <label>
+          <p className="assessment-instructions">
 
-          Additional notes
+            Please indicate for each statement which is closest
+            to how you have been feeling over the last two weeks.
+            Higher numbers mean better well-being.
 
-          <textarea
+          </p>
 
-            value={notes}
 
-            onChange={
-              e =>
-                setNotes(
-                  e.target.value
+          {
+            renderInstrumentQuestions(
+              who5Questions,
+              who5Choices
+            )
+          }
+
+
+          <div className="assessment-source-note">
+
+            Scoring: add the five responses for a raw score from
+            0 to 25, then multiply the raw score by 4 for a
+            percentage score from 0 to 100. A percentage below
+            50, or raw score below 13, is the WHO-5 suggested
+            cut-off for poor mental well-being and further assessment.
+
+            <br />
+            <br />
+
+            Source: World Health Organization. The World Health
+            Organization-Five Well-Being Index (WHO-5), 2024.
+            License: CC BY-NC-SA 3.0 IGO.
+
+          </div>
+
+        </section>
+
+
+        <section className="panel assessment-instrument-card">
+
+          <div className="assessment-instrument-heading">
+
+            <div>
+
+              <span className="assessment-instrument-code">
+                PHQ-9
+              </span>
+
+              <h2>
+                {PHQ9_TITLE}
+              </h2>
+
+            </div>
+
+
+            <div className="assessment-score-range">
+              Total score: 0-27
+            </div>
+
+          </div>
+
+
+          <p className="assessment-instructions">
+
+            Over the last 2 weeks, how often have you been
+            bothered by any of the following problems?
+
+          </p>
+
+
+          {
+            renderInstrumentQuestions(
+              phq9Questions,
+              phq9Choices
+            )
+          }
+
+
+          <label className="assessment-difficulty-field">
+
+            If you checked any problems, how difficult have these
+            problems made it for you to do your work, take care of
+            things at home, or get along with other people?
+
+            <select
+
+              value={
+                phq9Difficulty
+              }
+
+              onChange={
+                event =>
+                  setPhq9Difficulty(
+                    event.target.value
+                  )
+              }
+
+            >
+
+              <option value="">
+                Choose an answer
+              </option>
+
+
+              {phq9DifficultyChoices.map(
+                option => (
+
+                  <option
+                    key={option}
+                    value={option}
+                  >
+                    {option}
+                  </option>
+
                 )
-            }
+              )}
 
-            rows="4"
+            </select>
 
-            placeholder="Share information that may help the counselor understand your concern."
-
-          />
-
-        </label>
+          </label>
 
 
-        <button className="primary-button">
+          <div className="assessment-source-note">
 
-          Submit assessment
+            Scoring: add the scores of items 1-9.
+            The functional difficulty question is recorded
+            separately and is not included in the PHQ-9 total.
 
-        </button>
+            <br />
+            <br />
+
+            The provided PHQ-9 form states that no permission is
+            required to reproduce, translate, display, or distribute it.
+
+          </div>
+
+        </section>
+
+
+        <section className="panel assessment-instrument-card">
+
+          <div className="assessment-instrument-heading">
+
+            <div>
+
+              <span className="assessment-instrument-code">
+                GAD-7
+              </span>
+
+              <h2>
+                {GAD7_TITLE}
+              </h2>
+
+            </div>
+
+
+            <div className="assessment-score-range">
+              Total score: 0-21
+            </div>
+
+          </div>
+
+
+          <p className="assessment-instructions">
+
+            Over the last 2 weeks, how often have you been
+            bothered by the following problems?
+
+          </p>
+
+
+          {
+            renderInstrumentQuestions(
+              gad7Questions,
+              gad7Choices
+            )
+          }
+
+
+          <div className="assessment-source-note">
+
+            Scoring: add the scores of items 1-7 for a total
+            from 0 to 21.
+
+            <br />
+            <br />
+
+            The provided GAD-7 form states that no permission is
+            required to reproduce, translate, display, or distribute it.
+
+          </div>
+
+        </section>
+
+
+        <section className="panel assessment-instrument-card">
+
+          <div className="assessment-instrument-heading">
+
+            <div>
+
+              <span className="assessment-instrument-code">
+                DASS-21
+              </span>
+
+              <h2>
+                {DASS21_TITLE}
+              </h2>
+
+            </div>
+
+
+            <div className="assessment-score-range">
+              Project total: 0-63
+            </div>
+
+          </div>
+
+
+          <p className="assessment-instructions">
+
+            Please read each statement and choose the number that
+            indicates how much the statement applied to you over
+            the past week.
+
+          </p>
+
+
+          {
+            renderInstrumentQuestions(
+              dass21Questions,
+              dass21Choices
+            )
+          }
+
+
+          <div className="assessment-source-note">
+
+            Project scoring rule: each item is scored from 0 to 3,
+            then all 21 item scores are added for a total from 0 to 63.
+            This follows your requested PHQ-9-style summation method.
+
+            <br />
+            <br />
+
+            The provided DASS-21 page lists the 21 questions and
+            0-3 response scale, but it does not provide a severity
+            interpretation formula. MindTrack therefore stores the
+            total score without assigning a DASS-21 severity category.
+
+          </div>
+
+        </section>
+
+
+        <section className="panel assessment-final-section">
+
+          <label>
+
+            Additional notes
+            {" "}
+
+            <span className="optional-text">
+              (Optional)
+            </span>
+
+
+            <textarea
+
+              value={notes}
+
+              onChange={
+                e =>
+                  setNotes(
+                    e.target.value
+                  )
+              }
+
+              rows="4"
+
+              placeholder="Share information that may help the counselor understand your concern."
+
+            />
+
+          </label>
+
+
+          <div className="notice">
+
+            Please review your answers before submitting.
+            MindTrack uses these tools for screening and monitoring
+            support only. Results are not a diagnosis.
+
+          </div>
+
+
+          <button className="primary-button">
+
+            Submit psychological assessment
+
+          </button>
+
+        </section>
 
 
       </form>
@@ -2811,8 +3415,20 @@ function Assessment() {
 
 
 // ======================================================
-// COUNSELING DATE AVAILABILITY
+// COUNSELING DATE AND TIME AVAILABILITY
 // ======================================================
+
+const COUNSELING_TIME_SLOTS = [
+  "8:00 AM",
+  "9:00 AM",
+  "10:00 AM",
+  "11:00 AM",
+  "1:00 PM",
+  "2:00 PM",
+  "3:00 PM",
+  "4:00 PM"
+];
+
 
 // National regular and special non-working holidays.
 // 2026 dates follow Proclamation No. 1006 plus the
@@ -3518,10 +4134,15 @@ function Consultations() {
     }
 
 
-    if (!form.time) {
+    if (
+      !form.time ||
+      !COUNSELING_TIME_SLOTS.includes(
+        form.time
+      )
+    ) {
 
       alert(
-        "Please select your preferred counseling time."
+        "Please select a valid preferred counseling time."
       );
 
       return;
@@ -3619,8 +4240,11 @@ function Consultations() {
         "",
 
       time:
-        row.time ||
-        "",
+        COUNSELING_TIME_SLOTS.includes(
+          row.time
+        )
+          ? row.time
+          : "",
 
       category:
         row.category ||
@@ -3678,10 +4302,15 @@ function Consultations() {
     }
 
 
-    if (!editForm.time) {
+    if (
+      !editForm.time ||
+      !COUNSELING_TIME_SLOTS.includes(
+        editForm.time
+      )
+    ) {
 
       alert(
-        "Please select your preferred counseling time."
+        "Please select a valid preferred counseling time."
       );
 
       return;
@@ -3882,24 +4511,21 @@ function Consultations() {
             >
 
               <option value="">
-                Choose
+                Choose preferred time
               </option>
 
-              <option>
-                9:00 AM
-              </option>
+              {COUNSELING_TIME_SLOTS.map(
+                time => (
 
-              <option>
-                10:30 AM
-              </option>
+                  <option
+                    key={time}
+                    value={time}
+                  >
+                    {time}
+                  </option>
 
-              <option>
-                1:30 PM
-              </option>
-
-              <option>
-                3:00 PM
-              </option>
+                )
+              )}
 
             </select>
 
@@ -4164,24 +4790,21 @@ function Consultations() {
                               >
 
                                 <option value="">
-                                  Choose
+                                  Choose preferred time
                                 </option>
 
-                                <option>
-                                  9:00 AM
-                                </option>
+                                {COUNSELING_TIME_SLOTS.map(
+                                  time => (
 
-                                <option>
-                                  10:30 AM
-                                </option>
+                                    <option
+                                      key={time}
+                                      value={time}
+                                    >
+                                      {time}
+                                    </option>
 
-                                <option>
-                                  1:30 PM
-                                </option>
-
-                                <option>
-                                  3:00 PM
-                                </option>
+                                  )
+                                )}
 
                               </select>
 
@@ -5596,7 +6219,30 @@ function Profile() {
 
 
     if (
-      form.contactPersonPhone &&
+      !form.contactPersonName.trim()
+    ) {
+
+      setError(
+        "Please enter your contact person's name."
+      );
+
+      return;
+    }
+
+
+    if (
+      !form.contactPersonPhone.trim()
+    ) {
+
+      setError(
+        "Please enter your contact person's phone number."
+      );
+
+      return;
+    }
+
+
+    if (
       form.contactPersonPhone.length !== 11
     ) {
 
@@ -5912,15 +6558,12 @@ function Profile() {
 
 
             <h2>
-
               Contact Person
-              {" "}
-
-              <span className="optional-text">
-                (If applicable)
-              </span>
-
             </h2>
+
+            <p className="profile-note">
+              Contact person information is required for user safety.
+            </p>
 
 
             <div className="profile-grid">
@@ -5935,6 +6578,7 @@ function Profile() {
                     form.contactPersonName
                   }
                   onChange={change}
+                  required
                 />
               </label>
 
@@ -5954,6 +6598,7 @@ function Profile() {
                   minLength={11}
                   maxLength={11}
                   placeholder="09XXXXXXXXX"
+                  required
                 />
               </label>
 
@@ -6343,9 +6988,9 @@ function UserProfilesContent({
         subtitle={
           isSuperAdmin
 
-            ? "Filter users by college/office and student program, then open a profile for read-only viewing."
+            ? "Filter users by college/office and student program, then open the complete user profile."
 
-            : `Filter users from ${currentUser.department} by student program, then open a profile for read-only viewing.`
+            : `Filter users from ${currentUser.department} by student program, then open the complete user profile.`
         }
 
       />
@@ -6354,11 +6999,11 @@ function UserProfilesContent({
       <div className="readonly-access-notice">
 
         <strong>
-          Read-only access
+          Profile access
         </strong>
 
         <span>
-          Counselors and Super Admin can view user profile information, but they cannot edit or save changes to these profiles.
+          User profile information is read-only. Counseling notes can only be edited by the assigned counselor or the Super Admin.
         </span>
 
       </div>
@@ -6641,287 +7286,30 @@ function UserProfilesContent({
         </section>
 
 
-        <section className="panel readonly-profile-panel">
+      </div>
 
-          {!selected
 
-            ? (
+      {selected && (
 
-              <Empty
-                text="Select a user to view their profile."
-              />
+        <UserProfileFullScreen
+          profile={selected}
+          currentUser={currentUser}
 
-            )
-
-            : (
-
-              <>
-
-                <div className="readonly-profile-header">
-
-                  <div
-                    className="profile-avatar"
-                    aria-hidden="true"
-                  >
-
-                    {
-                      selected.name
-                        ?.trim()
-                        ?.charAt(0)
-                        ?.toUpperCase() ||
-                      "U"
-                    }
-
-                  </div>
-
-
-                  <div>
-
-                    <h2>
-                      {
-                        displayValue(
-                          selected.name
-                        )
-                      }
-                    </h2>
-
-                    <p>
-                      {
-                        displayValue(
-                          selected.email
-                        )
-                      }
-                    </p>
-
-                    <span className="profile-role-badge">
-                      {
-                        displayRole(
-                          selected.role
-                        )
-                      }
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-                <div className="readonly-profile-grid">
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      Full Name
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.name
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      Email
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.email
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      Account Type
-                    </span>
-
-                    <strong>
-                      {
-                        displayRole(
-                          selected.role
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      College / Office
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.department
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  {selected.role ===
-                    "student" && (
-
-                    <div className="readonly-profile-item full">
-
-                      <span>
-                        Program
-                      </span>
-
-                      <strong>
-                        {
-                          displayValue(
-                            selected.program
-                          )
-                        }
-                      </strong>
-
-                    </div>
-
-                  )}
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      {
-                        selected.role ===
-                        "student"
-                          ? "Student Number"
-                          : "Employee Number"
-                      }
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.userNumber
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      Phone Number
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.phoneNumber
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item full">
-
-                    <span>
-                      Address
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.address
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      Facebook Account
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.facebookAccount
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      Contact Person
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.contactPersonName
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="readonly-profile-item">
-
-                    <span>
-                      Contact Person Phone
-                    </span>
-
-                    <strong>
-                      {
-                        displayValue(
-                          selected.contactPersonPhone
-                        )
-                      }
-                    </strong>
-
-                  </div>
-
-                </div>
-
-
-                <div className="profile-note">
-
-                  This profile is view-only. Counselor and Super Admin accounts cannot modify this user's information.
-
-                </div>
-
-              </>
-
-            )
+          onClose={
+            () =>
+              setSelected(null)
           }
 
-        </section>
+          displayRole={
+            displayRole
+          }
 
-      </div>
+          displayValue={
+            displayValue
+          }
+        />
+
+      )}
 
     </>
 
@@ -6990,7 +7378,7 @@ function History() {
       <section className="panel">
 
         <h2>
-          Consultations
+          Counseling Requests
         </h2>
 
 
@@ -7089,6 +7477,170 @@ function Cases() {
     useState(null);
 
 
+  const [
+    statusDraft,
+    setStatusDraft
+  ] = useState("For review");
+
+
+  const [
+    remarksDraft,
+    setRemarksDraft
+  ] = useState("");
+
+
+  const [
+    savingCase,
+    setSavingCase
+  ] = useState(false);
+
+
+  const assessmentStatuses = [
+    "For review",
+    "Schedule for counseling",
+    "Follow up is recommended",
+    "Counseling is optional",
+    "For referral"
+  ];
+
+
+  function selectAssessmentCase(
+    row
+  ) {
+
+    setSelected(row);
+
+
+    setStatusDraft(
+      assessmentStatuses.includes(
+        row.status
+      )
+        ? row.status
+        : "For review"
+    );
+
+
+    setRemarksDraft(
+      row.counselorRemarks ||
+      ""
+    );
+  }
+
+
+  useEffect(
+    () => {
+
+      if (!selected) {
+        return undefined;
+      }
+
+
+      const previousOverflow =
+        document.body.style.overflow;
+
+
+      function closeOnEscape(
+        event
+      ) {
+
+        if (
+          event.key ===
+          "Escape"
+        ) {
+
+          setSelected(null);
+        }
+      }
+
+
+      document.body.style.overflow =
+        "hidden";
+
+
+      window.addEventListener(
+        "keydown",
+        closeOnEscape
+      );
+
+
+      return () => {
+
+        document.body.style.overflow =
+          previousOverflow;
+
+
+        window.removeEventListener(
+          "keydown",
+          closeOnEscape
+        );
+      };
+
+    },
+
+    [selected]
+  );
+
+
+  async function saveAssessmentUpdate() {
+
+    if (!selected) {
+      return;
+    }
+
+
+    try {
+
+      setSavingCase(true);
+
+
+      await updateRecord(
+        "assessments",
+        selected.id,
+        {
+          counselorRemarks:
+            remarksDraft,
+
+          status:
+            statusDraft
+        }
+      );
+
+
+      setSelected({
+        ...selected,
+
+        counselorRemarks:
+          remarksDraft,
+
+        status:
+          statusDraft
+      });
+
+
+      alert(
+        "Psychological assessment case updated successfully."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Psychological assessment case update error:",
+        err
+      );
+
+
+      alert(
+        err?.message ||
+        "Unable to update the psychological assessment case."
+      );
+
+    } finally {
+
+      setSavingCase(false);
+    }
+  }
+
+
   return (
 
     <>
@@ -7106,131 +7658,498 @@ function Cases() {
       />
 
 
-      <div className="case-layout">
+      <section className="panel">
+
+        <h2>
+          Assessment Cases
+        </h2>
 
 
-        <section className="panel">
+        <CaseTable
 
-          <h2>
-            Assessment Cases
-          </h2>
+          rows={rows}
+
+          onSelect={
+            selectAssessmentCase
+          }
+
+        />
+
+      </section>
 
 
-          <CaseTable
+      {selected && (
 
-            rows={rows}
+        <div
 
-            onSelect={
-              setSelected
+          className="review-request-modal-backdrop"
+
+          role="presentation"
+
+          onMouseDown={
+            event => {
+
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+
+                setSelected(null);
+              }
+            }
+          }
+
+        >
+
+          <section
+
+            className="review-request-modal"
+
+            role="dialog"
+
+            aria-modal="true"
+
+            aria-label={
+              `Review psychological assessment for ${
+                selected.ownerName ||
+                "user"
+              }`
             }
 
-          />
+          >
 
-        </section>
+            <header className="review-request-modal-header">
 
+              <div>
 
-        <section className="panel detail-panel">
-
-
-          {!selected
-
-            ? (
-
-              <Empty
-                text="Select an assessment case to review."
-              />
-
-            )
-
-            : (
-
-              <>
-
-                <h2>
-                  {
-                    selected.ownerName
-                  }
-                </h2>
+                <p className="review-request-modal-eyebrow">
+                  Psychological Assessment Case
+                </p>
 
 
-                <div
-                  className={
-                    `priority ${String(
-                      selected.priority
-                    ).toLowerCase()}`
-                  }
-                >
+                <div className="review-request-modal-title-row">
 
-                  {
-                    selected.priority
-                  }
+                  <h2>
+                    {
+                      selected.ownerName ||
+                      "User"
+                    }
+                  </h2>
+
+
+                  <span
+                    className={
+                      `priority ${
+                        String(
+                          selected.priority ||
+                          ""
+                        ).toLowerCase()
+                      }`
+                    }
+                  >
+
+                    {
+                      selected.priority ||
+                      "No priority"
+                    }
+
+                  </span>
 
                 </div>
 
 
-                <p>
-
-                  <b>
-                    Score:
-                  </b>
-
-                  {" "}
-
-                  {
-                    selected.score
-                  }/100
-
+                <p className="review-request-modal-subtitle">
+                  Review the assessment result, recommendation, status,
+                  and counselor remarks.
                 </p>
 
-
-                <p>
-
-                  <b>
-                    Department:
-                  </b>
-
-                  {" "}
-
-                  {
-                    selected.department
-                  }
-
-                </p>
+              </div>
 
 
-                <p>
+              <button
 
-                  <b>
-                    System recommendation:
-                  </b>
+                type="button"
 
-                  {" "}
+                className="review-request-close-button"
 
-                  {
-                    selected.recommendation
-                  }
+                onClick={
+                  () =>
+                    setSelected(null)
+                }
 
-                </p>
+                aria-label="Close psychological assessment review"
+
+                title="Close"
+
+              >
+                ×
+              </button>
+
+            </header>
 
 
-                <label>
+            <div className="review-request-modal-body">
 
-                  Counselor remarks
+              <section className="review-request-modal-card">
 
-                  <textarea
+                <h3>
+                  Assessment Details
+                </h3>
 
-                    id="remarks"
 
-                    rows="5"
+                {selected.instrumentResults
 
-                    defaultValue={
-                      selected.counselorRemarks ||
-                      ""
-                    }
+                  ? (
 
-                  />
+                    <>
 
-                </label>
+                      <div className="assessment-review-score-grid">
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            WHO-5
+                          </span>
+
+                          <strong>
+                            {
+                              selected.instrumentResults
+                                ?.who5
+                                ?.percentageScore
+                            }/100
+                          </strong>
+
+                          <small>
+                            Raw:
+                            {" "}
+                            {
+                              selected.instrumentResults
+                                ?.who5
+                                ?.rawScore
+                            }/25
+                          </small>
+
+                          <p>
+                            {
+                              selected.instrumentResults
+                                ?.who5
+                                ?.interpretation
+                            }
+                          </p>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            PHQ-9
+                          </span>
+
+                          <strong>
+                            {
+                              selected.instrumentResults
+                                ?.phq9
+                                ?.totalScore
+                            }/27
+                          </strong>
+
+                          <small>
+                            {
+                              selected.instrumentResults
+                                ?.phq9
+                                ?.severity
+                            }
+                            {" "}
+                            symptom range
+                          </small>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            GAD-7
+                          </span>
+
+                          <strong>
+                            {
+                              selected.instrumentResults
+                                ?.gad7
+                                ?.totalScore
+                            }/21
+                          </strong>
+
+                          <small>
+                            {
+                              selected.instrumentResults
+                                ?.gad7
+                                ?.severity
+                            }
+                            {" "}
+                            symptom range
+                          </small>
+
+                        </div>
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            DASS-21
+                          </span>
+
+                          <strong>
+                            {
+                              selected.instrumentResults
+                                ?.dass21
+                                ?.totalScore ??
+                              "—"
+                            }/63
+                          </strong>
+
+                          <small>
+                            Project raw total
+                          </small>
+
+                        </div>
+
+                      </div>
+
+
+                      <div className="review-request-detail-grid assessment-review-meta-grid">
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            MindTrack Monitoring Priority
+                          </span>
+
+                          <strong>
+                            {
+                              selected.priority ||
+                              "Not available"
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            PHQ-9 Functional Difficulty
+                          </span>
+
+                          <strong>
+                            {
+                              selected.instrumentResults
+                                ?.phq9
+                                ?.difficulty ||
+                              selected.phq9Difficulty ||
+                              "Not provided"
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            College / Office
+                          </span>
+
+                          <strong>
+                            {
+                              selected.department ||
+                              "Not provided"
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            Program
+                          </span>
+
+                          <strong>
+                            {
+                              selected.program ||
+                              "Not provided"
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item full">
+
+                          <span>
+                            Monitoring Recommendation
+                          </span>
+
+                          <strong className="review-request-details-text">
+                            {
+                              selected.recommendation ||
+                              "No recommendation available."
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        {selected.notes && (
+
+                          <div className="review-request-detail-item full">
+
+                            <span>
+                              User's Additional Notes
+                            </span>
+
+                            <strong className="review-request-details-text">
+                              {
+                                selected.notes
+                              }
+                            </strong>
+
+                          </div>
+
+                        )}
+
+                      </div>
+
+                    </>
+
+                  )
+
+                  : (
+
+                    <div className="review-request-detail-grid">
+
+                      <div className="review-request-detail-item">
+
+                        <span>
+                          Legacy Monitoring Score
+                        </span>
+
+                        <strong>
+                          {
+                            selected.score ??
+                            "Not available"
+                          }
+
+                          {
+                            selected.score !==
+                            undefined &&
+                            selected.score !==
+                            null
+                              ? "/100"
+                              : ""
+                          }
+                        </strong>
+
+                      </div>
+
+
+                      <div className="review-request-detail-item">
+
+                        <span>
+                          Priority Level
+                        </span>
+
+                        <strong>
+                          {
+                            selected.priority ||
+                            "Not available"
+                          }
+                        </strong>
+
+                      </div>
+
+
+                      <div className="review-request-detail-item">
+
+                        <span>
+                          College / Office
+                        </span>
+
+                        <strong>
+                          {
+                            selected.department ||
+                            "Not provided"
+                          }
+                        </strong>
+
+                      </div>
+
+
+                      <div className="review-request-detail-item">
+
+                        <span>
+                          Program
+                        </span>
+
+                        <strong>
+                          {
+                            selected.program ||
+                            "Not provided"
+                          }
+                        </strong>
+
+                      </div>
+
+
+                      <div className="review-request-detail-item full">
+
+                        <span>
+                          System Recommendation
+                        </span>
+
+                        <strong className="review-request-details-text">
+                          {
+                            selected.recommendation ||
+                            "No recommendation available."
+                          }
+                        </strong>
+
+                      </div>
+
+
+                      {selected.notes && (
+
+                        <div className="review-request-detail-item full">
+
+                          <span>
+                            User's Additional Notes
+                          </span>
+
+                          <strong className="review-request-details-text">
+                            {
+                              selected.notes
+                            }
+                          </strong>
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+                  )
+                }
+
+              </section>
+
+
+              <section className="review-request-modal-card review-request-update-card">
+
+                <h3>
+                  Counselor Review
+                </h3>
 
 
                 <label>
@@ -7239,11 +8158,15 @@ function Cases() {
 
                   <select
 
-                    id="caseStatus"
+                    value={
+                      statusDraft
+                    }
 
-                    defaultValue={
-                      selected.status ||
-                      "For review"
+                    onChange={
+                      event =>
+                        setStatusDraft(
+                          event.target.value
+                        )
                     }
 
                   >
@@ -7253,23 +8176,19 @@ function Cases() {
                     </option>
 
                     <option>
-                      Contacted
+                      Schedule for counseling
                     </option>
 
                     <option>
-                      Scheduled
+                      Follow up is recommended
                     </option>
 
                     <option>
-                      Under intervention
+                      Counseling is optional
                     </option>
 
                     <option>
-                      Follow-up
-                    </option>
-
-                    <option>
-                      Closed
+                      For referral
                     </option>
 
                   </select>
@@ -7277,69 +8196,85 @@ function Cases() {
                 </label>
 
 
-                <button
+                <label>
 
-                  className="primary-button"
+                  Counselor remarks
 
-                  onClick={
-                    async () => {
+                  <textarea
 
-                      const remarks =
-                        document
-                          .getElementById(
-                            "remarks"
-                          )
-                          .value;
+                    rows="9"
 
-
-                      const status =
-                        document
-                          .getElementById(
-                            "caseStatus"
-                          )
-                          .value;
-
-
-                      await updateRecord(
-                        "assessments",
-                        selected.id,
-                        {
-                          counselorRemarks:
-                            remarks,
-
-                          status
-                        }
-                      );
-
-
-                      setSelected({
-
-                        ...selected,
-
-                        counselorRemarks:
-                          remarks,
-
-                        status
-
-                      });
-
+                    value={
+                      remarksDraft
                     }
-                  }
 
-                >
+                    onChange={
+                      event =>
+                        setRemarksDraft(
+                          event.target.value
+                        )
+                    }
 
-                  Save case update
+                    placeholder="Add counselor remarks, recommendations, or instructions."
 
-                </button>
+                  />
 
-              </>
+                </label>
 
-            )
-          }
 
-        </section>
+                <div className="review-request-modal-actions">
 
-      </div>
+                  <button
+
+                    type="button"
+
+                    className="secondary-button"
+
+                    onClick={
+                      () =>
+                        setSelected(null)
+                    }
+
+                  >
+                    Close
+                  </button>
+
+
+                  <button
+
+                    type="button"
+
+                    className="primary-button"
+
+                    disabled={
+                      savingCase
+                    }
+
+                    onClick={
+                      saveAssessmentUpdate
+                    }
+
+                  >
+
+                    {
+                      savingCase
+                        ? "Saving..."
+                        : "Save case update"
+                    }
+
+                  </button>
+
+                </div>
+
+              </section>
+
+            </div>
+
+          </section>
+
+        </div>
+
+      )}
 
     </>
 
@@ -7418,6 +8353,54 @@ function CounselingRequestsManagement() {
   ] = useState(false);
 
 
+  useEffect(
+    () => {
+
+      if (!selected) {
+        return undefined;
+      }
+
+
+      const previousOverflow =
+        document.body.style.overflow;
+
+
+      function closeOnEscape(event) {
+
+        if (event.key === "Escape") {
+          setSelected(null);
+        }
+      }
+
+
+      document.body.style.overflow =
+        "hidden";
+
+
+      window.addEventListener(
+        "keydown",
+        closeOnEscape
+      );
+
+
+      return () => {
+
+        document.body.style.overflow =
+          previousOverflow;
+
+
+        window.removeEventListener(
+          "keydown",
+          closeOnEscape
+        );
+      };
+
+    },
+
+    [selected]
+  );
+
+
   if (!hasAccess) {
 
     return (
@@ -7433,9 +8416,21 @@ function CounselingRequestsManagement() {
 
     setSelected(row);
 
+    const allowedReviewStatuses = [
+      "For review",
+      "Schedule for counseling",
+      "Follow up is recommended",
+      "Counseling is optional",
+      "For referral"
+    ];
+
+
     setStatusDraft(
-      row.status ||
-      "Pending approval"
+      allowedReviewStatuses.includes(
+        row.status
+      )
+        ? row.status
+        : "For review"
     );
 
     setRemarksDraft(
@@ -7523,242 +8518,324 @@ function CounselingRequestsManagement() {
       />
 
 
-      <div className="case-layout">
+      <section className="panel counseling-request-list-panel">
+
+        <h2>
+          Request List
+        </h2>
 
 
-        <section className="panel">
+        {rows.length === 0
 
-          <h2>
-            Request List
-          </h2>
+          ? (
+
+            <Empty
+              text="No counseling requests."
+            />
+
+          )
+
+          : rows.map(
+              row => (
+
+                <article
+
+                  className="record-card counseling-request-list-card"
+
+                  key={
+                    row.id
+                  }
+
+                >
+
+                  <strong>
+                    {
+                      row.ownerName ||
+                      "User"
+                    }
+                  </strong>
 
 
-          {rows.length === 0
+                  <span className="status">
+                    {
+                      row.status ||
+                      "Pending approval"
+                    }
+                  </span>
 
-            ? (
 
-              <Empty
-                text="No counseling requests."
-              />
+                  <p>
 
-            )
-
-            : rows.map(
-                row => (
-
-                  <article
-
-                    className="record-card"
-
-                    key={
-                      row.id
+                    {
+                      row.category ||
+                      "Counseling concern"
                     }
 
-                  >
+                    {" · "}
+
+                    {
+                      row.date ||
+                      "No date"
+                    }
+
+                    {" · "}
+
+                    {
+                      row.time ||
+                      "No time"
+                    }
+
+                  </p>
+
+
+                  <small>
+                    {
+                      row.department ||
+                      "No department"
+                    }
+
+                    {row.mode && (
+                      <>
+                        {" · "}
+                        {row.mode}
+                      </>
+                    )}
+                  </small>
+
+
+                  <div className="counseling-request-list-actions">
+
+                    <button
+
+                      type="button"
+
+                      className="secondary-button"
+
+                      onClick={
+                        () =>
+                          selectRequest(
+                            row
+                          )
+                      }
+
+                    >
+                      Review request
+                    </button>
+
+                  </div>
+
+                </article>
+
+              )
+            )
+        }
+
+      </section>
+
+
+      {selected && (
+
+        <div
+
+          className="review-request-modal-backdrop"
+
+          role="presentation"
+
+          onMouseDown={
+            event => {
+
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+
+                setSelected(null);
+              }
+            }
+          }
+
+        >
+
+          <section
+
+            className="review-request-modal"
+
+            role="dialog"
+
+            aria-modal="true"
+
+            aria-label={
+              `Review counseling request for ${
+                selected.ownerName ||
+                "user"
+              }`
+            }
+
+          >
+
+            <header className="review-request-modal-header">
+
+              <div>
+
+                <p className="review-request-modal-eyebrow">
+                  Counseling Request
+                </p>
+
+                <div className="review-request-modal-title-row">
+
+                  <h2>
+                    {
+                      selected.ownerName ||
+                      "User"
+                    }
+                  </h2>
+
+                  <span className="status">
+                    {
+                      selected.status ||
+                      "Pending approval"
+                    }
+                  </span>
+
+                </div>
+
+                <p className="review-request-modal-subtitle">
+                  Review the request details, update the status,
+                  and add counselor remarks.
+                </p>
+
+              </div>
+
+
+              <button
+
+                type="button"
+
+                className="review-request-close-button"
+
+                onClick={
+                  () =>
+                    setSelected(null)
+                }
+
+                aria-label="Close counseling request review"
+
+                title="Close"
+
+              >
+                ×
+              </button>
+
+            </header>
+
+
+            <div className="review-request-modal-body">
+
+              <section className="review-request-modal-card">
+
+                <h3>
+                  Request Details
+                </h3>
+
+
+                <div className="review-request-detail-grid">
+
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      Concern
+                    </span>
 
                     <strong>
                       {
-                        row.ownerName ||
-                        "User"
+                        selected.category ||
+                        "Not provided"
                       }
                     </strong>
 
+                  </div>
 
-                    <span className="status">
-                      {
-                        row.status ||
-                        "Pending approval"
-                      }
+
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      College / Office
                     </span>
 
-
-                    <p>
-
+                    <strong>
                       {
-                        row.category ||
-                        "Counseling concern"
+                        selected.department ||
+                        "Not provided"
                       }
+                    </strong>
 
-                      {" · "}
+                  </div>
 
+
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      Mode
+                    </span>
+
+                    <strong>
                       {
-                        row.date ||
+                        selected.mode ||
+                        "Not provided"
+                      }
+                    </strong>
+
+                  </div>
+
+
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      Preferred Schedule
+                    </span>
+
+                    <strong>
+                      {
+                        selected.date ||
                         "No date"
                       }
 
                       {" · "}
 
                       {
-                        row.time ||
+                        selected.time ||
                         "No time"
                       }
+                    </strong>
 
-                    </p>
+                  </div>
 
 
-                    <small>
+                  <div className="review-request-detail-item full">
+
+                    <span>
+                      Details
+                    </span>
+
+                    <strong className="review-request-details-text">
                       {
-                        row.department ||
-                        "No department"
+                        selected.message ||
+                        "No additional details."
                       }
+                    </strong>
 
-                      {row.mode && (
-                        <>
-                          {" · "}
-                          {row.mode}
-                        </>
-                      )}
-                    </small>
+                  </div>
 
+                </div>
 
-                    <div
-                      style={{
-                        marginTop:
-                          "14px"
-                      }}
-                    >
-
-                      <button
-
-                        type="button"
-
-                        className="secondary-button"
-
-                        onClick={
-                          () =>
-                            selectRequest(
-                              row
-                            )
-                        }
-
-                      >
-                        Review request
-                      </button>
-
-                    </div>
-
-                  </article>
-
-                )
-              )
-          }
-
-        </section>
+              </section>
 
 
-        <section className="panel detail-panel">
+              <section className="review-request-modal-card review-request-update-card">
 
-
-          {!selected
-
-            ? (
-
-              <Empty
-                text="Select a counseling request to review."
-              />
-
-            )
-
-            : (
-
-              <>
-
-                <h2>
-                  {
-                    selected.ownerName ||
-                    "User"
-                  }
-                </h2>
-
-
-                <p>
-
-                  <b>
-                    Concern:
-                  </b>
-
-                  {" "}
-
-                  {
-                    selected.category ||
-                    "Not provided"
-                  }
-
-                </p>
-
-
-                <p>
-
-                  <b>
-                    Department:
-                  </b>
-
-                  {" "}
-
-                  {
-                    selected.department ||
-                    "Not provided"
-                  }
-
-                </p>
-
-
-                {selected.mode && (
-
-                  <p>
-
-                    <b>
-                      Mode:
-                    </b>
-
-                    {" "}
-
-                    {
-                      selected.mode
-                    }
-
-                  </p>
-
-                )}
-
-
-                <p>
-
-                  <b>
-                    Preferred schedule:
-                  </b>
-
-                  {" "}
-
-                  {
-                    selected.date ||
-                    "No date"
-                  }
-
-                  {" · "}
-
-                  {
-                    selected.time ||
-                    "No time"
-                  }
-
-                </p>
-
-
-                <p>
-
-                  <b>
-                    Details:
-                  </b>
-
-                  {" "}
-
-                  {
-                    selected.message ||
-                    "No additional details."
-                  }
-
-                </p>
+                <h3>
+                  Counselor Review
+                </h3>
 
 
                 <label>
@@ -7781,23 +8858,23 @@ function CounselingRequestsManagement() {
                   >
 
                     <option>
-                      Pending approval
+                      For review
                     </option>
 
                     <option>
-                      Approved
+                      Schedule for counseling
                     </option>
 
                     <option>
-                      Rescheduled
+                      Follow up is recommended
                     </option>
 
                     <option>
-                      Completed
+                      Counseling is optional
                     </option>
 
                     <option>
-                      Cancelled
+                      For referral
                     </option>
 
                   </select>
@@ -7811,7 +8888,7 @@ function CounselingRequestsManagement() {
 
                   <textarea
 
-                    rows="5"
+                    rows="9"
 
                     value={
                       remarksDraft
@@ -7831,45 +8908,64 @@ function CounselingRequestsManagement() {
                 </label>
 
 
-                <button
+                <div className="review-request-modal-actions">
 
-                  type="button"
+                  <button
 
-                  className="primary-button"
+                    type="button"
 
-                  disabled={
-                    saving
-                  }
+                    className="secondary-button"
 
-                  onClick={
-                    saveRequestUpdate
-                  }
+                    onClick={
+                      () =>
+                        setSelected(null)
+                    }
 
-                >
+                  >
+                    Close
+                  </button>
 
-                  {
-                    saving
-                      ? "Saving..."
-                      : "Save request update"
-                  }
 
-                </button>
+                  <button
 
-              </>
+                    type="button"
 
-            )
-          }
+                    className="primary-button"
 
-        </section>
+                    disabled={
+                      saving
+                    }
 
-      </div>
+                    onClick={
+                      saveRequestUpdate
+                    }
+
+                  >
+
+                    {
+                      saving
+                        ? "Saving..."
+                        : "Save request update"
+                    }
+
+                  </button>
+
+                </div>
+
+              </section>
+
+            </div>
+
+          </section>
+
+        </div>
+
+      )}
 
     </>
 
   );
 }
-
-
 // ======================================================
 // COUNSELOR SCHEDULE
 // ======================================================
@@ -8747,13 +9843,14 @@ function Reports() {
 
         <Stat
 
-          title="Closed cases"
+          title="Reviewed cases"
 
           value={
             assessments.filter(
               assessment =>
-                assessment.status ===
-                "Closed"
+                assessment.status &&
+                assessment.status !==
+                "For review"
             ).length
           }
 
@@ -9020,11 +10117,23 @@ function CaseTable({
             </th>
 
             <th>
-              Score
+              WHO-5
             </th>
 
             <th>
-              Priority
+              PHQ-9
+            </th>
+
+            <th>
+              GAD-7
+            </th>
+
+            <th>
+              DASS-21
+            </th>
+
+            <th>
+              Monitoring Priority
             </th>
 
             <th>
@@ -9048,90 +10157,176 @@ function CaseTable({
 
 
           {rows.map(
-            row => (
+            row => {
 
-              <tr
-                key={
-                  row.id
-                }
-              >
+              const standardized =
+                Boolean(
+                  row.instrumentResults
+                );
 
-                <td>
 
-                  {
-                    row.ownerName ||
-                    "Current user"
+              return (
+
+                <tr
+                  key={
+                    row.id
                   }
-
-                </td>
-
-
-                <td>
-
-                  {
-                    row.score ??
-                    "—"
-                  }
-
-                </td>
-
-
-                <td>
-
-                  <span
-                    className={
-                      `priority ${
-                        String(
-                          row.priority
-                        ).toLowerCase()
-                      }`
-                    }
-                  >
-
-                    {
-                      row.priority
-                    }
-
-                  </span>
-
-                </td>
-
-
-                <td>
-                  {
-                    row.status
-                  }
-                </td>
-
-
-                {onSelect && (
+                >
 
                   <td>
 
-                    <button
-
-                      className="text-button"
-
-                      onClick={
-                        () =>
-                          onSelect(
-                            row
-                          )
-                      }
-
-                    >
-
-                      Review
-
-                    </button>
+                    {
+                      row.ownerName ||
+                      "Current user"
+                    }
 
                   </td>
 
-                )}
 
-              </tr>
+                  <td>
 
-            )
+                    {standardized
+
+                      ? (
+                        <>
+                          {
+                            row.instrumentResults
+                              ?.who5
+                              ?.percentageScore
+                          }/100
+                        </>
+                      )
+
+                      : (
+                        row.score ??
+                        "—"
+                      )
+                    }
+
+                  </td>
+
+
+                  <td>
+
+                    {standardized
+
+                      ? (
+                        <>
+                          {
+                            row.instrumentResults
+                              ?.phq9
+                              ?.totalScore
+                          }/27
+                        </>
+                      )
+
+                      : "—"
+                    }
+
+                  </td>
+
+
+                  <td>
+
+                    {standardized
+
+                      ? (
+                        <>
+                          {
+                            row.instrumentResults
+                              ?.gad7
+                              ?.totalScore
+                          }/21
+                        </>
+                      )
+
+                      : "—"
+                    }
+
+                  </td>
+
+                  <td>
+
+                    {standardized &&
+                    row.instrumentResults
+                      ?.dass21
+
+                      ? (
+                        <>
+                          {
+                            row.instrumentResults
+                              ?.dass21
+                              ?.totalScore
+                          }/63
+                        </>
+                      )
+
+                      : "—"
+                    }
+
+                  </td>
+
+
+                  <td>
+
+                    <span
+                      className={
+                        `priority ${
+                          String(
+                            row.priority ||
+                            "low"
+                          ).toLowerCase()
+                        }`
+                      }
+                    >
+
+                      {
+                        row.priority ||
+                        "—"
+                      }
+
+                    </span>
+
+                  </td>
+
+
+                  <td>
+                    {
+                      row.status ||
+                      "For review"
+                    }
+                  </td>
+
+
+                  {onSelect && (
+
+                    <td>
+
+                      <button
+
+                        className="text-button"
+
+                        onClick={
+                          () =>
+                            onSelect(
+                              row
+                            )
+                        }
+
+                      >
+
+                        Review
+
+                      </button>
+
+                    </td>
+
+                  )}
+
+                </tr>
+
+              );
+            }
           )}
 
         </tbody>
