@@ -105,6 +105,7 @@ function Login() {
   const {
     user,
     login,
+    resetPassword,
     resendVerificationEmail,
     firebaseEnabled
   } = useAuth();
@@ -134,6 +135,12 @@ function Login() {
   ] = useState("");
 
 
+  const [
+    passwordResetMessage,
+    setPasswordResetMessage
+  ] = useState("");
+
+
   if (user) {
     return (
       <Navigate
@@ -150,6 +157,7 @@ function Login() {
     setError("");
     setNeedsVerification(false);
     setVerificationMessage("");
+    setPasswordResetMessage("");
     setLoading(true);
 
     try {
@@ -241,6 +249,7 @@ function Login() {
 
     setError("");
     setVerificationMessage("");
+    setPasswordResetMessage("");
 
 
     if (!email.trim() || !password) {
@@ -305,6 +314,89 @@ function Login() {
   }
 
 
+  async function forgotPassword() {
+
+    setError("");
+    setVerificationMessage("");
+    setPasswordResetMessage("");
+    setNeedsVerification(false);
+
+
+    if (!email.trim()) {
+
+      setError(
+        "Enter your PSU email first before requesting a password reset."
+      );
+
+      return;
+    }
+
+
+    try {
+
+      setLoading(true);
+
+
+      await resetPassword(
+        email
+      );
+
+
+      setPasswordResetMessage(
+        "Password reset instructions were sent to your PSU institutional email. Check your inbox and spam folder. If no account matches the email, no reset message will be received."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Password reset error:",
+        err
+      );
+
+
+      if (
+        err?.code ===
+        "auth/too-many-requests"
+      ) {
+
+        setError(
+          "Too many password reset requests. Please wait and try again later."
+        );
+
+      } else if (
+        err?.code ===
+        "auth/institutional-email-required"
+      ) {
+
+        setError(
+          "Please use your official PSU institutional email address."
+        );
+
+      } else if (
+        err?.code ===
+        "auth/network-request-failed"
+      ) {
+
+        setError(
+          "Unable to connect. Please check your internet connection and try again."
+        );
+
+      } else {
+
+        // Keep the response generic so the login screen does not
+        // reveal whether a specific email address has an account.
+        setPasswordResetMessage(
+          "If an account is registered with that PSU institutional email, password reset instructions will be sent to it."
+        );
+      }
+
+    } finally {
+
+      setLoading(false);
+    }
+  }
+
+
   return (
     <div className="auth-page">
 
@@ -328,54 +420,22 @@ function Login() {
         <form onSubmit={submit} autoComplete="off">
 
           <label>
-            Institutional Email
+            Email
 
-            <div className="institutional-email-composite">
-
-              <input
-                type="text"
-                name="mindtrack-login-email"
-                value={
-                  email.replace(
-                    /@psu\.edu\.ph$/i,
-                    ""
+            <input
+              value={email}
+              onChange={
+                event =>
+                  setEmail(
+                    event.target.value
                   )
-                }
-                onChange={
-                  event => {
-
-                    const localPart =
-                      event.target.value
-                        .replace(
-                          /@.*$/,
-                          ""
-                        )
-                        .replace(
-                          /\s/g,
-                          ""
-                        );
-
-
-                    setEmail(
-                      localPart
-                        ? `${localPart}@psu.edu.ph`
-                        : ""
-                    );
-                  }
-                }
-                placeholder="Enter institutional username"
-                autoComplete="username"
-                required
-              />
-
-              <span
-                className="institutional-email-suffix"
-                aria-hidden="true"
-              >
-                @psu.edu.ph
-              </span>
-
-            </div>
+              }
+              type="email"
+              name="mindtrack-login-email"
+              placeholder="email@psu.edu.ph"
+              autoComplete="username"
+              required
+            />
 
           </label>
 
@@ -394,10 +454,28 @@ function Login() {
               type="password"
               name="mindtrack-login-password"
               placeholder="Enter your password"
-              autoComplete="new-password"
+              autoComplete="current-password"
               required
             />
           </label>
+
+
+          {firebaseEnabled && (
+
+            <div className="forgot-password-row">
+
+              <button
+                type="button"
+                className="forgot-password-link"
+                onClick={forgotPassword}
+                disabled={loading}
+              >
+                Forgot password?
+              </button>
+
+            </div>
+
+          )}
 
 
           {error && (
@@ -410,6 +488,13 @@ function Login() {
           {verificationMessage && (
             <div className="success-box">
               {verificationMessage}
+            </div>
+          )}
+
+
+          {passwordResetMessage && (
+            <div className="success-box">
+              {passwordResetMessage}
             </div>
           )}
 
@@ -552,22 +637,6 @@ function isInstitutionalEmail(email) {
 }
 
 
-function isValidStudentInstitutionalEmail(
-  email
-) {
-
-  const cleanEmail =
-    String(
-      email || ""
-    )
-      .trim()
-      .toLowerCase();
-
-
-  return /^\d{2}ln\d{4}_ms@psu\.edu\.ph$/.test(
-    cleanEmail
-  );
-}
 
 
 // ======================================================
@@ -1226,7 +1295,7 @@ function Register() {
 
     if (!form.email.trim()) {
       setError(
-        "Please enter your institutional email address."
+        "Please enter your PSU email address."
       );
       return;
     }
@@ -1237,19 +1306,7 @@ function Register() {
       )
     ) {
       setError(
-        "Please use your official PSU institutional email address ending in @psu.edu.ph."
-      );
-      return;
-    }
-
-    if (
-      form.role === "student" &&
-      !isValidStudentInstitutionalEmail(
-        form.email
-      )
-    ) {
-      setError(
-        "Student institutional email must follow the format: 00ln0000_ms@psu.edu.ph."
+        "Please use an email address ending in @psu.edu.ph."
       );
       return;
     }
@@ -1610,68 +1667,17 @@ function Register() {
 
 
               <label>
-                Institutional Email
+                Email
 
-                <div className="institutional-email-composite">
-
-                  <input
-                    type="text"
-                    name="emailUsername"
-                    value={
-                      form.email
-                        .replace(
-                          /@psu\.edu\.ph$/i,
-                          ""
-                        )
-                    }
-                    onChange={
-                      event => {
-
-                        const localPart =
-                          event.target.value
-                            .replace(
-                              /@.*$/,
-                              ""
-                            )
-                            .replace(
-                              /\s/g,
-                              ""
-                            );
-
-
-                        setForm(
-                          current => ({
-                            ...current,
-
-                            email:
-                              localPart
-                                ? `${localPart}@psu.edu.ph`
-                                : ""
-                          })
-                        );
-                      }
-                    }
-                    placeholder={
-                      form.role === "student"
-                        ? "00ln0000_ms"
-                        : "institutional username"
-                    }
-                    autoComplete="email"
-                    required
-                  />
-
-                  <span
-                    className="institutional-email-suffix"
-                    aria-hidden="true"
-                  >
-                    @psu.edu.ph
-                  </span>
-
-                </div>
-
-                <small className="registration-field-help">
-                  Your account will use the PSU institutional email domain.
-                </small>
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={change}
+                  placeholder="email@psu.edu.ph"
+                  autoComplete="email"
+                  required
+                />
 
               </label>
 

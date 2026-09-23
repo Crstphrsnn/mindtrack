@@ -12,6 +12,7 @@ import {
   onAuthStateChanged,
   reload,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut
 } from "firebase/auth";
@@ -79,22 +80,6 @@ function isInstitutionalEmail(email) {
 }
 
 
-function isValidStudentInstitutionalEmail(
-  email
-) {
-
-  const cleanEmail =
-    String(
-      email || ""
-    )
-      .trim()
-      .toLowerCase();
-
-
-  return /^\d{2}ln\d{4}_ms@psu\.edu\.ph$/.test(
-    cleanEmail
-  );
-}
 
 
 async function loadFirebaseProfile(
@@ -494,21 +479,7 @@ export function AuthProvider({ children }) {
 
       throw createAuthError(
         "auth/institutional-email-required",
-        "Registration requires an official PSU institutional email address ending in @psu.edu.ph."
-      );
-    }
-
-
-    if (
-      role === "student" &&
-      !isValidStudentInstitutionalEmail(
-        cleanEmail
-      )
-    ) {
-
-      throw createAuthError(
-        "auth/invalid-student-institutional-email",
-        "Student institutional email must follow the format 00ln0000_ms@psu.edu.ph."
+        "Registration requires a PSU email address ending in @psu.edu.ph."
       );
     }
 
@@ -837,23 +808,6 @@ export function AuthProvider({ children }) {
 
 
       if (
-        profile.role === "student" &&
-        !isValidStudentInstitutionalEmail(
-          credential.user.email
-        )
-      ) {
-
-        await signOut(auth);
-
-
-        throw createAuthError(
-          "auth/invalid-student-institutional-email",
-          "This student account does not use the required PSU student email format."
-        );
-      }
-
-
-      if (
         isGeneralUser &&
         !credential.user.emailVerified
       ) {
@@ -919,6 +873,62 @@ export function AuthProvider({ children }) {
         normalizedDemoUser
       )
     );
+  }
+
+
+  // =========================
+  // FORGOT / RESET PASSWORD
+  // =========================
+
+  async function resetPassword(
+    email
+  ) {
+
+    if (!firebaseEnabled) {
+
+      throw new Error(
+        "Password reset requires Firebase."
+      );
+    }
+
+
+    const cleanEmail =
+      String(
+        email || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    if (!cleanEmail) {
+
+      throw createAuthError(
+        "auth/email-required",
+        "Enter your institutional email first."
+      );
+    }
+
+
+    if (
+      !isInstitutionalEmail(
+        cleanEmail
+      )
+    ) {
+
+      throw createAuthError(
+        "auth/institutional-email-required",
+        "Please use your official PSU institutional email address."
+      );
+    }
+
+
+    await sendPasswordResetEmail(
+      auth,
+      cleanEmail
+    );
+
+
+    return "sent";
   }
 
 
@@ -1054,6 +1064,7 @@ export function AuthProvider({ children }) {
         loading,
         login,
         register,
+        resetPassword,
         resendVerificationEmail,
         updateProfile,
         logout,

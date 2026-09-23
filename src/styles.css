@@ -2607,60 +2607,34 @@ th {
   }
 }
 
-
 /* =====================================================
-   REGISTRATION - FIXED PSU EMAIL DOMAIN
+   LOGIN - FORGOT PASSWORD
 ===================================================== */
 
-.institutional-email-composite {
+.forgot-password-row {
   display: flex;
-  align-items: stretch;
-  width: 100%;
-  margin-top: 7px;
+  justify-content: flex-end;
+  margin-top: -6px;
+  margin-bottom: 12px;
 }
 
-.institutional-email-composite input {
-  min-width: 0;
-  flex: 1;
-  margin-top: 0;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
+.forgot-password-link {
+  border: 0;
+  background: transparent;
+  color: #173f8f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 4px 0;
 }
 
-.institutional-email-suffix {
-  display: flex;
-  align-items: center;
-  padding: 0 13px;
-  border: 1px solid #ccd6e4;
-  border-left: 0;
-  border-radius: 0 10px 10px 0;
-  background: #eef3f9;
-  color: #344158;
-  font-weight: 700;
-  white-space: nowrap;
+.forgot-password-link:hover {
+  text-decoration: underline;
 }
 
-.registration-field-help,
-.registration-section-note {
-  display: block;
-  margin-top: 7px;
-  color: #687084;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.registration-section-note {
-  margin-top: -4px;
-  margin-bottom: 14px;
-}
-
-@media (max-width: 560px) {
-  .institutional-email-composite {
-    align-items: stretch;
-  }
-
-  .institutional-email-suffix {
-    padding: 0 9px;
-    font-size: 12px;
-  }
+.forgot-password-link:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
 }
