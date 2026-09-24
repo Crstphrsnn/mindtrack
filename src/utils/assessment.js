@@ -408,10 +408,6 @@ function deriveMonitoringPriority({
   safetyFlag
 }) {
 
-  // MindTrack operational monitoring logic.
-  // This does not replace clinical judgment and is not an
-  // official priority scale from any of the three tools.
-
   if (safetyFlag) {
     return "Critical";
   }
@@ -492,8 +488,6 @@ export function calculateAssessment(
 ) {
 
   // WHO-5
-  // Raw score = sum of 5 answers, range 0-25.
-  // Percentage = raw score x 4, range 0-100.
   const who5RawScore =
     sumAnswers(
       who5Questions,
@@ -511,7 +505,6 @@ export function calculateAssessment(
 
 
   // PHQ-9
-  // Total = sum of 9 answers, range 0-27.
   const phq9Score =
     sumAnswers(
       phq9Questions,
@@ -520,7 +513,6 @@ export function calculateAssessment(
 
 
   // GAD-7
-  // Total = sum of 7 answers, range 0-21.
   const gad7Score =
     sumAnswers(
       gad7Questions,
@@ -528,25 +520,96 @@ export function calculateAssessment(
     );
 
 
-  // DASS-21 project total.
-  // Per the requested project rule, this is calculated
-  // the same way as PHQ-9: sum all item scores.
-  // 21 items x 0-3 = 0-63.
-  //
-  // The supplied DASS-21 page provides the 0-3 response
-  // scale and 21 items, but does not provide a severity
-  // interpretation formula. Therefore MindTrack stores
-  // and displays the total without assigning a clinical
-  // DASS-21 severity category.
-  const dass21Score =
-    sumAnswers(
-      dass21Questions,
-      answers
+  // ======================================================
+  // DASS-21 SUBSCALES
+  // ======================================================
+
+  const dass21DepressionIds = [
+    "dass21_q3",
+    "dass21_q5",
+    "dass21_q10",
+    "dass21_q13",
+    "dass21_q16",
+    "dass21_q17",
+    "dass21_q21"
+  ];
+
+
+  const dass21AnxietyIds = [
+    "dass21_q2",
+    "dass21_q4",
+    "dass21_q7",
+    "dass21_q9",
+    "dass21_q15",
+    "dass21_q19",
+    "dass21_q20"
+  ];
+
+
+  const dass21StressIds = [
+    "dass21_q1",
+    "dass21_q6",
+    "dass21_q8",
+    "dass21_q11",
+    "dass21_q12",
+    "dass21_q14",
+    "dass21_q18"
+  ];
+
+
+  function sumQuestionIds(
+    ids
+  ) {
+
+    return ids.reduce(
+      (total, id) =>
+        total +
+        Number(
+          answers[id] ??
+          0
+        ),
+      0
+    );
+  }
+
+
+  const dass21DepressionRaw =
+    sumQuestionIds(
+      dass21DepressionIds
     );
 
 
-  // PHQ-9 item 9 is retained as a separate safety signal.
-  // Any response above "Not at all" requires counselor review.
+  const dass21AnxietyRaw =
+    sumQuestionIds(
+      dass21AnxietyIds
+    );
+
+
+  const dass21StressRaw =
+    sumQuestionIds(
+      dass21StressIds
+    );
+
+
+  const dass21DepressionAdjusted =
+    dass21DepressionRaw * 2;
+
+
+  const dass21AnxietyAdjusted =
+    dass21AnxietyRaw * 2;
+
+
+  const dass21StressAdjusted =
+    dass21StressRaw * 2;
+
+
+  const dass21TotalRawScore =
+    dass21DepressionRaw +
+    dass21AnxietyRaw +
+    dass21StressRaw;
+
+
+  // PHQ-9 item 9 safety signal
   const safetyFlag =
     Number(
       answers.phq9_q9 ??
@@ -573,8 +636,6 @@ export function calculateAssessment(
 
   return {
 
-    // Backward-compatible fields used by existing MindTrack
-    // dashboard, reports, Firestore rules, and profile badge.
     score:
       who5Percentage,
 
@@ -585,10 +646,10 @@ export function calculateAssessment(
     safetyFlag,
 
 
-    // New standardized assessment results.
     instrumentResults: {
 
       who5: {
+
         title:
           WHO5_TITLE,
 
@@ -612,6 +673,7 @@ export function calculateAssessment(
 
 
       phq9: {
+
         title:
           PHQ9_TITLE,
 
@@ -633,6 +695,7 @@ export function calculateAssessment(
 
 
       gad7: {
+
         title:
           GAD7_TITLE,
 
@@ -650,17 +713,102 @@ export function calculateAssessment(
 
 
       dass21: {
+
         title:
           DASS21_TITLE,
 
-        totalScore:
-          dass21Score,
 
-        maximumScore:
+        // Backward compatibility
+        totalScore:
+          dass21TotalRawScore,
+
+        totalRawScore:
+          dass21TotalRawScore,
+
+        maximumTotalRawScore:
           63,
 
+
+        depression: {
+
+          rawScore:
+            dass21DepressionRaw,
+
+          maximumRawScore:
+            21,
+
+          adjustedScore:
+            dass21DepressionAdjusted,
+
+          maximumAdjustedScore:
+            42,
+
+          itemNumbers: [
+            3,
+            5,
+            10,
+            13,
+            16,
+            17,
+            21
+          ]
+        },
+
+
+        anxiety: {
+
+          rawScore:
+            dass21AnxietyRaw,
+
+          maximumRawScore:
+            21,
+
+          adjustedScore:
+            dass21AnxietyAdjusted,
+
+          maximumAdjustedScore:
+            42,
+
+          itemNumbers: [
+            2,
+            4,
+            7,
+            9,
+            15,
+            19,
+            20
+          ]
+        },
+
+
+        stress: {
+
+          rawScore:
+            dass21StressRaw,
+
+          maximumRawScore:
+            21,
+
+          adjustedScore:
+            dass21StressAdjusted,
+
+          maximumAdjustedScore:
+            42,
+
+          itemNumbers: [
+            1,
+            6,
+            8,
+            11,
+            12,
+            14,
+            18
+          ]
+        },
+
+
         scoringNote:
-          "Project scoring rule: sum all 21 item scores (0-3 each). No DASS-21 severity category is assigned because the provided source page does not include an interpretation formula."
+          "DASS-21 is scored as three separate 7-item scales: Depression, Anxiety, and Stress. Each raw subscale is 0-21. Adult DASS-21 raw subscale scores are multiplied by 2 for comparison with the corresponding full DASS scale. MindTrack does not assign DASS-21 severity labels."
       }
 
     }

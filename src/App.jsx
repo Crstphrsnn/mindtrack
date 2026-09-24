@@ -2616,7 +2616,7 @@ function Dashboard() {
         <section className="panel">
 
           <h2>
-            Recent priority cases
+            Recent cases
           </h2>
 
 
@@ -2992,7 +2992,7 @@ function Assessment() {
         user.program || "",
 
       assessmentVersion:
-        "WHO5-PHQ9-GAD7-DASS21-2026-09",
+        "WHO5-PHQ9-GAD7-DASS21-SUBSCALES-2026-09",
 
       instrumentTitles: [
         WHO5_TITLE,
@@ -3020,32 +3020,6 @@ function Assessment() {
     await addRecord(
       "assessments",
       record
-    );
-
-
-    await addRecord(
-      "notifications",
-      {
-
-        ownerId:
-          user.id,
-
-        title:
-          "Assessment submitted",
-
-        message:
-          `Your psychological assessment was submitted. MindTrack monitoring priority: ${result.priority}.`,
-
-        targetPath:
-          "/monitoring",
-
-        sourceType:
-          "assessment",
-
-        read:
-          false
-
-      }
     );
 
 
@@ -3173,26 +3147,100 @@ function Assessment() {
 
           </section>
 
-          <section className="assessment-result-item">
+          <section className="assessment-result-item dass21-subscale-card">
 
             <span>
-              DASS-21
+              DASS-21 Depression
             </span>
 
             <strong>
               {
                 saved.instrumentResults
                   .dass21
-                  .totalScore
-              }/63
+                  .depression
+                  .adjustedScore
+              }/42
             </strong>
 
             <small>
-              Project raw total
+              Raw:
+              {" "}
+              {
+                saved.instrumentResults
+                  .dass21
+                  .depression
+                  .rawScore
+              }/21
             </small>
 
             <p>
-              Sum of all 21 responses using the requested 0-3 scoring rule.
+              Adjusted DASS-21 Depression score.
+            </p>
+
+          </section>
+
+
+          <section className="assessment-result-item dass21-subscale-card">
+
+            <span>
+              DASS-21 Anxiety
+            </span>
+
+            <strong>
+              {
+                saved.instrumentResults
+                  .dass21
+                  .anxiety
+                  .adjustedScore
+              }/42
+            </strong>
+
+            <small>
+              Raw:
+              {" "}
+              {
+                saved.instrumentResults
+                  .dass21
+                  .anxiety
+                  .rawScore
+              }/21
+            </small>
+
+            <p>
+              Adjusted DASS-21 Anxiety score.
+            </p>
+
+          </section>
+
+
+          <section className="assessment-result-item dass21-subscale-card">
+
+            <span>
+              DASS-21 Stress
+            </span>
+
+            <strong>
+              {
+                saved.instrumentResults
+                  .dass21
+                  .stress
+                  .adjustedScore
+              }/42
+            </strong>
+
+            <small>
+              Raw:
+              {" "}
+              {
+                saved.instrumentResults
+                  .dass21
+                  .stress
+                  .rawScore
+              }/21
+            </small>
+
+            <p>
+              Adjusted DASS-21 Stress score.
             </p>
 
           </section>
@@ -3515,7 +3563,7 @@ function Assessment() {
 
 
             <div className="assessment-score-range">
-              Project total: 0-63
+              3 scales · 7 items each
             </div>
 
           </div>
@@ -3539,17 +3587,37 @@ function Assessment() {
 
           <div className="assessment-source-note">
 
-            Project scoring rule: each item is scored from 0 to 3,
-            then all 21 item scores are added for a total from 0 to 63.
-            This follows your requested PHQ-9-style summation method.
+            DASS-21 is scored as three separate scales:
+
+            <br />
+            Depression:
+            {" "}
+            items 3, 5, 10, 13, 16, 17, and 21.
+
+            <br />
+            Anxiety:
+            {" "}
+            items 2, 4, 7, 9, 15, 19, and 20.
+
+            <br />
+            Stress:
+            {" "}
+            items 1, 6, 8, 11, 12, 14, and 18.
 
             <br />
             <br />
 
-            The provided DASS-21 page lists the 21 questions and
-            0-3 response scale, but it does not provide a severity
-            interpretation formula. MindTrack therefore stores the
-            total score without assigning a DASS-21 severity category.
+            Each scale has 7 items scored from 0 to 3,
+            giving a raw score from 0 to 21.
+            For the adult DASS-21, MindTrack also shows the
+            adjusted score (raw score × 2), from 0 to 42.
+
+            <br />
+            <br />
+
+            MindTrack does not assign DASS-21 severity labels.
+            A counselor should interpret the scores together with
+            the user's overall assessment and situation.
 
           </div>
 
@@ -3657,6 +3725,369 @@ function counselorCollegeLabel(
 
   return cleanValue ||
     "Not provided";
+}
+
+
+function assessmentCaseStatusLabel(
+  value
+) {
+
+  const status =
+    String(
+      value || ""
+    ).trim();
+
+
+  if (
+    status ===
+    "Schedule for counseling"
+  ) {
+
+    return "Counseling is recommended";
+  }
+
+
+  if (
+    status ===
+    "For referral"
+  ) {
+
+    return "Approved";
+  }
+
+
+  return status ||
+    "For review";
+}
+
+
+function isCounselorReviewedAssessment(
+  row
+) {
+
+  return Boolean(
+    row &&
+    row.reviewed === true &&
+    row.reviewedByRole ===
+      "counselor" &&
+    assessmentCaseStatusLabel(
+      row.status
+    ) !== "For review"
+  );
+}
+
+
+function assessmentTrendMetrics(
+  row
+) {
+
+  const results =
+    row?.instrumentResults;
+
+
+  if (!results) {
+    return [];
+  }
+
+
+  const metrics = [];
+
+
+  function addMetric(
+    key,
+    label,
+    value,
+    higherIsBetter
+  ) {
+
+    const numericValue =
+      Number(value);
+
+
+    if (
+      Number.isFinite(
+        numericValue
+      )
+    ) {
+
+      metrics.push({
+        key,
+        label,
+        value:
+          numericValue,
+        higherIsBetter
+      });
+    }
+  }
+
+
+  addMetric(
+    "who5",
+    "WHO-5",
+    results?.who5
+      ?.percentageScore,
+    true
+  );
+
+
+  addMetric(
+    "phq9",
+    "PHQ-9",
+    results?.phq9
+      ?.totalScore,
+    false
+  );
+
+
+  addMetric(
+    "gad7",
+    "GAD-7",
+    results?.gad7
+      ?.totalScore,
+    false
+  );
+
+
+  if (
+    results?.dass21
+      ?.depression
+  ) {
+
+    addMetric(
+      "dass_depression",
+      "DASS-21 Depression",
+      results.dass21
+        .depression
+        .adjustedScore,
+      false
+    );
+
+
+    addMetric(
+      "dass_anxiety",
+      "DASS-21 Anxiety",
+      results.dass21
+        .anxiety
+        .adjustedScore,
+      false
+    );
+
+
+    addMetric(
+      "dass_stress",
+      "DASS-21 Stress",
+      results.dass21
+        .stress
+        .adjustedScore,
+      false
+    );
+
+  } else {
+
+    addMetric(
+      "dass_total",
+      "DASS-21 Legacy Total",
+      results?.dass21
+        ?.totalScore,
+      false
+    );
+  }
+
+
+  return metrics;
+}
+
+
+function compareReviewedAssessmentTrend(
+  current,
+  previous
+) {
+
+  if (
+    !current ||
+    !previous
+  ) {
+
+    return {
+      key:
+        "insufficient",
+
+      label:
+        "Not enough reviewed assessments",
+
+      summary:
+        "At least two counselor-reviewed assessments are needed to determine whether the monitoring trend is improving.",
+
+      improved:
+        0,
+
+      worsened:
+        0,
+
+      unchanged:
+        0,
+
+      compared:
+        0
+    };
+  }
+
+
+  const currentMetrics =
+    assessmentTrendMetrics(
+      current
+    );
+
+
+  const previousMap =
+    new Map(
+      assessmentTrendMetrics(
+        previous
+      ).map(
+        metric => [
+          metric.key,
+          metric
+        ]
+      )
+    );
+
+
+  let improved = 0;
+  let worsened = 0;
+  let unchanged = 0;
+
+
+  currentMetrics.forEach(
+    metric => {
+
+      const previousMetric =
+        previousMap.get(
+          metric.key
+        );
+
+
+      if (!previousMetric) {
+        return;
+      }
+
+
+      if (
+        metric.value ===
+        previousMetric.value
+      ) {
+
+        unchanged += 1;
+        return;
+      }
+
+
+      const isImprovement =
+        metric.higherIsBetter
+          ? metric.value >
+            previousMetric.value
+          : metric.value <
+            previousMetric.value;
+
+
+      if (isImprovement) {
+
+        improved += 1;
+
+      } else {
+
+        worsened += 1;
+      }
+    }
+  );
+
+
+  const compared =
+    improved +
+    worsened +
+    unchanged;
+
+
+  if (compared === 0) {
+
+    return {
+      key:
+        "insufficient",
+
+      label:
+        "Not enough comparable results",
+
+      summary:
+        "The two reviewed assessments do not contain enough matching scores to determine a monitoring trend.",
+
+      improved,
+      worsened,
+      unchanged,
+      compared
+    };
+  }
+
+
+  if (
+    improved >
+    worsened
+  ) {
+
+    return {
+      key:
+        "improving",
+
+      label:
+        "Improving",
+
+      summary:
+        `${improved} of ${compared} comparable indicators improved, ${worsened} moved in a less favorable direction, and ${unchanged} stayed the same.`,
+
+      improved,
+      worsened,
+      unchanged,
+      compared
+    };
+  }
+
+
+  if (
+    worsened >
+    improved
+  ) {
+
+    return {
+      key:
+        "not-improving",
+
+      label:
+        "Not improving",
+
+      summary:
+        `${worsened} of ${compared} comparable indicators moved in a less favorable direction, ${improved} improved, and ${unchanged} stayed the same.`,
+
+      improved,
+      worsened,
+      unchanged,
+      compared
+    };
+  }
+
+
+  return {
+    key:
+      "no-clear-change",
+
+    label:
+      "No clear change",
+
+    summary:
+      `${improved} of ${compared} comparable indicators improved, ${worsened} moved in a less favorable direction, and ${unchanged} stayed the same.`,
+
+    improved,
+    worsened,
+    unchanged,
+    compared
+  };
 }
 
 
@@ -4421,6 +4852,14 @@ function Consultations() {
     useAuth();
 
 
+  const location =
+    useLocation();
+
+
+  const navigate =
+    useNavigate();
+
+
   const rows =
     useRows(
       "consultations",
@@ -4471,6 +4910,91 @@ function Consultations() {
     savingEdit,
     setSavingEdit
   ] = useState(false);
+
+
+  const requestedRequestId =
+    location.state
+      ?.requestId ||
+    "";
+
+
+  useEffect(
+    () => {
+
+      if (
+        !requestedRequestId ||
+        rows.length === 0
+      ) {
+
+        return;
+      }
+
+
+      const targetExists =
+        rows.some(
+          row =>
+            row.id ===
+            requestedRequestId
+        );
+
+
+      if (!targetExists) {
+        return;
+      }
+
+
+      const timer =
+        window.setTimeout(
+          () => {
+
+            const element =
+              document.getElementById(
+                `consultation-${requestedRequestId}`
+              );
+
+
+            element?.scrollIntoView({
+              behavior:
+                "smooth",
+
+              block:
+                "center"
+            });
+          },
+          120
+        );
+
+
+      return () =>
+        window.clearTimeout(
+          timer
+        );
+
+    },
+
+    [
+      requestedRequestId,
+      rows
+    ]
+  );
+
+
+  function clearNotificationNavigation() {
+
+    if (
+      location.state
+        ?.fromNotification
+    ) {
+
+      navigate(
+        location.pathname,
+        {
+          replace: true,
+          state: {}
+        }
+      );
+    }
+  }
 
 
   function validateRequestDate(
@@ -5114,10 +5638,23 @@ function Consultations() {
 
                     <article
 
-                      className="record-card"
+                      id={
+                        `consultation-${row.id}`
+                      }
+
+                      className={
+                        row.id ===
+                          requestedRequestId
+                          ? "record-card notification-target-highlight"
+                          : "record-card"
+                      }
 
                       key={
                         row.id
+                      }
+
+                      onClick={
+                        clearNotificationNavigation
                       }
 
                     >
@@ -7803,13 +8340,23 @@ function UserNotificationsContent({
     useNavigate();
 
 
-  const rows =
+  const allRows =
     useRows(
       "notifications",
       {
         ownerId:
           user.id
       }
+    );
+
+
+  const rows =
+    allRows.filter(
+      row =>
+        row.notificationType ===
+          "counselor_update" &&
+        row.senderRole ===
+          "counselor"
     );
 
 
@@ -7844,6 +8391,52 @@ function UserNotificationsContent({
         "Unable to mark notification as read:",
         error
       );
+    }
+
+
+    if (
+      row.sourceType ===
+        "consultation" &&
+      row.sourceId
+    ) {
+
+      navigate(
+        "/consultations",
+        {
+          state: {
+            requestId:
+              row.sourceId,
+
+            fromNotification:
+              true
+          }
+        }
+      );
+
+      return;
+    }
+
+
+    if (
+      row.sourceType ===
+        "assessment" &&
+      row.sourceId
+    ) {
+
+      navigate(
+        "/monitoring",
+        {
+          state: {
+            assessmentId:
+              row.sourceId,
+
+            fromNotification:
+              true
+          }
+        }
+      );
+
+      return;
     }
 
 
@@ -7902,7 +8495,7 @@ function UserNotificationsContent({
 
         title="Notifications"
 
-        subtitle="Updates about your psychological assessment cases and counseling requests."
+        subtitle="Counselor updates about your psychological assessment cases and counseling requests."
 
       />
 
@@ -8034,13 +8627,22 @@ function UserNotificationsContent({
                       </p>
 
 
-                      <small>
-                        {
-                          formatRecordDateTime(
-                            row.createdAt
-                          )
-                        }
-                      </small>
+                      <div className="notification-meta-row">
+
+                        <small>
+                          {
+                            formatRecordDateTime(
+                              row.createdAt
+                            )
+                          }
+                        </small>
+
+
+                        <span className="notification-open-link">
+                          View update →
+                        </span>
+
+                      </div>
 
                     </div>
 
@@ -8103,6 +8705,10 @@ function UserMonitoringContent({
     useNavigate();
 
 
+  const location =
+    useLocation();
+
+
   const assessments =
     useRows(
       "assessments",
@@ -8113,14 +8719,133 @@ function UserMonitoringContent({
     );
 
 
+  const requestedAssessmentId =
+    location.state
+      ?.assessmentId ||
+    "";
+
+
+  const reviewedAssessments =
+    [...assessments]
+      .filter(
+        isCounselorReviewedAssessment
+      )
+      .sort(
+        (a, b) => {
+
+          const aDate =
+            recordDateObject(
+              a.createdAt
+            );
+
+
+          const bDate =
+            recordDateObject(
+              b.createdAt
+            );
+
+
+          return (
+            (bDate?.getTime() || 0) -
+            (aDate?.getTime() || 0)
+          );
+        }
+      );
+
+
+  const pendingAssessments =
+    assessments.filter(
+      row =>
+        !isCounselorReviewedAssessment(
+          row
+        )
+    );
+
+
   const latest =
-    assessments[0] ||
+    reviewedAssessments[0] ||
     null;
+
+
+  const previous =
+    reviewedAssessments[1] ||
+    null;
+
+
+  const trend =
+    compareReviewedAssessmentTrend(
+      latest,
+      previous
+    );
 
 
   const latestResults =
     latest?.instrumentResults ||
     null;
+
+
+  const notificationAssessment =
+    requestedAssessmentId
+      ? reviewedAssessments.find(
+          row =>
+            row.id ===
+            requestedAssessmentId
+        )
+      : null;
+
+
+  const openedFromNotification =
+    Boolean(
+      notificationAssessment
+    );
+
+
+  useEffect(
+    () => {
+
+      if (
+        !requestedAssessmentId ||
+        !notificationAssessment
+      ) {
+
+        return undefined;
+      }
+
+
+      const timer =
+        window.setTimeout(
+          () => {
+
+            const element =
+              document.getElementById(
+                `monitoring-assessment-${requestedAssessmentId}`
+              );
+
+
+            element?.scrollIntoView({
+              behavior:
+                "smooth",
+
+              block:
+                "center"
+            });
+          },
+          160
+        );
+
+
+      return () =>
+        window.clearTimeout(
+          timer
+        );
+
+    },
+
+    [
+      requestedAssessmentId,
+      notificationAssessment
+    ]
+  );
 
 
   return (
@@ -8131,12 +8856,12 @@ function UserMonitoringContent({
 
         title="Mental Health Monitoring"
 
-        subtitle="Review your latest screening results and previous assessment records."
+        subtitle="Your current monitoring state and trend are based only on assessments reviewed by a Guidance Counselor."
 
       />
 
 
-      {!latest
+      {assessments.length === 0
 
         ? (
 
@@ -8151,7 +8876,7 @@ function UserMonitoringContent({
             </h2>
 
             <p>
-              Complete a psychological assessment first so MindTrack can display your monitoring information.
+              Complete a psychological assessment first. Your Monitoring page will show a current state after a Guidance Counselor reviews the assessment.
             </p>
 
 
@@ -8176,418 +8901,750 @@ function UserMonitoringContent({
 
         )
 
-        : (
+        : !latest
 
-          <>
+          ? (
 
-            <section className="panel monitoring-summary-panel">
+            <section className="panel monitoring-review-gate">
 
-              <div className="monitoring-summary-header">
-
-                <div>
-
-                  <span className="monitoring-kicker">
-                    Current Monitoring State
-                  </span>
-
-                  <h2>
-                    Based on your latest assessment
-                  </h2>
-
-                  <p>
-                    {
-                      formatRecordDateTime(
-                        latest.createdAt
-                      )
-                    }
-                  </p>
-
-                </div>
-
-
-                <span
-                  className={
-                    priorityClassName(
-                      latest.priority
-                    )
-                  }
-                >
-                  {
-                    latest.priority ||
-                    "No priority"
-                  }
-                </span>
-
-              </div>
-
-
-              <div className="monitoring-status-grid">
-
-                <div className="monitoring-status-item">
-
-                  <span>
-                    Counselor Review Status
-                  </span>
-
-                  <strong>
-                    {
-                      latest.status ||
-                      "For review"
-                    }
-                  </strong>
-
-                </div>
-
-
-                <div className="monitoring-status-item">
-
-                  <span>
-                    Assessment Version
-                  </span>
-
-                  <strong>
-                    {
-                      latest.assessmentVersion ||
-                      "Legacy assessment"
-                    }
-                  </strong>
-
-                </div>
-
-              </div>
-
-
-              {latest.counselorRemarks && (
-
-                <div className="monitoring-counselor-note">
-
-                  <strong>
-                    Counselor Remark
-                  </strong>
-
-                  <p>
-                    {
-                      latest.counselorRemarks
-                    }
-                  </p>
-
-                </div>
-
-              )}
-
-            </section>
-
-
-            {latestResults
-
-              ? (
-
-                <section className="monitoring-score-grid">
-
-                  <article className="panel monitoring-score-card">
-
-                    <span>
-                      WHO-5 Well-Being
-                    </span>
-
-                    <strong>
-                      {
-                        latestResults
-                          ?.who5
-                          ?.percentageScore ??
-                        "—"
-                      }
-                      /100
-                    </strong>
-
-                    <small>
-                      Raw:
-                      {" "}
-                      {
-                        latestResults
-                          ?.who5
-                          ?.rawScore ??
-                        "—"
-                      }
-                      /25
-                    </small>
-
-                    <p>
-                      {
-                        latestResults
-                          ?.who5
-                          ?.interpretation ||
-                        "No interpretation available."
-                      }
-                    </p>
-
-                  </article>
-
-
-                  <article className="panel monitoring-score-card">
-
-                    <span>
-                      PHQ-9
-                    </span>
-
-                    <strong>
-                      {
-                        latestResults
-                          ?.phq9
-                          ?.totalScore ??
-                        "—"
-                      }
-                      /27
-                    </strong>
-
-                    <small>
-                      {
-                        latestResults
-                          ?.phq9
-                          ?.severity ||
-                        "No severity available"
-                      }
-                    </small>
-
-                  </article>
-
-
-                  <article className="panel monitoring-score-card">
-
-                    <span>
-                      GAD-7
-                    </span>
-
-                    <strong>
-                      {
-                        latestResults
-                          ?.gad7
-                          ?.totalScore ??
-                        "—"
-                      }
-                      /21
-                    </strong>
-
-                    <small>
-                      {
-                        latestResults
-                          ?.gad7
-                          ?.severity ||
-                        "No severity available"
-                      }
-                    </small>
-
-                  </article>
-
-
-                  <article className="panel monitoring-score-card">
-
-                    <span>
-                      DASS-21
-                    </span>
-
-                    <strong>
-                      {
-                        latestResults
-                          ?.dass21
-                          ?.totalScore ??
-                        "—"
-                      }
-                      /63
-                    </strong>
-
-                    <small>
-                      Project raw total
-                    </small>
-
-                  </article>
-
-                </section>
-
-              )
-
-              : (
-
-                <section className="panel">
-
-                  <div className="notice">
-                    This is an older assessment record. Detailed WHO-5, PHQ-9, GAD-7, and DASS-21 results are not available for this record.
-                  </div>
-
-                </section>
-
-              )
-            }
-
-
-            <section className="panel monitoring-guidance-panel">
+              <Activity
+                size={42}
+              />
 
               <h2>
-                Monitoring Guidance
+                Awaiting counselor review
               </h2>
 
               <p>
-                {
-                  latest.recommendation ||
-                  "Continue monitoring your well-being and contact the Guidance and Counseling Unit if you need support."
-                }
+                You have submitted an assessment, but MindTrack will not display a current mental health monitoring state until a Guidance Counselor has reviewed the case and selected a reviewed status.
               </p>
 
 
               <div className="notice">
-                MindTrack displays screening and monitoring information only. These results are not a medical or psychological diagnosis. A Guidance Counselor should interpret concerns together with your situation and professional assessment.
+                Your assessment scores are not used here as your current monitoring state while the case is still marked for review.
               </div>
+
+
+              <span className="monitoring-pending-count">
+                {
+                  pendingAssessments.length
+                }
+                {" "}
+                assessment
+                {
+                  pendingAssessments.length === 1
+                    ? ""
+                    : "s"
+                }
+                {" "}
+                awaiting counselor review
+              </span>
 
             </section>
 
+          )
 
-            <section className="panel">
+          : (
 
-              <div className="monitoring-history-heading">
+            <>
 
-                <div>
+              {openedFromNotification && (
 
-                  <h2>
-                    Assessment Monitoring History
-                  </h2>
+                <section className="monitoring-notification-banner">
+                  You opened Monitoring from a counselor notification. Your current state below still uses your latest counselor-reviewed assessment.
+                </section>
 
-                  <p>
-                    Newest assessment first.
-                  </p>
+              )}
+
+
+              <section className="panel monitoring-summary-panel">
+
+                <div className="monitoring-summary-header">
+
+                  <div>
+
+                    <span className="monitoring-kicker">
+                      Current Reviewed Monitoring State
+                    </span>
+
+                    <h2>
+                      Based on your latest counselor-reviewed assessment
+                    </h2>
+
+                    <p>
+                      Assessment taken:
+                      {" "}
+                      {
+                        formatRecordDateTime(
+                          latest.createdAt
+                        )
+                      }
+                    </p>
+
+                  </div>
+
+
+                  <span
+                    className={
+                      priorityClassName(
+                        latest.priority
+                      )
+                    }
+                  >
+                    {
+                      latest.priority ||
+                      "No priority"
+                    }
+                  </span>
 
                 </div>
 
 
-                <button
+                <div className="monitoring-status-grid">
 
-                  type="button"
+                  <div className="monitoring-status-item">
 
-                  className="secondary-button"
+                    <span>
+                      Counselor Review Status
+                    </span>
 
-                  onClick={
-                    () =>
-                      navigate(
-                        "/assessment"
-                      )
-                  }
-
-                >
-                  Take another assessment
-                </button>
-
-              </div>
-
-
-              <div className="monitoring-history-list">
-
-                {assessments.map(
-                  row => (
-
-                    <article
-
-                      key={
-                        row.id
+                    <strong>
+                      {
+                        assessmentCaseStatusLabel(
+                          latest.status
+                        )
                       }
+                    </strong>
 
-                      className="monitoring-history-card"
-
-                    >
-
-                      <div>
-
-                        <strong>
-                          {
-                            formatRecordDateTime(
-                              row.createdAt
-                            )
-                          }
-                        </strong>
-
-                        <small>
-                          {
-                            row.status ||
-                            "For review"
-                          }
-                        </small>
-
-                      </div>
+                  </div>
 
 
-                      <span
-                        className={
-                          priorityClassName(
-                            row.priority
-                          )
-                        }
-                      >
-                        {
-                          row.priority ||
-                          "No priority"
-                        }
+                  <div className="monitoring-status-item">
+
+                    <span>
+                      Reviewed By
+                    </span>
+
+                    <strong>
+                      {
+                        latest.reviewedByName ||
+                        "Guidance Counselor"
+                      }
+                    </strong>
+
+                  </div>
+
+                </div>
+
+
+                {latest.counselorRemarks && (
+
+                  <div className="monitoring-counselor-note">
+
+                    <strong>
+                      Counselor Remark
+                    </strong>
+
+                    <p>
+                      {
+                        latest.counselorRemarks
+                      }
+                    </p>
+
+                  </div>
+
+                )}
+
+              </section>
+
+
+              <section
+                className={
+                  `panel monitoring-trend-panel ${trend.key}`
+                }
+              >
+
+                <div className="monitoring-trend-header">
+
+                  <div>
+
+                    <span className="monitoring-kicker">
+                      Monitoring Trend
+                    </span>
+
+                    <h2>
+                      {
+                        trend.label
+                      }
+                    </h2>
+
+                  </div>
+
+
+                  <Activity
+                    size={28}
+                  />
+
+                </div>
+
+
+                <p>
+                  {
+                    trend.summary
+                  }
+                </p>
+
+
+                {previous && (
+
+                  <small>
+                    Compared with the previous counselor-reviewed assessment from
+                    {" "}
+                    {
+                      formatRecordDateTime(
+                        previous.createdAt
+                      )
+                    }.
+                  </small>
+
+                )}
+
+
+                <div className="notice monitoring-trend-note">
+                  This trend is a simple comparison of the available screening scores. It is a monitoring aid and not a diagnosis or a substitute for a counselor's professional assessment.
+                </div>
+
+              </section>
+
+
+              {latestResults
+
+                ? (
+
+                  <section className="monitoring-score-grid">
+
+                    <article className="panel monitoring-score-card">
+
+                      <span>
+                        WHO-5 Well-Being
                       </span>
 
+                      <strong>
+                        {
+                          latestResults
+                            ?.who5
+                            ?.percentageScore ??
+                          "—"
+                        }
+                        /100
+                      </strong>
 
-                      <div className="monitoring-history-scores">
+                      <small>
+                        Raw:
+                        {" "}
+                        {
+                          latestResults
+                            ?.who5
+                            ?.rawScore ??
+                          "—"
+                        }
+                        /25
+                      </small>
 
-                        <span>
-                          WHO-5:
-                          {" "}
-                          {
-                            row.instrumentResults
-                              ?.who5
-                              ?.percentageScore ??
-                            row.score ??
-                            "—"
-                          }
-                        </span>
-
-                        <span>
-                          PHQ-9:
-                          {" "}
-                          {
-                            row.instrumentResults
-                              ?.phq9
-                              ?.totalScore ??
-                            "—"
-                          }
-                        </span>
-
-                        <span>
-                          GAD-7:
-                          {" "}
-                          {
-                            row.instrumentResults
-                              ?.gad7
-                              ?.totalScore ??
-                            "—"
-                          }
-                        </span>
-
-                        <span>
-                          DASS-21:
-                          {" "}
-                          {
-                            row.instrumentResults
-                              ?.dass21
-                              ?.totalScore ??
-                            "—"
-                          }
-                        </span>
-
-                      </div>
+                      <p>
+                        {
+                          latestResults
+                            ?.who5
+                            ?.interpretation ||
+                          "No interpretation available."
+                        }
+                      </p>
 
                     </article>
 
-                  )
-                )}
 
-              </div>
+                    <article className="panel monitoring-score-card">
 
-            </section>
+                      <span>
+                        PHQ-9
+                      </span>
 
-          </>
+                      <strong>
+                        {
+                          latestResults
+                            ?.phq9
+                            ?.totalScore ??
+                          "—"
+                        }
+                        /27
+                      </strong>
 
-        )
+                      <small>
+                        {
+                          latestResults
+                            ?.phq9
+                            ?.severity ||
+                          "No severity available"
+                        }
+                      </small>
+
+                    </article>
+
+
+                    <article className="panel monitoring-score-card">
+
+                      <span>
+                        GAD-7
+                      </span>
+
+                      <strong>
+                        {
+                          latestResults
+                            ?.gad7
+                            ?.totalScore ??
+                          "—"
+                        }
+                        /21
+                      </strong>
+
+                      <small>
+                        {
+                          latestResults
+                            ?.gad7
+                            ?.severity ||
+                          "No severity available"
+                        }
+                      </small>
+
+                    </article>
+
+
+                    {latestResults
+                      ?.dass21
+                      ?.depression
+
+                      ? (
+
+                        <>
+
+                          <article className="panel monitoring-score-card">
+
+                            <span>
+                              DASS-21 Depression
+                            </span>
+
+                            <strong>
+                              {
+                                latestResults
+                                  .dass21
+                                  .depression
+                                  .adjustedScore
+                              }
+                              /42
+                            </strong>
+
+                            <small>
+                              Raw:
+                              {" "}
+                              {
+                                latestResults
+                                  .dass21
+                                  .depression
+                                  .rawScore
+                              }
+                              /21
+                            </small>
+
+                          </article>
+
+
+                          <article className="panel monitoring-score-card">
+
+                            <span>
+                              DASS-21 Anxiety
+                            </span>
+
+                            <strong>
+                              {
+                                latestResults
+                                  .dass21
+                                  .anxiety
+                                  .adjustedScore
+                              }
+                              /42
+                            </strong>
+
+                            <small>
+                              Raw:
+                              {" "}
+                              {
+                                latestResults
+                                  .dass21
+                                  .anxiety
+                                  .rawScore
+                              }
+                              /21
+                            </small>
+
+                          </article>
+
+
+                          <article className="panel monitoring-score-card">
+
+                            <span>
+                              DASS-21 Stress
+                            </span>
+
+                            <strong>
+                              {
+                                latestResults
+                                  .dass21
+                                  .stress
+                                  .adjustedScore
+                              }
+                              /42
+                            </strong>
+
+                            <small>
+                              Raw:
+                              {" "}
+                              {
+                                latestResults
+                                  .dass21
+                                  .stress
+                                  .rawScore
+                              }
+                              /21
+                            </small>
+
+                          </article>
+
+                        </>
+
+                      )
+
+                      : (
+
+                        <article className="panel monitoring-score-card">
+
+                          <span>
+                            DASS-21 Legacy Total
+                          </span>
+
+                          <strong>
+                            {
+                              latestResults
+                                ?.dass21
+                                ?.totalScore ??
+                              "—"
+                            }
+                            /63
+                          </strong>
+
+                          <small>
+                            Older record without separate subscale scores
+                          </small>
+
+                        </article>
+
+                      )
+                    }
+
+                  </section>
+
+                )
+
+                : (
+
+                  <section className="panel">
+
+                    <div className="notice">
+                      This counselor-reviewed record is an older assessment. Detailed standardized instrument results are not available for this record.
+                    </div>
+
+                  </section>
+
+                )
+              }
+
+
+              <section className="panel monitoring-guidance-panel">
+
+                <h2>
+                  Monitoring Guidance
+                </h2>
+
+                <p>
+                  {
+                    latest.recommendation ||
+                    "Continue monitoring your well-being and contact the Guidance and Counseling Unit if you need support."
+                  }
+                </p>
+
+
+                <div className="notice">
+                  MindTrack displays screening and monitoring information only. These results are not a medical or psychological diagnosis. A Guidance Counselor should interpret concerns together with your situation and professional assessment.
+                </div>
+
+              </section>
+
+
+              <section className="panel">
+
+                <div className="monitoring-history-heading">
+
+                  <div>
+
+                    <h2>
+                      Counselor-Reviewed Assessment History
+                    </h2>
+
+                    <p>
+                      Only counselor-reviewed assessments are used in your current state and monitoring trend. Newest reviewed assessment first.
+                    </p>
+
+                  </div>
+
+
+                  <button
+
+                    type="button"
+
+                    className="secondary-button"
+
+                    onClick={
+                      () =>
+                        navigate(
+                          "/assessment"
+                        )
+                    }
+
+                  >
+                    Take another assessment
+                  </button>
+
+                </div>
+
+
+                <div className="monitoring-history-list">
+
+                  {reviewedAssessments.map(
+                    row => (
+
+                      <article
+
+                        id={
+                          `monitoring-assessment-${row.id}`
+                        }
+
+                        key={
+                          row.id
+                        }
+
+                        className={
+                          row.id ===
+                            requestedAssessmentId
+                            ? "monitoring-history-card notification-target-highlight"
+                            : "monitoring-history-card"
+                        }
+
+                      >
+
+                        <div>
+
+                          <strong>
+                            {
+                              formatRecordDateTime(
+                                row.createdAt
+                              )
+                            }
+                          </strong>
+
+                          <small>
+                            {
+                              assessmentCaseStatusLabel(
+                                row.status
+                              )
+                            }
+                          </small>
+
+                        </div>
+
+
+                        <span
+                          className={
+                            priorityClassName(
+                              row.priority
+                            )
+                          }
+                        >
+                          {
+                            row.priority ||
+                            "No priority"
+                          }
+                        </span>
+
+
+                        <div className="monitoring-history-scores">
+
+                          <span>
+                            WHO-5:
+                            {" "}
+                            {
+                              row.instrumentResults
+                                ?.who5
+                                ?.percentageScore ??
+                              row.score ??
+                              "—"
+                            }
+                          </span>
+
+                          <span>
+                            PHQ-9:
+                            {" "}
+                            {
+                              row.instrumentResults
+                                ?.phq9
+                                ?.totalScore ??
+                              "—"
+                            }
+                          </span>
+
+                          <span>
+                            GAD-7:
+                            {" "}
+                            {
+                              row.instrumentResults
+                                ?.gad7
+                                ?.totalScore ??
+                              "—"
+                            }
+                          </span>
+
+                          {row.instrumentResults
+                            ?.dass21
+                            ?.depression
+
+                            ? (
+
+                              <>
+
+                                <span>
+                                  DASS-D:
+                                  {" "}
+                                  {
+                                    row.instrumentResults
+                                      .dass21
+                                      .depression
+                                      .adjustedScore
+                                  }
+                                </span>
+
+                                <span>
+                                  DASS-A:
+                                  {" "}
+                                  {
+                                    row.instrumentResults
+                                      .dass21
+                                      .anxiety
+                                      .adjustedScore
+                                  }
+                                </span>
+
+                                <span>
+                                  DASS-S:
+                                  {" "}
+                                  {
+                                    row.instrumentResults
+                                      .dass21
+                                      .stress
+                                      .adjustedScore
+                                  }
+                                </span>
+
+                              </>
+
+                            )
+
+                            : (
+
+                              <span>
+                                DASS-21 legacy total:
+                                {" "}
+                                {
+                                  row.instrumentResults
+                                    ?.dass21
+                                    ?.totalScore ??
+                                  "—"
+                                }
+                              </span>
+
+                            )
+                          }
+
+                        </div>
+
+                      </article>
+
+                    )
+                  )}
+
+                </div>
+
+              </section>
+
+
+              {pendingAssessments.length > 0 && (
+
+                <section className="panel monitoring-pending-panel">
+
+                  <h2>
+                    Awaiting Counselor Review
+                  </h2>
+
+                  <p>
+                    These assessments are not included in your current state or trend until a Guidance Counselor reviews them.
+                  </p>
+
+
+                  <div className="monitoring-pending-list">
+
+                    {pendingAssessments.map(
+                      row => (
+
+                        <div
+                          key={
+                            row.id
+                          }
+                          className="monitoring-pending-item"
+                        >
+
+                          <strong>
+                            {
+                              formatRecordDateTime(
+                                row.createdAt
+                              )
+                            }
+                          </strong>
+
+                          <span>
+                            Awaiting counselor review
+                          </span>
+
+                        </div>
+
+                      )
+                    )}
+
+                  </div>
+
+                </section>
+
+              )}
+
+            </>
+
+          )
       }
 
     </>
@@ -8752,6 +9809,112 @@ function Cases() {
     );
 
 
+  function ownerKey(
+    row
+  ) {
+
+    if (row.ownerId) {
+      return row.ownerId;
+    }
+
+
+    return [
+      "legacy",
+      row.ownerName || "unknown",
+      row.department || "unknown",
+      row.program || "unknown"
+    ].join("::");
+  }
+
+
+  function assessmentDateValue(
+    row
+  ) {
+
+    const date =
+      recordDateObject(
+        row.createdAt
+      );
+
+
+    return date
+      ? date.getTime()
+      : 0;
+  }
+
+
+  const groupedCases =
+    new Map();
+
+
+  rows.forEach(
+    row => {
+
+      const key =
+        ownerKey(row);
+
+
+      if (
+        !groupedCases.has(
+          key
+        )
+      ) {
+
+        groupedCases.set(
+          key,
+          []
+        );
+      }
+
+
+      groupedCases
+        .get(key)
+        .push(row);
+    }
+  );
+
+
+  const accountCaseRows =
+    Array.from(
+      groupedCases.entries()
+    )
+      .map(
+        ([
+          key,
+          history
+        ]) => {
+
+          const sortedHistory =
+            [...history]
+              .sort(
+                (a, b) =>
+                  assessmentDateValue(b) -
+                  assessmentDateValue(a)
+              );
+
+
+          const latest =
+            sortedHistory[0];
+
+
+          return {
+            ...latest,
+
+            assessmentOwnerKey:
+              key,
+
+            assessmentCount:
+              sortedHistory.length
+          };
+        }
+      )
+      .sort(
+        (a, b) =>
+          assessmentDateValue(b) -
+          assessmentDateValue(a)
+      );
+
+
   const [
     collegeFilter,
     setCollegeFilter
@@ -8773,7 +9936,7 @@ function Cases() {
   const caseCollegeOptions =
     Array.from(
       new Set(
-        rows.map(
+        accountCaseRows.map(
           row =>
             counselorCollegeLabel(
               row.department
@@ -8788,7 +9951,7 @@ function Cases() {
 
 
   const caseRowsForProgramOptions =
-    rows.filter(
+    accountCaseRows.filter(
       row => {
 
         if (
@@ -8828,7 +9991,7 @@ function Cases() {
 
 
   const filteredCaseRows =
-    rows.filter(
+    accountCaseRows.filter(
       row => {
 
         const college =
@@ -8878,8 +10041,16 @@ function Cases() {
     );
 
 
-  const [selected, setSelected] =
-    useState(null);
+  const [
+    selectedOwnerKey,
+    setSelectedOwnerKey
+  ] = useState("");
+
+
+  const [
+    selected,
+    setSelected
+  ] = useState(null);
 
 
   const [
@@ -8902,25 +10073,47 @@ function Cases() {
 
   const assessmentStatuses = [
     "For review",
-    "Schedule for counseling",
+    "Counseling is recommended",
     "Follow up is recommended",
     "Counseling is optional",
-    "For referral"
+    "Approved"
   ];
 
 
-  function selectAssessmentCase(
+  const selectedHistory =
+    selectedOwnerKey
+      ? rows
+          .filter(
+            row =>
+              ownerKey(row) ===
+              selectedOwnerKey
+          )
+          .sort(
+            (a, b) =>
+              assessmentDateValue(b) -
+              assessmentDateValue(a)
+          )
+      : [];
+
+
+  function selectAssessmentVersion(
     row
   ) {
 
     setSelected(row);
 
 
+    const normalizedStatus =
+      assessmentCaseStatusLabel(
+        row.status
+      );
+
+
     setStatusDraft(
       assessmentStatuses.includes(
-        row.status
+        normalizedStatus
       )
-        ? row.status
+        ? normalizedStatus
         : "For review"
     );
 
@@ -8929,6 +10122,29 @@ function Cases() {
       row.counselorRemarks ||
       ""
     );
+  }
+
+
+  function selectAssessmentAccount(
+    row
+  ) {
+
+    setSelectedOwnerKey(
+      row.assessmentOwnerKey ||
+      ownerKey(row)
+    );
+
+
+    selectAssessmentVersion(
+      row
+    );
+  }
+
+
+  function closeAssessmentReview() {
+
+    setSelected(null);
+    setSelectedOwnerKey("");
   }
 
 
@@ -8953,7 +10169,7 @@ function Cases() {
           "Escape"
         ) {
 
-          setSelected(null);
+          closeAssessmentReview();
         }
       }
 
@@ -9011,16 +10227,45 @@ function Cases() {
           );
 
 
+      const assessmentUpdate = {
+
+        counselorRemarks:
+          remarksDraft,
+
+        status:
+          statusDraft
+
+      };
+
+
+      if (
+        user.role ===
+        "counselor"
+      ) {
+
+        assessmentUpdate.reviewed =
+          statusDraft !==
+          "For review";
+
+
+        assessmentUpdate.reviewedById =
+          user.id;
+
+
+        assessmentUpdate.reviewedByName =
+          user.name ||
+          "Guidance Counselor";
+
+
+        assessmentUpdate.reviewedByRole =
+          "counselor";
+      }
+
+
       await updateRecord(
         "assessments",
         selected.id,
-        {
-          counselorRemarks:
-            remarksDraft,
-
-          status:
-            statusDraft
-        }
+        assessmentUpdate
       );
 
 
@@ -9030,7 +10275,8 @@ function Cases() {
 
       if (
         assessmentChanged &&
-        selected.ownerId
+        selected.ownerId &&
+        user.role === "counselor"
       ) {
 
         try {
@@ -9043,10 +10289,23 @@ function Cases() {
                 selected.ownerId,
 
               title:
-                "Assessment case updated",
+                "Assessment case updated by counselor",
 
               message:
-                `Your psychological assessment case was updated. Status: ${statusDraft}.${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
+                `Your counselor updated your psychological assessment case. Status: ${statusDraft}.${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
+
+              notificationType:
+                "counselor_update",
+
+              senderRole:
+                "counselor",
+
+              senderId:
+                user.id,
+
+              senderName:
+                user.name ||
+                "Guidance Counselor",
 
               targetPath:
                 "/monitoring",
@@ -9079,15 +10338,36 @@ function Cases() {
       }
 
 
-      setSelected({
-        ...selected,
+      setSelected(
+        current => ({
+          ...current,
 
-        counselorRemarks:
-          remarksDraft,
+          counselorRemarks:
+            remarksDraft,
 
-        status:
-          statusDraft
-      });
+          status:
+            statusDraft,
+
+          ...(user.role ===
+            "counselor"
+            ? {
+                reviewed:
+                  statusDraft !==
+                  "For review",
+
+                reviewedById:
+                  user.id,
+
+                reviewedByName:
+                  user.name ||
+                  "Guidance Counselor",
+
+                reviewedByRole:
+                  "counselor"
+              }
+            : {})
+        })
+      );
 
 
       alert(
@@ -9116,6 +10396,133 @@ function Cases() {
   }
 
 
+  function renderHistoryScores(
+    row
+  ) {
+
+    if (!row.instrumentResults) {
+
+      return (
+
+        <div className="assessment-history-score-list">
+
+          <span>
+            Legacy score:
+            {" "}
+            {
+              row.score ??
+              "—"
+            }
+          </span>
+
+        </div>
+
+      );
+    }
+
+
+    const dass =
+      row.instrumentResults
+        ?.dass21;
+
+
+    return (
+
+      <div className="assessment-history-score-list">
+
+        <span>
+          WHO-5:
+          {" "}
+          {
+            row.instrumentResults
+              ?.who5
+              ?.percentageScore ??
+            "—"
+          }/100
+        </span>
+
+
+        <span>
+          PHQ-9:
+          {" "}
+          {
+            row.instrumentResults
+              ?.phq9
+              ?.totalScore ??
+            "—"
+          }/27
+        </span>
+
+
+        <span>
+          GAD-7:
+          {" "}
+          {
+            row.instrumentResults
+              ?.gad7
+              ?.totalScore ??
+            "—"
+          }/21
+        </span>
+
+
+        {dass?.depression
+
+          ? (
+
+            <>
+
+              <span>
+                DASS-D:
+                {" "}
+                {
+                  dass.depression
+                    .adjustedScore
+                }/42
+              </span>
+
+              <span>
+                DASS-A:
+                {" "}
+                {
+                  dass.anxiety
+                    .adjustedScore
+                }/42
+              </span>
+
+              <span>
+                DASS-S:
+                {" "}
+                {
+                  dass.stress
+                    .adjustedScore
+                }/42
+              </span>
+
+            </>
+
+          )
+
+          : (
+
+            <span>
+              DASS-21:
+              {" "}
+              {
+                dass?.totalScore ??
+                "—"
+              }/63
+            </span>
+
+          )
+        }
+
+      </div>
+
+    );
+  }
+
+
   return (
 
     <>
@@ -9128,7 +10535,7 @@ function Cases() {
             : "Psychological Assessment Cases"
         }
 
-        subtitle="Review psychological assessment results and update intervention status."
+        subtitle="One account is shown per user. Open Review to see the user's complete assessment history and manage individual assessment records."
 
       />
 
@@ -9146,8 +10553,8 @@ function Cases() {
             <p>
               {
                 isSuperAdmin
-                  ? "Filter cases by college, program, and monitoring priority."
-                  : "Filter cases by program and monitoring priority."
+                  ? "Filter user cases by college, program, and latest monitoring priority."
+                  : "Filter user cases by program and latest monitoring priority."
               }
             </p>
 
@@ -9162,8 +10569,10 @@ function Cases() {
             of
             {" "}
             {
-              rows.length
+              accountCaseRows.length
             }
+            {" "}
+            accounts
           </span>
 
         </div>
@@ -9313,14 +10722,14 @@ function Cases() {
         </h2>
 
 
-        <CaseTable
+        <AssessmentAccountTable
 
           rows={
             filteredCaseRows
           }
 
           onSelect={
-            selectAssessmentCase
+            selectAssessmentAccount
           }
 
           showCollege={
@@ -9348,7 +10757,7 @@ function Cases() {
                 event.currentTarget
               ) {
 
-                setSelected(null);
+                closeAssessmentReview();
               }
             }
           }
@@ -9357,14 +10766,14 @@ function Cases() {
 
           <section
 
-            className="review-request-modal"
+            className="review-request-modal assessment-history-review-modal"
 
             role="dialog"
 
             aria-modal="true"
 
             aria-label={
-              `Review psychological assessment for ${
+              `Review psychological assessment history for ${
                 selected.ownerName ||
                 "user"
               }`
@@ -9393,12 +10802,9 @@ function Cases() {
 
                   <span
                     className={
-                      `priority ${
-                        String(
-                          selected.priority ||
-                          ""
-                        ).toLowerCase()
-                      }`
+                      priorityClassName(
+                        selected.priority
+                      )
                     }
                   >
 
@@ -9413,8 +10819,18 @@ function Cases() {
 
 
                 <p className="review-request-modal-subtitle">
-                  Review the assessment result, recommendation, status,
-                  and counselor remarks.
+                  {
+                    selectedHistory.length
+                  }
+                  {" "}
+                  assessment
+                  {
+                    selectedHistory.length === 1
+                      ? ""
+                      : "s"
+                  }
+                  {" "}
+                  recorded for this account. Select an assessment below to view its scores, details, and review status.
                 </p>
 
               </div>
@@ -9427,8 +10843,7 @@ function Cases() {
                 className="review-request-close-button"
 
                 onClick={
-                  () =>
-                    setSelected(null)
+                  closeAssessmentReview
                 }
 
                 aria-label="Close psychological assessment review"
@@ -9442,13 +10857,142 @@ function Cases() {
             </header>
 
 
-            <div className="review-request-modal-body">
+            <div className="review-request-modal-body assessment-history-review-body">
 
-              <section className="review-request-modal-card">
+              <section className="review-request-modal-card assessment-user-history-card">
 
-                <h3>
-                  Assessment Details
-                </h3>
+                <div className="assessment-history-heading">
+
+                  <div>
+
+                    <h3>
+                      Assessment History
+                    </h3>
+
+                    <p>
+                      Newest assessment first. Scores are kept here instead of the main case list.
+                    </p>
+
+                  </div>
+
+                </div>
+
+
+                <div className="assessment-history-list">
+
+                  {selectedHistory.map(
+                    row => (
+
+                      <button
+
+                        type="button"
+
+                        key={
+                          row.id
+                        }
+
+                        className={
+                          row.id ===
+                            selected.id
+                            ? "assessment-history-item active"
+                            : "assessment-history-item"
+                        }
+
+                        onClick={
+                          () =>
+                            selectAssessmentVersion(
+                              row
+                            )
+                        }
+
+                      >
+
+                        <div className="assessment-history-item-top">
+
+                          <div>
+
+                            <strong>
+                              {
+                                formatRecordDateTime(
+                                  row.createdAt
+                                )
+                              }
+                            </strong>
+
+                            <small>
+                              {
+                                assessmentCaseStatusLabel(
+                                  row.status
+                                )
+                              }
+                            </small>
+
+                          </div>
+
+
+                          <span
+                            className={
+                              priorityClassName(
+                                row.priority
+                              )
+                            }
+                          >
+                            {
+                              row.priority ||
+                              "No priority"
+                            }
+                          </span>
+
+                        </div>
+
+
+                        {
+                          renderHistoryScores(
+                            row
+                          )
+                        }
+
+
+                        <span className="assessment-history-open-label">
+                          {
+                            row.id ===
+                              selected.id
+                              ? "Currently viewing"
+                              : "View this assessment"
+                          }
+                        </span>
+
+                      </button>
+
+                    )
+                  )}
+
+                </div>
+
+              </section>
+
+
+              <section className="review-request-modal-card assessment-selected-detail-card">
+
+                <div className="assessment-selected-detail-heading">
+
+                  <div>
+
+                    <h3>
+                      Selected Assessment Details
+                    </h3>
+
+                    <p>
+                      {
+                        formatRecordDateTime(
+                          selected.createdAt
+                        )
+                      }
+                    </p>
+
+                  </div>
+
+                </div>
 
 
                 {selected.instrumentResults
@@ -9547,26 +11091,130 @@ function Cases() {
 
                         </div>
 
-                        <div className="review-request-detail-item">
 
-                          <span>
-                            DASS-21
-                          </span>
+                        {selected.instrumentResults
+                          ?.dass21
+                          ?.depression
 
-                          <strong>
-                            {
-                              selected.instrumentResults
-                                ?.dass21
-                                ?.totalScore ??
-                              "—"
-                            }/63
-                          </strong>
+                          ? (
 
-                          <small>
-                            Project raw total
-                          </small>
+                            <>
 
-                        </div>
+                              <div className="review-request-detail-item">
+
+                                <span>
+                                  DASS-21 Depression
+                                </span>
+
+                                <strong>
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .depression
+                                      .adjustedScore
+                                  }/42
+                                </strong>
+
+                                <small>
+                                  Raw:
+                                  {" "}
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .depression
+                                      .rawScore
+                                  }/21
+                                </small>
+
+                              </div>
+
+
+                              <div className="review-request-detail-item">
+
+                                <span>
+                                  DASS-21 Anxiety
+                                </span>
+
+                                <strong>
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .anxiety
+                                      .adjustedScore
+                                  }/42
+                                </strong>
+
+                                <small>
+                                  Raw:
+                                  {" "}
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .anxiety
+                                      .rawScore
+                                  }/21
+                                </small>
+
+                              </div>
+
+
+                              <div className="review-request-detail-item">
+
+                                <span>
+                                  DASS-21 Stress
+                                </span>
+
+                                <strong>
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .stress
+                                      .adjustedScore
+                                  }/42
+                                </strong>
+
+                                <small>
+                                  Raw:
+                                  {" "}
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .stress
+                                      .rawScore
+                                  }/21
+                                </small>
+
+                              </div>
+
+                            </>
+
+                          )
+
+                          : (
+
+                            <div className="review-request-detail-item">
+
+                              <span>
+                                DASS-21 Legacy Total
+                              </span>
+
+                              <strong>
+                                {
+                                  selected.instrumentResults
+                                    ?.dass21
+                                    ?.totalScore ??
+                                  "—"
+                                }/63
+                              </strong>
+
+                              <small>
+                                Older record without separate subscale scores
+                              </small>
+
+                            </div>
+
+                          )
+                        }
 
                       </div>
 
@@ -9799,11 +11447,26 @@ function Cases() {
               </section>
 
 
-              <section className="review-request-modal-card review-request-update-card">
+              <section className="review-request-modal-card review-request-update-card assessment-case-update-card">
 
                 <h3>
-                  Counselor Review
+                  {
+                    isSuperAdmin
+                      ? "Case Review"
+                      : "Counselor Review"
+                  }
                 </h3>
+
+
+                <p className="assessment-review-record-note">
+                  Changes below apply only to the currently selected assessment dated
+                  {" "}
+                  {
+                    formatRecordDateTime(
+                      selected.createdAt
+                    )
+                  }.
+                </p>
 
 
                 <label>
@@ -9825,25 +11488,18 @@ function Cases() {
 
                   >
 
-                    <option>
-                      For review
-                    </option>
+                    {assessmentStatuses.map(
+                      status => (
 
-                    <option>
-                      Schedule for counseling
-                    </option>
+                        <option
+                          key={status}
+                          value={status}
+                        >
+                          {status}
+                        </option>
 
-                    <option>
-                      Follow up is recommended
-                    </option>
-
-                    <option>
-                      Counseling is optional
-                    </option>
-
-                    <option>
-                      For referral
-                    </option>
+                      )
+                    )}
 
                   </select>
 
@@ -9852,7 +11508,11 @@ function Cases() {
 
                 <label>
 
-                  Counselor remarks
+                  {
+                    isSuperAdmin
+                      ? "Case remarks"
+                      : "Counselor remarks"
+                  }
 
                   <textarea
 
@@ -9869,7 +11529,7 @@ function Cases() {
                         )
                     }
 
-                    placeholder="Add counselor remarks, recommendations, or instructions."
+                    placeholder="Add remarks, recommendations, or instructions."
 
                   />
 
@@ -9885,8 +11545,7 @@ function Cases() {
                     className="secondary-button"
 
                     onClick={
-                      () =>
-                        setSelected(null)
+                      closeAssessmentReview
                     }
 
                   >
@@ -10409,7 +12068,8 @@ function CounselingRequestsManagement() {
 
       if (
         requestChanged &&
-        selected.ownerId
+        selected.ownerId &&
+        user.role === "counselor"
       ) {
 
         try {
@@ -10422,10 +12082,22 @@ function CounselingRequestsManagement() {
                 selected.ownerId,
 
               title:
-                "Counseling request updated",
+                "Counseling request updated by counselor",
 
               message:
-                `Your counseling request was updated. Status: ${statusDraft}.${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
+                `Your counselor updated your counseling request. Status: ${statusDraft}.${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
+
+              notificationType:
+                "counselor_update",
+
+              senderRole:
+                "counselor",
+
+              senderId:
+                user.id,
+
+              senderName:
+                user.name || "Guidance Counselor",
 
               targetPath:
                 "/consultations",
@@ -12394,6 +14066,204 @@ function Empty({
 
 
 // ======================================================
+// ASSESSMENT ACCOUNT TABLE
+// Counselor / Super Admin
+// One account per row; scores stay inside Review.
+// ======================================================
+
+function AssessmentAccountTable({
+  rows,
+  onSelect,
+  showCollege = false
+}) {
+
+  if (!rows.length) {
+
+    return (
+      <Empty
+        text="No assessment cases yet."
+      />
+    );
+
+  }
+
+
+  return (
+
+    <div className="table-wrap">
+
+      <table className="assessment-account-table">
+
+        <thead>
+
+          <tr>
+
+            <th>
+              User
+            </th>
+
+
+            {showCollege && (
+
+              <th>
+                College / Office
+              </th>
+
+            )}
+
+
+            <th>
+              Program
+            </th>
+
+
+            <th>
+              Latest Priority
+            </th>
+
+
+            <th>
+              Latest Status
+            </th>
+
+
+            <th>
+              Assessments
+            </th>
+
+
+            <th>
+              Action
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          {rows.map(
+            row => (
+
+              <tr
+                key={
+                  row.assessmentOwnerKey ||
+                  row.ownerId ||
+                  row.id
+                }
+              >
+
+                <td>
+
+                  <strong>
+                    {
+                      row.ownerName ||
+                      "User"
+                    }
+                  </strong>
+
+                </td>
+
+
+                {showCollege && (
+
+                  <td>
+                    {
+                      counselorCollegeLabel(
+                        row.department
+                      )
+                    }
+                  </td>
+
+                )}
+
+
+                <td>
+                  {
+                    counselorProgramLabel(
+                      row.program
+                    )
+                  }
+                </td>
+
+
+                <td>
+
+                  <span
+                    className={
+                      priorityClassName(
+                        row.priority
+                      )
+                    }
+                  >
+                    {
+                      row.priority ||
+                      "No priority"
+                    }
+                  </span>
+
+                </td>
+
+
+                <td>
+                  {
+                    assessmentCaseStatusLabel(
+                      row.status
+                    )
+                  }
+                </td>
+
+
+                <td>
+
+                  <span className="assessment-count-badge">
+                    {
+                      row.assessmentCount ||
+                      1
+                    }
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  <button
+
+                    type="button"
+
+                    className="text-button"
+
+                    onClick={
+                      () =>
+                        onSelect(
+                          row
+                        )
+                    }
+
+                  >
+                    Review
+                  </button>
+
+                </td>
+
+              </tr>
+
+            )
+          )}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  );
+}
+
+
+// ======================================================
 // CASE TABLE
 // ======================================================
 
@@ -12603,13 +14473,63 @@ function CaseTable({
                       ?.dass21
 
                       ? (
-                        <>
-                          {
-                            row.instrumentResults
-                              ?.dass21
-                              ?.totalScore
-                          }/63
-                        </>
+                        row.instrumentResults
+                          .dass21
+                          .depression
+
+                          ? (
+
+                            <div className="dass21-table-scores">
+
+                              <span>
+                                D:
+                                {" "}
+                                {
+                                  row.instrumentResults
+                                    .dass21
+                                    .depression
+                                    .adjustedScore
+                                }/42
+                              </span>
+
+                              <span>
+                                A:
+                                {" "}
+                                {
+                                  row.instrumentResults
+                                    .dass21
+                                    .anxiety
+                                    .adjustedScore
+                                }/42
+                              </span>
+
+                              <span>
+                                S:
+                                {" "}
+                                {
+                                  row.instrumentResults
+                                    .dass21
+                                    .stress
+                                    .adjustedScore
+                                }/42
+                              </span>
+
+                            </div>
+
+                          )
+
+                          : (
+                            <>
+                              Legacy:
+                              {" "}
+                              {
+                                row.instrumentResults
+                                  .dass21
+                                  .totalScore ??
+                                "—"
+                              }/63
+                            </>
+                          )
                       )
 
                       : "—"
@@ -12640,8 +14560,9 @@ function CaseTable({
 
                   <td>
                     {
-                      row.status ||
-                      "For review"
+                      assessmentCaseStatusLabel(
+                        row.status
+                      )
                     }
                   </td>
 

@@ -38,6 +38,7 @@ const menu = {
     ["/assessment", "Assessment", ClipboardList],
     ["/monitoring", "Monitoring", Activity],
     ["/consultations", "Counseling", Calendar],
+    ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
     ["/feedback", "Ratings & Feedback", Star],
@@ -49,6 +50,7 @@ const menu = {
     ["/assessment", "Assessment", ClipboardList],
     ["/monitoring", "Monitoring", Activity],
     ["/consultations", "Counseling", Calendar],
+    ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
     ["/feedback", "Ratings & Feedback", Star],
@@ -120,7 +122,11 @@ export default function Layout({ children }) {
           setUnreadNotifications(
             rows.filter(
               row =>
-                !row.read
+                !row.read &&
+                row.notificationType ===
+                  "counselor_update" &&
+                row.senderRole ===
+                  "counselor"
             ).length
           );
         },
@@ -155,7 +161,7 @@ export default function Layout({ children }) {
       await logout();
 
       navigate(
-        "/login",
+        "/",
         {
           replace: true
         }
