@@ -17,11 +17,14 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate
 } from "react-router-dom";
 
 import {
+  Activity,
   AlertTriangle,
+  Bell,
   Calendar,
   CheckCircle2,
   ClipboardList,
@@ -1611,6 +1614,18 @@ function Register() {
           autoComplete="off"
         >
 
+          <p className="required-fields-note">
+            <span
+              className="required-asterisk"
+              aria-hidden="true"
+            >
+              *
+            </span>
+            {" "}
+            Required field
+          </p>
+
+
           <div className="registration-section">
 
             <h2>
@@ -1622,6 +1637,12 @@ function Register() {
 
               <label>
                 First Name
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="text"
@@ -1654,6 +1675,12 @@ function Register() {
 
               <label>
                 Last Name
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="text"
@@ -1668,6 +1695,12 @@ function Register() {
 
               <label>
                 Email
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="email"
@@ -1684,6 +1717,12 @@ function Register() {
 
               <label>
                 Account Type
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <select
                   name="role"
@@ -1717,6 +1756,12 @@ function Register() {
 
               <label>
                 College / Office
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <select
                   name="department"
@@ -1764,6 +1809,12 @@ function Register() {
 
                 <label>
                   Program
+                  <span
+                    className="required-asterisk"
+                    aria-hidden="true"
+                  >
+                    *
+                  </span>
 
                   <select
                     name="program"
@@ -1816,6 +1867,13 @@ function Register() {
                     ? "Employee Number"
                     : "Student / Employee Number"}
 
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
+
                 <input
                   type="text"
                   name="userNumber"
@@ -1842,6 +1900,12 @@ function Register() {
 
               <label>
                 Phone Number
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="tel"
@@ -1894,6 +1958,12 @@ function Register() {
 
               <label>
                 Region
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <select
                   value={form.regionCode}
@@ -1932,6 +2002,12 @@ function Register() {
 
               <label>
                 Province
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <select
                   value={form.provinceCode}
@@ -1995,6 +2071,12 @@ function Register() {
 
               <label>
                 City / Municipality
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <select
                   value={
@@ -2039,6 +2121,12 @@ function Register() {
 
               <label>
                 Barangay
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <select
                   value={form.barangayCode}
@@ -2078,6 +2166,12 @@ function Register() {
 
               <label className="full-width-field">
                 Street Name / House No. / Purok
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="text"
@@ -2141,6 +2235,12 @@ function Register() {
 
               <label>
                 Contact Person Name
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="text"
@@ -2155,6 +2255,12 @@ function Register() {
 
               <label>
                 Contact Person Phone Number
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="tel"
@@ -2186,6 +2292,12 @@ function Register() {
 
               <label>
                 Password
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="password"
@@ -2200,6 +2312,12 @@ function Register() {
 
               <label>
                 Confirm Password
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
                 <input
                   type="password"
@@ -2653,6 +2771,35 @@ function Assessment() {
   }
 
 
+  function phqDifficultyDisplay(
+    option
+  ) {
+
+    const simpleMeanings = {
+
+      "Not difficult at all":
+        "I can still do my usual activities normally",
+
+      "Somewhat difficult":
+        "Some usual activities are harder",
+
+      "Very difficult":
+        "Many usual activities are hard",
+
+      "Extremely difficult":
+        "My usual activities are very hard to do"
+
+    };
+
+
+    return simpleMeanings[
+      option
+    ]
+      ? `${option} — ${simpleMeanings[option]}`
+      : option;
+  }
+
+
   function renderInstrumentQuestions(
     questionsList,
     choicesList
@@ -2736,7 +2883,24 @@ function Assessment() {
 
                   />
 
-                  {choice.label}
+                  <span className="assessment-choice-text">
+
+                    <span className="assessment-choice-label">
+                      {choice.label}
+                    </span>
+
+
+                    {choice.helper && (
+
+                      <small className="assessment-choice-helper">
+                        Simple meaning:
+                        {" "}
+                        {choice.helper}
+                      </small>
+
+                    )}
+
+                  </span>
 
                 </label>
 
@@ -2871,6 +3035,12 @@ function Assessment() {
 
         message:
           `Your psychological assessment was submitted. MindTrack monitoring priority: ${result.priority}.`,
+
+        targetPath:
+          "/monitoring",
+
+        sourceType:
+          "assessment",
 
         read:
           false
@@ -3078,6 +3248,22 @@ function Assessment() {
       />
 
 
+      <div className="assessment-simple-guide">
+
+        <strong>
+          How to answer
+        </strong>
+
+        <p>
+          Read each statement, think about the time period shown in that section,
+          then choose the answer that best matches your experience.
+          Each answer keeps the original response wording, with a simpler meaning
+          shown underneath to make the choices easier to understand.
+        </p>
+
+      </div>
+
+
       <form
         className="assessment-form standardized-assessment-form"
         onSubmit={submit}
@@ -3110,8 +3296,8 @@ function Assessment() {
 
           <p className="assessment-instructions">
 
-            Please indicate for each statement which is closest
-            to how you have been feeling over the last two weeks.
+            Think about the last two weeks. For each statement,
+            choose the answer that is closest to how often you felt that way.
             Higher numbers mean better well-being.
 
           </p>
@@ -3171,8 +3357,8 @@ function Assessment() {
 
           <p className="assessment-instructions">
 
-            Over the last 2 weeks, how often have you been
-            bothered by any of the following problems?
+            Think about the last 2 weeks. For each problem below,
+            choose how often it bothered you.
 
           </p>
 
@@ -3190,6 +3376,11 @@ function Assessment() {
             If you checked any problems, how difficult have these
             problems made it for you to do your work, take care of
             things at home, or get along with other people?
+
+            <small className="assessment-field-helper">
+              Choose the answer that best describes how much the problems
+              affected your usual daily activities.
+            </small>
 
             <select
 
@@ -3218,7 +3409,11 @@ function Assessment() {
                     key={option}
                     value={option}
                   >
-                    {option}
+                    {
+                      phqDifficultyDisplay(
+                        option
+                      )
+                    }
                   </option>
 
                 )
@@ -3272,8 +3467,8 @@ function Assessment() {
 
           <p className="assessment-instructions">
 
-            Over the last 2 weeks, how often have you been
-            bothered by the following problems?
+            Think about the last 2 weeks. For each problem below,
+            choose how often it bothered you.
 
           </p>
 
@@ -3328,9 +3523,8 @@ function Assessment() {
 
           <p className="assessment-instructions">
 
-            Please read each statement and choose the number that
-            indicates how much the statement applied to you over
-            the past week.
+            Think about the past week. Read each statement and choose
+            the answer that best shows how much it applied to you.
 
           </p>
 
@@ -3434,6 +3628,251 @@ const COUNSELING_TIME_SLOTS = [
   "3:00 PM",
   "4:00 PM"
 ];
+
+
+function counselorProgramLabel(
+  value
+) {
+
+  const cleanValue =
+    String(
+      value || ""
+    ).trim();
+
+
+  return cleanValue ||
+    "Not provided";
+}
+
+
+function counselorCollegeLabel(
+  value
+) {
+
+  const cleanValue =
+    String(
+      value || ""
+    ).trim();
+
+
+  return cleanValue ||
+    "Not provided";
+}
+
+
+function priorityClassName(
+  priority
+) {
+
+  const cleanPriority =
+    String(
+      priority || ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        "-"
+      );
+
+
+  return `priority ${
+    cleanPriority ||
+    "no-assessment"
+  }`;
+}
+
+
+function counselingTimeMinutes(
+  timeText
+) {
+
+  const match =
+    String(
+      timeText || ""
+    )
+      .trim()
+      .match(
+        /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+      );
+
+
+  if (!match) {
+
+    return 24 * 60;
+  }
+
+
+  let hour =
+    Number(
+      match[1]
+    );
+
+
+  const minute =
+    Number(
+      match[2]
+    );
+
+
+  const period =
+    match[3]
+      .toUpperCase();
+
+
+  if (
+    period === "AM" &&
+    hour === 12
+  ) {
+
+    hour = 0;
+  }
+
+
+  if (
+    period === "PM" &&
+    hour !== 12
+  ) {
+
+    hour += 12;
+  }
+
+
+  return (
+    hour * 60 +
+    minute
+  );
+}
+
+
+function counselingAppointmentSortValue(
+  row
+) {
+
+  const dateText =
+    String(
+      row?.date || ""
+    ).trim();
+
+
+  if (!dateText) {
+
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+
+  const dateValue =
+    new Date(
+      `${dateText}T00:00:00`
+    ).getTime();
+
+
+  if (
+    Number.isNaN(
+      dateValue
+    )
+  ) {
+
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+
+  return (
+    dateValue +
+    counselingTimeMinutes(
+      row?.time
+    ) *
+      60 *
+      1000
+  );
+}
+
+
+function recordDateObject(
+  value
+) {
+
+  if (!value) {
+    return null;
+  }
+
+
+  if (
+    typeof value.toDate ===
+    "function"
+  ) {
+
+    return value.toDate();
+  }
+
+
+  if (
+    typeof value.seconds ===
+    "number"
+  ) {
+
+    return new Date(
+      value.seconds * 1000
+    );
+  }
+
+
+  if (
+    value instanceof Date
+  ) {
+
+    return value;
+  }
+
+
+  const parsed =
+    new Date(value);
+
+
+  return Number.isNaN(
+    parsed.getTime()
+  )
+    ? null
+    : parsed;
+}
+
+
+function formatRecordDateTime(
+  value
+) {
+
+  const date =
+    recordDateObject(value);
+
+
+  if (!date) {
+    return "Date not available";
+  }
+
+
+  return date.toLocaleString(
+    "en-PH",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    }
+  );
+}
+
+
+function generalUserRole(
+  role
+) {
+
+  return [
+    "student",
+    "faculty",
+    "personnel"
+  ].includes(role);
+}
 
 
 // National regular and special non-working holidays.
@@ -7324,6 +7763,840 @@ function UserProfilesContent({
 
 
 // ======================================================
+// USER NOTIFICATIONS
+// ======================================================
+
+function Notifications() {
+
+  const { user } =
+    useAuth();
+
+
+  if (
+    !generalUserRole(
+      user.role
+    )
+  ) {
+
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+  }
+
+
+  return (
+    <UserNotificationsContent
+      user={user}
+    />
+  );
+}
+
+
+function UserNotificationsContent({
+  user
+}) {
+
+  const navigate =
+    useNavigate();
+
+
+  const rows =
+    useRows(
+      "notifications",
+      {
+        ownerId:
+          user.id
+      }
+    );
+
+
+  const unreadRows =
+    rows.filter(
+      row =>
+        !row.read
+    );
+
+
+  async function openNotification(
+    row
+  ) {
+
+    try {
+
+      if (!row.read) {
+
+        await updateRecord(
+          "notifications",
+          row.id,
+          {
+            read:
+              true
+          }
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Unable to mark notification as read:",
+        error
+      );
+    }
+
+
+    navigate(
+      row.targetPath ||
+      "/history"
+    );
+  }
+
+
+  async function markAllRead() {
+
+    if (
+      unreadRows.length === 0
+    ) {
+      return;
+    }
+
+
+    try {
+
+      await Promise.all(
+        unreadRows.map(
+          row =>
+            updateRecord(
+              "notifications",
+              row.id,
+              {
+                read:
+                  true
+              }
+            )
+        )
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to mark all notifications as read:",
+        error
+      );
+
+
+      alert(
+        "Unable to mark all notifications as read."
+      );
+    }
+  }
+
+
+  return (
+
+    <>
+
+      <PageTitle
+
+        title="Notifications"
+
+        subtitle="Updates about your psychological assessment cases and counseling requests."
+
+      />
+
+
+      <section className="panel notification-panel">
+
+        <div className="notification-panel-heading">
+
+          <div>
+
+            <h2>
+              Your Notifications
+            </h2>
+
+            <p>
+              {
+                unreadRows.length
+              }
+              {" "}
+              unread notification
+              {
+                unreadRows.length === 1
+                  ? ""
+                  : "s"
+              }
+            </p>
+
+          </div>
+
+
+          {unreadRows.length > 0 && (
+
+            <button
+
+              type="button"
+
+              className="secondary-button"
+
+              onClick={
+                markAllRead
+              }
+
+            >
+              Mark all as read
+            </button>
+
+          )}
+
+        </div>
+
+
+        {rows.length === 0
+
+          ? (
+
+            <Empty
+              text="No notifications yet."
+            />
+
+          )
+
+          : (
+
+            <div className="notification-list">
+
+              {rows.map(
+                row => (
+
+                  <button
+
+                    type="button"
+
+                    key={
+                      row.id
+                    }
+
+                    className={
+                      row.read
+                        ? "notification-card"
+                        : "notification-card unread"
+                    }
+
+                    onClick={
+                      () =>
+                        openNotification(
+                          row
+                        )
+                    }
+
+                  >
+
+                    <div className="notification-icon">
+
+                      <Bell
+                        size={19}
+                      />
+
+                    </div>
+
+
+                    <div className="notification-content">
+
+                      <div className="notification-title-row">
+
+                        <strong>
+                          {
+                            row.title ||
+                            "MindTrack update"
+                          }
+                        </strong>
+
+
+                        {!row.read && (
+
+                          <span className="notification-unread-label">
+                            New
+                          </span>
+
+                        )}
+
+                      </div>
+
+
+                      <p>
+                        {
+                          row.message ||
+                          "You have a new system update."
+                        }
+                      </p>
+
+
+                      <small>
+                        {
+                          formatRecordDateTime(
+                            row.createdAt
+                          )
+                        }
+                      </small>
+
+                    </div>
+
+                  </button>
+
+                )
+              )}
+
+            </div>
+
+          )
+        }
+
+      </section>
+
+    </>
+
+  );
+}
+
+
+// ======================================================
+// USER MENTAL HEALTH MONITORING
+// ======================================================
+
+function Monitoring() {
+
+  const { user } =
+    useAuth();
+
+
+  if (
+    !generalUserRole(
+      user.role
+    )
+  ) {
+
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+  }
+
+
+  return (
+    <UserMonitoringContent
+      user={user}
+    />
+  );
+}
+
+
+function UserMonitoringContent({
+  user
+}) {
+
+  const navigate =
+    useNavigate();
+
+
+  const assessments =
+    useRows(
+      "assessments",
+      {
+        ownerId:
+          user.id
+      }
+    );
+
+
+  const latest =
+    assessments[0] ||
+    null;
+
+
+  const latestResults =
+    latest?.instrumentResults ||
+    null;
+
+
+  return (
+
+    <>
+
+      <PageTitle
+
+        title="Mental Health Monitoring"
+
+        subtitle="Review your latest screening results and previous assessment records."
+
+      />
+
+
+      {!latest
+
+        ? (
+
+          <section className="panel monitoring-empty-panel">
+
+            <Activity
+              size={42}
+            />
+
+            <h2>
+              No assessment data yet
+            </h2>
+
+            <p>
+              Complete a psychological assessment first so MindTrack can display your monitoring information.
+            </p>
+
+
+            <button
+
+              type="button"
+
+              className="primary-button"
+
+              onClick={
+                () =>
+                  navigate(
+                    "/assessment"
+                  )
+              }
+
+            >
+              Take an assessment
+            </button>
+
+          </section>
+
+        )
+
+        : (
+
+          <>
+
+            <section className="panel monitoring-summary-panel">
+
+              <div className="monitoring-summary-header">
+
+                <div>
+
+                  <span className="monitoring-kicker">
+                    Current Monitoring State
+                  </span>
+
+                  <h2>
+                    Based on your latest assessment
+                  </h2>
+
+                  <p>
+                    {
+                      formatRecordDateTime(
+                        latest.createdAt
+                      )
+                    }
+                  </p>
+
+                </div>
+
+
+                <span
+                  className={
+                    priorityClassName(
+                      latest.priority
+                    )
+                  }
+                >
+                  {
+                    latest.priority ||
+                    "No priority"
+                  }
+                </span>
+
+              </div>
+
+
+              <div className="monitoring-status-grid">
+
+                <div className="monitoring-status-item">
+
+                  <span>
+                    Counselor Review Status
+                  </span>
+
+                  <strong>
+                    {
+                      latest.status ||
+                      "For review"
+                    }
+                  </strong>
+
+                </div>
+
+
+                <div className="monitoring-status-item">
+
+                  <span>
+                    Assessment Version
+                  </span>
+
+                  <strong>
+                    {
+                      latest.assessmentVersion ||
+                      "Legacy assessment"
+                    }
+                  </strong>
+
+                </div>
+
+              </div>
+
+
+              {latest.counselorRemarks && (
+
+                <div className="monitoring-counselor-note">
+
+                  <strong>
+                    Counselor Remark
+                  </strong>
+
+                  <p>
+                    {
+                      latest.counselorRemarks
+                    }
+                  </p>
+
+                </div>
+
+              )}
+
+            </section>
+
+
+            {latestResults
+
+              ? (
+
+                <section className="monitoring-score-grid">
+
+                  <article className="panel monitoring-score-card">
+
+                    <span>
+                      WHO-5 Well-Being
+                    </span>
+
+                    <strong>
+                      {
+                        latestResults
+                          ?.who5
+                          ?.percentageScore ??
+                        "—"
+                      }
+                      /100
+                    </strong>
+
+                    <small>
+                      Raw:
+                      {" "}
+                      {
+                        latestResults
+                          ?.who5
+                          ?.rawScore ??
+                        "—"
+                      }
+                      /25
+                    </small>
+
+                    <p>
+                      {
+                        latestResults
+                          ?.who5
+                          ?.interpretation ||
+                        "No interpretation available."
+                      }
+                    </p>
+
+                  </article>
+
+
+                  <article className="panel monitoring-score-card">
+
+                    <span>
+                      PHQ-9
+                    </span>
+
+                    <strong>
+                      {
+                        latestResults
+                          ?.phq9
+                          ?.totalScore ??
+                        "—"
+                      }
+                      /27
+                    </strong>
+
+                    <small>
+                      {
+                        latestResults
+                          ?.phq9
+                          ?.severity ||
+                        "No severity available"
+                      }
+                    </small>
+
+                  </article>
+
+
+                  <article className="panel monitoring-score-card">
+
+                    <span>
+                      GAD-7
+                    </span>
+
+                    <strong>
+                      {
+                        latestResults
+                          ?.gad7
+                          ?.totalScore ??
+                        "—"
+                      }
+                      /21
+                    </strong>
+
+                    <small>
+                      {
+                        latestResults
+                          ?.gad7
+                          ?.severity ||
+                        "No severity available"
+                      }
+                    </small>
+
+                  </article>
+
+
+                  <article className="panel monitoring-score-card">
+
+                    <span>
+                      DASS-21
+                    </span>
+
+                    <strong>
+                      {
+                        latestResults
+                          ?.dass21
+                          ?.totalScore ??
+                        "—"
+                      }
+                      /63
+                    </strong>
+
+                    <small>
+                      Project raw total
+                    </small>
+
+                  </article>
+
+                </section>
+
+              )
+
+              : (
+
+                <section className="panel">
+
+                  <div className="notice">
+                    This is an older assessment record. Detailed WHO-5, PHQ-9, GAD-7, and DASS-21 results are not available for this record.
+                  </div>
+
+                </section>
+
+              )
+            }
+
+
+            <section className="panel monitoring-guidance-panel">
+
+              <h2>
+                Monitoring Guidance
+              </h2>
+
+              <p>
+                {
+                  latest.recommendation ||
+                  "Continue monitoring your well-being and contact the Guidance and Counseling Unit if you need support."
+                }
+              </p>
+
+
+              <div className="notice">
+                MindTrack displays screening and monitoring information only. These results are not a medical or psychological diagnosis. A Guidance Counselor should interpret concerns together with your situation and professional assessment.
+              </div>
+
+            </section>
+
+
+            <section className="panel">
+
+              <div className="monitoring-history-heading">
+
+                <div>
+
+                  <h2>
+                    Assessment Monitoring History
+                  </h2>
+
+                  <p>
+                    Newest assessment first.
+                  </p>
+
+                </div>
+
+
+                <button
+
+                  type="button"
+
+                  className="secondary-button"
+
+                  onClick={
+                    () =>
+                      navigate(
+                        "/assessment"
+                      )
+                  }
+
+                >
+                  Take another assessment
+                </button>
+
+              </div>
+
+
+              <div className="monitoring-history-list">
+
+                {assessments.map(
+                  row => (
+
+                    <article
+
+                      key={
+                        row.id
+                      }
+
+                      className="monitoring-history-card"
+
+                    >
+
+                      <div>
+
+                        <strong>
+                          {
+                            formatRecordDateTime(
+                              row.createdAt
+                            )
+                          }
+                        </strong>
+
+                        <small>
+                          {
+                            row.status ||
+                            "For review"
+                          }
+                        </small>
+
+                      </div>
+
+
+                      <span
+                        className={
+                          priorityClassName(
+                            row.priority
+                          )
+                        }
+                      >
+                        {
+                          row.priority ||
+                          "No priority"
+                        }
+                      </span>
+
+
+                      <div className="monitoring-history-scores">
+
+                        <span>
+                          WHO-5:
+                          {" "}
+                          {
+                            row.instrumentResults
+                              ?.who5
+                              ?.percentageScore ??
+                            row.score ??
+                            "—"
+                          }
+                        </span>
+
+                        <span>
+                          PHQ-9:
+                          {" "}
+                          {
+                            row.instrumentResults
+                              ?.phq9
+                              ?.totalScore ??
+                            "—"
+                          }
+                        </span>
+
+                        <span>
+                          GAD-7:
+                          {" "}
+                          {
+                            row.instrumentResults
+                              ?.gad7
+                              ?.totalScore ??
+                            "—"
+                          }
+                        </span>
+
+                        <span>
+                          DASS-21:
+                          {" "}
+                          {
+                            row.instrumentResults
+                              ?.dass21
+                              ?.totalScore ??
+                            "—"
+                          }
+                        </span>
+
+                      </div>
+
+                    </article>
+
+                  )
+                )}
+
+              </div>
+
+            </section>
+
+          </>
+
+        )
+      }
+
+    </>
+
+  );
+}
+
+
+// ======================================================
 // HISTORY
 // ======================================================
 
@@ -7479,6 +8752,132 @@ function Cases() {
     );
 
 
+  const [
+    collegeFilter,
+    setCollegeFilter
+  ] = useState("all");
+
+
+  const [
+    programFilter,
+    setProgramFilter
+  ] = useState("all");
+
+
+  const [
+    priorityFilter,
+    setPriorityFilter
+  ] = useState("all");
+
+
+  const caseCollegeOptions =
+    Array.from(
+      new Set(
+        rows.map(
+          row =>
+            counselorCollegeLabel(
+              row.department
+            )
+        )
+      )
+    )
+      .sort(
+        (a, b) =>
+          a.localeCompare(b)
+      );
+
+
+  const caseRowsForProgramOptions =
+    rows.filter(
+      row => {
+
+        if (
+          !isSuperAdmin ||
+          collegeFilter === "all"
+        ) {
+
+          return true;
+        }
+
+
+        return (
+          counselorCollegeLabel(
+            row.department
+          ) ===
+          collegeFilter
+        );
+      }
+    );
+
+
+  const caseProgramOptions =
+    Array.from(
+      new Set(
+        caseRowsForProgramOptions.map(
+          row =>
+            counselorProgramLabel(
+              row.program
+            )
+        )
+      )
+    )
+      .sort(
+        (a, b) =>
+          a.localeCompare(b)
+      );
+
+
+  const filteredCaseRows =
+    rows.filter(
+      row => {
+
+        const college =
+          counselorCollegeLabel(
+            row.department
+          );
+
+
+        const program =
+          counselorProgramLabel(
+            row.program
+          );
+
+
+        const priority =
+          String(
+            row.priority || ""
+          ).trim() ||
+          "No Assessment";
+
+
+        const matchesCollege =
+          !isSuperAdmin ||
+          collegeFilter === "all" ||
+          college ===
+            collegeFilter;
+
+
+        const matchesProgram =
+          programFilter === "all" ||
+          program ===
+            programFilter;
+
+
+        const matchesPriority =
+          priorityFilter === "all" ||
+          priority ===
+            priorityFilter;
+
+
+        return (
+          matchesCollege &&
+          matchesProgram &&
+          matchesPriority
+        );
+      }
+    );
+
+
   const [selected, setSelected] =
     useState(null);
 
@@ -7599,6 +8998,19 @@ function Cases() {
       setSavingCase(true);
 
 
+      const assessmentChanged =
+        selected.status !==
+          statusDraft ||
+        String(
+          selected.counselorRemarks ||
+          ""
+        ) !==
+          String(
+            remarksDraft ||
+            ""
+          );
+
+
       await updateRecord(
         "assessments",
         selected.id,
@@ -7610,6 +9022,61 @@ function Cases() {
             statusDraft
         }
       );
+
+
+      let notificationSent =
+        true;
+
+
+      if (
+        assessmentChanged &&
+        selected.ownerId
+      ) {
+
+        try {
+
+          await addRecord(
+            "notifications",
+            {
+
+              ownerId:
+                selected.ownerId,
+
+              title:
+                "Assessment case updated",
+
+              message:
+                `Your psychological assessment case was updated. Status: ${statusDraft}.${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
+
+              targetPath:
+                "/monitoring",
+
+              sourceType:
+                "assessment",
+
+              sourceId:
+                selected.id,
+
+              read:
+                false
+
+            }
+          );
+
+        } catch (
+          notificationError
+        ) {
+
+          notificationSent =
+            false;
+
+
+          console.error(
+            "Unable to send assessment update notification:",
+            notificationError
+          );
+        }
+      }
 
 
       setSelected({
@@ -7624,7 +9091,9 @@ function Cases() {
 
 
       alert(
-        "Psychological assessment case updated successfully."
+        notificationSent
+          ? "Psychological assessment case updated successfully."
+          : "The assessment case was updated, but the user notification could not be sent."
       );
 
     } catch (err) {
@@ -7664,6 +9133,179 @@ function Cases() {
       />
 
 
+      <section className="panel counselor-filter-panel">
+
+        <div className="counselor-filter-heading">
+
+          <div>
+
+            <h2>
+              Filter Assessment Cases
+            </h2>
+
+            <p>
+              {
+                isSuperAdmin
+                  ? "Filter cases by college, program, and monitoring priority."
+                  : "Filter cases by program and monitoring priority."
+              }
+            </p>
+
+          </div>
+
+
+          <span className="counselor-filter-count">
+            {
+              filteredCaseRows.length
+            }
+            {" "}
+            of
+            {" "}
+            {
+              rows.length
+            }
+          </span>
+
+        </div>
+
+
+        <div
+          className={
+            isSuperAdmin
+              ? "counselor-filter-grid three-columns"
+              : "counselor-filter-grid"
+          }
+        >
+
+          {isSuperAdmin && (
+
+            <label>
+
+              College / Office
+
+              <select
+                value={collegeFilter}
+                onChange={
+                  event => {
+
+                    setCollegeFilter(
+                      event.target.value
+                    );
+
+                    setProgramFilter(
+                      "all"
+                    );
+                  }
+                }
+              >
+
+                <option value="all">
+                  All colleges / offices
+                </option>
+
+                {caseCollegeOptions.map(
+                  college => (
+
+                    <option
+                      key={college}
+                      value={college}
+                    >
+                      {college}
+                    </option>
+
+                  )
+                )}
+
+              </select>
+
+            </label>
+
+          )}
+
+
+          <label>
+
+            Program
+
+            <select
+              value={programFilter}
+              onChange={
+                event =>
+                  setProgramFilter(
+                    event.target.value
+                  )
+              }
+            >
+
+              <option value="all">
+                All programs
+              </option>
+
+              {caseProgramOptions.map(
+                program => (
+
+                  <option
+                    key={program}
+                    value={program}
+                  >
+                    {program}
+                  </option>
+
+                )
+              )}
+
+            </select>
+
+          </label>
+
+
+          <label>
+
+            Priority
+
+            <select
+              value={priorityFilter}
+              onChange={
+                event =>
+                  setPriorityFilter(
+                    event.target.value
+                  )
+              }
+            >
+
+              <option value="all">
+                All priorities
+              </option>
+
+              <option value="Low">
+                Low
+              </option>
+
+              <option value="Moderate">
+                Moderate
+              </option>
+
+              <option value="High">
+                High
+              </option>
+
+              <option value="Critical">
+                Critical
+              </option>
+
+              <option value="No Assessment">
+                No priority
+              </option>
+
+            </select>
+
+          </label>
+
+        </div>
+
+      </section>
+
+
       <section className="panel">
 
         <h2>
@@ -7673,10 +9315,16 @@ function Cases() {
 
         <CaseTable
 
-          rows={rows}
+          rows={
+            filteredCaseRows
+          }
 
           onSelect={
             selectAssessmentCase
+          }
+
+          showCollege={
+            isSuperAdmin
           }
 
         />
@@ -8299,6 +9947,14 @@ function CounselingRequestsManagement() {
     useAuth();
 
 
+  const location =
+    useLocation();
+
+
+  const navigate =
+    useNavigate();
+
+
   const allowedRoles = [
     "counselor",
     "super_admin"
@@ -8334,6 +9990,193 @@ function CounselingRequestsManagement() {
     useRows(
       "consultations",
       consultationFilters
+    );
+
+
+  const assessmentRows =
+    useRows(
+      "assessments",
+      consultationFilters
+    );
+
+
+  const latestAssessmentByOwner =
+    {};
+
+
+  assessmentRows.forEach(
+    assessment => {
+
+      const ownerId =
+        assessment.ownerId;
+
+
+      if (
+        ownerId &&
+        !latestAssessmentByOwner[
+          ownerId
+        ]
+      ) {
+
+        latestAssessmentByOwner[
+          ownerId
+        ] = assessment;
+      }
+    }
+  );
+
+
+  const enrichedRows =
+    rows.map(
+      row => {
+
+        const latestAssessment =
+          latestAssessmentByOwner[
+            row.ownerId
+          ];
+
+
+        return {
+
+          ...row,
+
+          program:
+            row.program ||
+            latestAssessment
+              ?.program ||
+            "",
+
+          priority:
+            latestAssessment
+              ?.priority ||
+            "No Assessment"
+
+        };
+      }
+    );
+
+
+  const [
+    collegeFilter,
+    setCollegeFilter
+  ] = useState("all");
+
+
+  const [
+    programFilter,
+    setProgramFilter
+  ] = useState("all");
+
+
+  const [
+    priorityFilter,
+    setPriorityFilter
+  ] = useState("all");
+
+
+  const requestCollegeOptions =
+    Array.from(
+      new Set(
+        enrichedRows.map(
+          row =>
+            counselorCollegeLabel(
+              row.department
+            )
+        )
+      )
+    )
+      .sort(
+        (a, b) =>
+          a.localeCompare(b)
+      );
+
+
+  const requestRowsForProgramOptions =
+    enrichedRows.filter(
+      row => {
+
+        if (
+          !isSuperAdmin ||
+          collegeFilter === "all"
+        ) {
+
+          return true;
+        }
+
+
+        return (
+          counselorCollegeLabel(
+            row.department
+          ) ===
+          collegeFilter
+        );
+      }
+    );
+
+
+  const requestProgramOptions =
+    Array.from(
+      new Set(
+        requestRowsForProgramOptions.map(
+          row =>
+            counselorProgramLabel(
+              row.program
+            )
+        )
+      )
+    )
+      .sort(
+        (a, b) =>
+          a.localeCompare(b)
+      );
+
+
+  const filteredRequestRows =
+    enrichedRows.filter(
+      row => {
+
+        const college =
+          counselorCollegeLabel(
+            row.department
+          );
+
+
+        const program =
+          counselorProgramLabel(
+            row.program
+          );
+
+
+        const priority =
+          row.priority ||
+          "No Assessment";
+
+
+        const matchesCollege =
+          !isSuperAdmin ||
+          collegeFilter === "all" ||
+          college ===
+            collegeFilter;
+
+
+        const matchesProgram =
+          programFilter === "all" ||
+          program ===
+            programFilter;
+
+
+        const matchesPriority =
+          priorityFilter === "all" ||
+          priority ===
+            priorityFilter;
+
+
+        return (
+          matchesCollege &&
+          matchesProgram &&
+          matchesPriority
+        );
+      }
     );
 
 
@@ -8407,6 +10250,82 @@ function CounselingRequestsManagement() {
   );
 
 
+  const requestedRequestId =
+    location.state
+      ?.requestId ||
+    "";
+
+
+  useEffect(
+    () => {
+
+      if (!requestedRequestId) {
+        return;
+      }
+
+
+      const target =
+        enrichedRows.find(
+          row =>
+            row.id ===
+            requestedRequestId
+        );
+
+
+      if (!target) {
+        return;
+      }
+
+
+      const allowedReviewStatuses = [
+        "For review",
+        "Schedule for counseling",
+        "Follow up is recommended",
+        "Counseling is optional",
+        "For referral"
+      ];
+
+
+      setSelected(
+        target
+      );
+
+
+      setStatusDraft(
+        allowedReviewStatuses.includes(
+          target.status
+        )
+          ? target.status
+          : "For review"
+      );
+
+
+      setRemarksDraft(
+        target.counselorRemarks ||
+        ""
+      );
+
+
+      navigate(
+        location.pathname,
+        {
+          replace: true,
+          state: {}
+        }
+      );
+
+    },
+
+    [
+      requestedRequestId,
+      rows,
+      assessmentRows,
+      navigate,
+      location.pathname
+    ]
+  );
+
+
   if (!hasAccess) {
 
     return (
@@ -8458,6 +10377,19 @@ function CounselingRequestsManagement() {
       setSaving(true);
 
 
+      const requestChanged =
+        selected.status !==
+          statusDraft ||
+        String(
+          selected.counselorRemarks ||
+          ""
+        ) !==
+          String(
+            remarksDraft ||
+            ""
+          );
+
+
       await updateRecord(
         "consultations",
         selected.id,
@@ -8469,6 +10401,61 @@ function CounselingRequestsManagement() {
             remarksDraft
         }
       );
+
+
+      let notificationSent =
+        true;
+
+
+      if (
+        requestChanged &&
+        selected.ownerId
+      ) {
+
+        try {
+
+          await addRecord(
+            "notifications",
+            {
+
+              ownerId:
+                selected.ownerId,
+
+              title:
+                "Counseling request updated",
+
+              message:
+                `Your counseling request was updated. Status: ${statusDraft}.${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
+
+              targetPath:
+                "/consultations",
+
+              sourceType:
+                "consultation",
+
+              sourceId:
+                selected.id,
+
+              read:
+                false
+
+            }
+          );
+
+        } catch (
+          notificationError
+        ) {
+
+          notificationSent =
+            false;
+
+
+          console.error(
+            "Unable to send counseling update notification:",
+            notificationError
+          );
+        }
+      }
 
 
       setSelected({
@@ -8483,7 +10470,9 @@ function CounselingRequestsManagement() {
 
 
       alert(
-        "Counseling request updated successfully."
+        notificationSent
+          ? "Counseling request updated successfully."
+          : "The counseling request was updated, but the user notification could not be sent."
       );
 
     } catch (err) {
@@ -8524,6 +10513,179 @@ function CounselingRequestsManagement() {
       />
 
 
+      <section className="panel counselor-filter-panel">
+
+        <div className="counselor-filter-heading">
+
+          <div>
+
+            <h2>
+              Filter Counseling Requests
+            </h2>
+
+            <p>
+              {
+                isSuperAdmin
+                  ? "Filter requests by college, program, and the user's latest assessment priority."
+                  : "Filter requests by program and the user's latest assessment priority."
+              }
+            </p>
+
+          </div>
+
+
+          <span className="counselor-filter-count">
+            {
+              filteredRequestRows.length
+            }
+            {" "}
+            of
+            {" "}
+            {
+              enrichedRows.length
+            }
+          </span>
+
+        </div>
+
+
+        <div
+          className={
+            isSuperAdmin
+              ? "counselor-filter-grid three-columns"
+              : "counselor-filter-grid"
+          }
+        >
+
+          {isSuperAdmin && (
+
+            <label>
+
+              College / Office
+
+              <select
+                value={collegeFilter}
+                onChange={
+                  event => {
+
+                    setCollegeFilter(
+                      event.target.value
+                    );
+
+                    setProgramFilter(
+                      "all"
+                    );
+                  }
+                }
+              >
+
+                <option value="all">
+                  All colleges / offices
+                </option>
+
+                {requestCollegeOptions.map(
+                  college => (
+
+                    <option
+                      key={college}
+                      value={college}
+                    >
+                      {college}
+                    </option>
+
+                  )
+                )}
+
+              </select>
+
+            </label>
+
+          )}
+
+
+          <label>
+
+            Program
+
+            <select
+              value={programFilter}
+              onChange={
+                event =>
+                  setProgramFilter(
+                    event.target.value
+                  )
+              }
+            >
+
+              <option value="all">
+                All programs
+              </option>
+
+              {requestProgramOptions.map(
+                program => (
+
+                  <option
+                    key={program}
+                    value={program}
+                  >
+                    {program}
+                  </option>
+
+                )
+              )}
+
+            </select>
+
+          </label>
+
+
+          <label>
+
+            Priority
+
+            <select
+              value={priorityFilter}
+              onChange={
+                event =>
+                  setPriorityFilter(
+                    event.target.value
+                  )
+              }
+            >
+
+              <option value="all">
+                All priorities
+              </option>
+
+              <option value="Low">
+                Low
+              </option>
+
+              <option value="Moderate">
+                Moderate
+              </option>
+
+              <option value="High">
+                High
+              </option>
+
+              <option value="Critical">
+                Critical
+              </option>
+
+              <option value="No Assessment">
+                No assessment
+              </option>
+
+            </select>
+
+          </label>
+
+        </div>
+
+      </section>
+
+
       <section className="panel counseling-request-list-panel">
 
         <h2>
@@ -8531,7 +10693,7 @@ function CounselingRequestsManagement() {
         </h2>
 
 
-        {rows.length === 0
+        {filteredRequestRows.length === 0
 
           ? (
 
@@ -8541,7 +10703,7 @@ function CounselingRequestsManagement() {
 
           )
 
-          : rows.map(
+          : filteredRequestRows.map(
               row => (
 
                 <article
@@ -8600,6 +10762,14 @@ function CounselingRequestsManagement() {
                       "No department"
                     }
 
+                    {" · "}
+
+                    {
+                      counselorProgramLabel(
+                        row.program
+                      )
+                    }
+
                     {row.mode && (
                       <>
                         {" · "}
@@ -8607,6 +10777,24 @@ function CounselingRequestsManagement() {
                       </>
                     )}
                   </small>
+
+
+                  <div className="counseling-request-priority-row">
+
+                    <span
+                      className={
+                        priorityClassName(
+                          row.priority
+                        )
+                      }
+                    >
+                      {
+                        row.priority ||
+                        "No Assessment"
+                      }
+                    </span>
+
+                  </div>
 
 
                   <div className="counseling-request-list-actions">
@@ -8772,6 +10960,39 @@ function CounselingRequestsManagement() {
                       {
                         selected.department ||
                         "Not provided"
+                      }
+                    </strong>
+
+                  </div>
+
+
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      Program
+                    </span>
+
+                    <strong>
+                      {
+                        counselorProgramLabel(
+                          selected.program
+                        )
+                      }
+                    </strong>
+
+                  </div>
+
+
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      Priority
+                    </span>
+
+                    <strong>
+                      {
+                        selected.priority ||
+                        "No Assessment"
                       }
                     </strong>
 
@@ -8982,6 +11203,10 @@ function Schedule() {
     useAuth();
 
 
+  const navigate =
+    useNavigate();
+
+
   const isSuperAdmin =
     user.role ===
     "super_admin";
@@ -9003,6 +11228,58 @@ function Schedule() {
     );
 
 
+  const appointments =
+    [...rows]
+      .filter(
+        row =>
+          row.date &&
+          row.time
+      )
+      .sort(
+        (a, b) => {
+
+          const dateDifference =
+            counselingAppointmentSortValue(
+              a
+            ) -
+            counselingAppointmentSortValue(
+              b
+            );
+
+
+          if (dateDifference !== 0) {
+
+            return dateDifference;
+          }
+
+
+          return String(
+            a.ownerName || ""
+          ).localeCompare(
+            String(
+              b.ownerName || ""
+            )
+          );
+        }
+      );
+
+
+  function openAppointment(
+    appointment
+  ) {
+
+    navigate(
+      "/counseling-requests",
+      {
+        state: {
+          requestId:
+            appointment.id
+        }
+      }
+    );
+  }
+
+
   return (
 
     <>
@@ -9011,7 +11288,7 @@ function Schedule() {
 
         title="Counselor Schedule"
 
-        subtitle="Approved, pending, and completed counseling appointments."
+        subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
 
       />
 
@@ -9021,7 +11298,7 @@ function Schedule() {
         <div className="schedule-grid">
 
 
-          {rows.length === 0
+          {appointments.length === 0
 
             ? (
 
@@ -9031,16 +11308,27 @@ function Schedule() {
 
             )
 
-            : rows.map(
+            : appointments.map(
                 row => (
 
-                  <article
+                  <button
 
-                    className="schedule-card"
+                    type="button"
+
+                    className="schedule-card schedule-card-button"
 
                     key={
                       row.id
                     }
+
+                    onClick={
+                      () =>
+                        openAppointment(
+                          row
+                        )
+                    }
+
+                    title="Open counseling request"
 
                   >
 
@@ -9067,8 +11355,16 @@ function Schedule() {
                       <p>
 
                         {
-                          row.ownerName
+                          row.ownerName ||
+                          "User"
                         }
+
+                        {row.program && (
+                          <>
+                            {" · "}
+                            {row.program}
+                          </>
+                        )}
 
                         {row.mode && (
                           <>
@@ -9080,17 +11376,27 @@ function Schedule() {
                       </p>
 
 
-                      <span className="status">
+                      <div className="schedule-card-footer">
 
-                        {
-                          row.status
-                        }
+                        <span className="status">
 
-                      </span>
+                          {
+                            row.status ||
+                            "For review"
+                          }
+
+                        </span>
+
+
+                        <span className="schedule-open-hint">
+                          Open request
+                        </span>
+
+                      </div>
 
                     </div>
 
-                  </article>
+                  </button>
 
                 )
               )
@@ -10093,7 +12399,8 @@ function Empty({
 
 function CaseTable({
   rows,
-  onSelect
+  onSelect,
+  showCollege = false
 }) {
 
   if (!rows.length) {
@@ -10120,6 +12427,18 @@ function CaseTable({
 
             <th>
               User
+            </th>
+
+            {showCollege && (
+
+              <th>
+                College / Office
+              </th>
+
+            )}
+
+            <th>
+              Program
             </th>
 
             <th>
@@ -10184,6 +12503,32 @@ function CaseTable({
                     {
                       row.ownerName ||
                       "Current user"
+                    }
+
+                  </td>
+
+
+                  {showCollege && (
+
+                    <td>
+
+                      {
+                        counselorCollegeLabel(
+                          row.department
+                        )
+                      }
+
+                    </td>
+
+                  )}
+
+
+                  <td>
+
+                    {
+                      counselorProgramLabel(
+                        row.program
+                      )
                     }
 
                   </td>
@@ -10277,12 +12622,9 @@ function CaseTable({
 
                     <span
                       className={
-                        `priority ${
-                          String(
-                            row.priority ||
-                            "low"
-                          ).toLowerCase()
-                        }`
+                        priorityClassName(
+                          row.priority
+                        )
                       }
                     >
 
@@ -10428,6 +12770,28 @@ export default function App() {
 
                   element={
                     <Assessment />
+                  }
+
+                />
+
+
+                <Route
+
+                  path="/monitoring"
+
+                  element={
+                    <Monitoring />
+                  }
+
+                />
+
+
+                <Route
+
+                  path="/notifications"
+
+                  element={
+                    <Notifications />
                   }
 
                 />

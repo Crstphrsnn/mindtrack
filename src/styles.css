@@ -2638,3 +2638,639 @@ th {
   cursor: not-allowed;
   text-decoration: none;
 }
+
+
+/* =====================================================
+   COUNSELOR FILTERS
+   Assessment Cases / Counseling Requests
+===================================================== */
+
+.counselor-filter-panel {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.counselor-filter-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.counselor-filter-heading h2 {
+  margin: 0 0 5px;
+  color: #173f8f;
+}
+
+.counselor-filter-heading p {
+  margin: 0;
+  color: #6a7283;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.counselor-filter-count {
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.counselor-filter-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.counselor-filter-grid label {
+  margin-top: 8px;
+}
+
+.priority.no-assessment {
+  background: #eef1f5;
+  color: #667085;
+}
+
+.counseling-request-priority-row {
+  display: flex;
+  margin-top: 12px;
+}
+
+
+/* =====================================================
+   CLICKABLE COUNSELOR SCHEDULE
+===================================================== */
+
+.schedule-card-button {
+  width: 100%;
+  text-align: left;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.schedule-card-button:hover {
+  border-color: #173f8f;
+  box-shadow: 0 8px 22px rgba(23, 63, 143, 0.12);
+  transform: translateY(-1px);
+}
+
+.schedule-card-button:focus-visible {
+  outline: 3px solid rgba(23, 63, 143, 0.22);
+  outline-offset: 2px;
+}
+
+.schedule-card-button > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.schedule-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.schedule-open-hint {
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 680px) {
+
+  .counselor-filter-heading {
+    display: block;
+  }
+
+  .counselor-filter-count {
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .counselor-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* =====================================================
+   USER SIDEBAR NOTIFICATION BADGE
+===================================================== */
+
+.sidebar-notification-badge {
+  margin-left: auto;
+  min-width: 21px;
+  height: 21px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #173f8f;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.nav-link.active .sidebar-notification-badge {
+  background: #ffffff;
+  color: #173f8f;
+}
+
+
+/* =====================================================
+   USER NOTIFICATIONS
+===================================================== */
+
+.notification-panel {
+  max-width: 1000px;
+}
+
+.notification-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.notification-panel-heading h2,
+.notification-panel-heading p {
+  margin-top: 0;
+}
+
+.notification-panel-heading p {
+  margin-bottom: 0;
+  color: #6a7283;
+}
+
+.notification-list {
+  display: grid;
+  gap: 10px;
+}
+
+.notification-card {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notification-card:hover {
+  border-color: #9cb6df;
+  background: #f8fbff;
+}
+
+.notification-card.unread {
+  border-color: #b8cbed;
+  background: #f1f6ff;
+}
+
+.notification-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #e7eefc;
+  color: #173f8f;
+}
+
+.notification-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.notification-title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.notification-title-row strong {
+  color: #172033;
+}
+
+.notification-unread-label {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #173f8f;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.notification-content p {
+  margin: 6px 0 7px;
+  color: #4f596c;
+  line-height: 1.5;
+}
+
+.notification-content small {
+  color: #7b8495;
+}
+
+
+/* =====================================================
+   USER MENTAL HEALTH MONITORING
+===================================================== */
+
+.monitoring-empty-panel {
+  max-width: 760px;
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.monitoring-empty-panel > svg {
+  color: #173f8f;
+}
+
+.monitoring-empty-panel p {
+  max-width: 560px;
+  margin: 10px auto 20px;
+  color: #687084;
+  line-height: 1.6;
+}
+
+.monitoring-summary-panel {
+  margin-bottom: 18px;
+}
+
+.monitoring-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.monitoring-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.monitoring-summary-header h2 {
+  margin: 0 0 5px;
+}
+
+.monitoring-summary-header p {
+  margin: 0;
+  color: #737d8f;
+}
+
+.monitoring-status-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.monitoring-status-item {
+  padding: 14px;
+  border: 1px solid #e0e6ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.monitoring-status-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: #737d8f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.monitoring-status-item strong {
+  color: #172033;
+}
+
+.monitoring-counselor-note {
+  margin-top: 14px;
+  padding: 15px;
+  border-left: 4px solid #173f8f;
+  border-radius: 10px;
+  background: #f4f8ff;
+}
+
+.monitoring-counselor-note p {
+  margin: 7px 0 0;
+  white-space: pre-wrap;
+  color: #40506a;
+  line-height: 1.55;
+}
+
+.monitoring-score-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.monitoring-score-card {
+  margin-top: 0;
+}
+
+.monitoring-score-card > span {
+  display: block;
+  color: #173f8f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.monitoring-score-card > strong {
+  display: block;
+  margin: 8px 0 5px;
+  color: #172033;
+  font-size: 28px;
+}
+
+.monitoring-score-card > small {
+  display: block;
+  color: #737d8f;
+}
+
+.monitoring-score-card > p {
+  margin: 10px 0 0;
+  color: #526074;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.monitoring-guidance-panel {
+  margin-bottom: 18px;
+}
+
+.monitoring-guidance-panel > p {
+  color: #40506a;
+  line-height: 1.6;
+}
+
+.monitoring-history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.monitoring-history-heading h2,
+.monitoring-history-heading p {
+  margin-top: 0;
+}
+
+.monitoring-history-heading p {
+  margin-bottom: 0;
+  color: #737d8f;
+}
+
+.monitoring-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.monitoring-history-card {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1fr)
+    auto
+    minmax(280px, 1.5fr);
+  align-items: center;
+  gap: 16px;
+  padding: 15px;
+  border: 1px solid #e0e6ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.monitoring-history-card > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.monitoring-history-card small {
+  color: #737d8f;
+}
+
+.monitoring-history-scores {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 14px;
+  color: #526074;
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+
+  .monitoring-score-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .monitoring-history-card {
+    grid-template-columns: 1fr auto;
+  }
+
+  .monitoring-history-scores {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 620px) {
+
+  .notification-panel-heading,
+  .monitoring-summary-header,
+  .monitoring-history-heading {
+    flex-direction: column;
+  }
+
+  .monitoring-status-grid,
+  .monitoring-score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .monitoring-history-card {
+    grid-template-columns: 1fr;
+  }
+
+  .monitoring-history-scores {
+    grid-column: auto;
+  }
+}
+
+
+/* =====================================================
+   REGISTRATION REQUIRED FIELD ASTERISKS
+===================================================== */
+
+.required-fields-note {
+  margin: 0 0 14px;
+  color: #687084;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.required-asterisk {
+  margin-left: 3px;
+  color: #c62828;
+  font-weight: 800;
+}
+
+
+/* =====================================================
+   SUPER ADMIN CASE / REQUEST FILTERS
+===================================================== */
+
+.counselor-filter-grid.three-columns {
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 980px) {
+
+  .counselor-filter-grid.three-columns {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+
+  .counselor-filter-grid.three-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   ASSESSMENT - EASIER TO UNDERSTAND CHOICES
+===================================================== */
+
+.assessment-simple-guide {
+  max-width: 950px;
+  margin: 0 0 18px;
+  padding: 15px 17px;
+  border: 1px solid #cbd9ee;
+  border-radius: 12px;
+  background: #f6f9ff;
+}
+
+.assessment-simple-guide strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #173f8f;
+  font-size: 14px;
+}
+
+.assessment-simple-guide p {
+  margin: 0;
+  color: #48566d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 72px;
+}
+
+.choice input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  margin-right: 0;
+}
+
+.assessment-choice-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.assessment-choice-label {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.assessment-choice-helper {
+  display: block;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.choice.selected .assessment-choice-label {
+  color: #173f8f;
+}
+
+.choice.selected .assessment-choice-helper {
+  color: #405a88;
+}
+
+.assessment-field-helper {
+  display: block;
+  margin: 7px 0 8px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+@media (max-width: 780px) {
+
+  .assessment-choice-row-wide,
+  .choice-row {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+
+  .assessment-choice-row-wide,
+  .choice-row {
+    grid-template-columns: 1fr;
+  }
+
+  .choice {
+    min-height: auto;
+  }
+}

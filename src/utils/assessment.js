@@ -29,467 +29,319 @@ export const DASS21_TITLE =
   "Depression Anxiety Stress Scales-21 (DASS-21)";
 
 
-// ======================================================
-// WHO-5
-// ======================================================
-
 export const who5Questions = [
-
   {
     id: "who5_q1",
-    text:
-      "I have felt cheerful and in good spirits"
+    text: "I have felt cheerful and in good spirits"
   },
-
   {
     id: "who5_q2",
-    text:
-      "I have felt calm and relaxed"
+    text: "I have felt calm and relaxed"
   },
-
   {
     id: "who5_q3",
-    text:
-      "I have felt active and vigorous"
+    text: "I have felt active and vigorous"
   },
-
   {
     id: "who5_q4",
-    text:
-      "I woke up feeling fresh and rested"
+    text: "I woke up feeling fresh and rested"
   },
-
   {
     id: "who5_q5",
-    text:
-      "My daily life has been filled with things that interest me"
+    text: "My daily life has been filled with things that interest me"
   }
-
 ];
 
 
 export const who5Choices = [
-
   {
-    label:
-      "All of the time",
+    label: "All of the time",
+    helper: "Almost always",
     value: 5
   },
-
   {
-    label:
-      "Most of the time",
+    label: "Most of the time",
+    helper: "Often",
     value: 4
   },
-
   {
-    label:
-      "More than half of the time",
+    label: "More than half of the time",
+    helper: "More often than not",
     value: 3
   },
-
   {
-    label:
-      "Less than half of the time",
+    label: "Less than half of the time",
+    helper: "Sometimes, but less often",
     value: 2
   },
-
   {
-    label:
-      "Some of the time",
+    label: "Some of the time",
+    helper: "Only sometimes",
     value: 1
   },
-
   {
-    label:
-      "At no time",
+    label: "At no time",
+    helper: "Never",
     value: 0
   }
-
 ];
 
 
-// ======================================================
-// PHQ-9
-// ======================================================
-
 export const phq9Questions = [
-
   {
     id: "phq9_q1",
-    text:
-      "Little interest or pleasure in doing things"
+    text: "Little interest or pleasure in doing things"
   },
-
   {
     id: "phq9_q2",
-    text:
-      "Feeling down, depressed, or hopeless"
+    text: "Feeling down, depressed, or hopeless"
   },
-
   {
     id: "phq9_q3",
-    text:
-      "Trouble falling or staying asleep, or sleeping too much"
+    text: "Trouble falling or staying asleep, or sleeping too much"
   },
-
   {
     id: "phq9_q4",
-    text:
-      "Feeling tired or having little energy"
+    text: "Feeling tired or having little energy"
   },
-
   {
     id: "phq9_q5",
-    text:
-      "Poor appetite or overeating"
+    text: "Poor appetite or overeating"
   },
-
   {
     id: "phq9_q6",
-    text:
-      "Feeling bad about yourself — or that you are a failure or have let yourself or your family down"
+    text: "Feeling bad about yourself — or that you are a failure or have let yourself or your family down"
   },
-
   {
     id: "phq9_q7",
-    text:
-      "Trouble concentrating on things, such as reading the newspaper or watching television"
+    text: "Trouble concentrating on things, such as reading the newspaper or watching television"
   },
-
   {
     id: "phq9_q8",
-    text:
-      "Moving or speaking so slowly that other people could have noticed? Or the opposite — being so fidgety or restless that you have been moving around a lot more than usual"
+    text: "Moving or speaking so slowly that other people could have noticed? Or the opposite — being so fidgety or restless that you have been moving around a lot more than usual"
   },
-
   {
     id: "phq9_q9",
-    text:
-      "Thoughts that you would be better off dead or of hurting yourself in some way"
+    text: "Thoughts that you would be better off dead or of hurting yourself in some way"
   }
-
 ];
 
 
 export const phq9Choices = [
-
   {
-    label:
-      "Not at all",
+    label: "Not at all",
+    helper: "It did not happen",
     value: 0
   },
-
   {
-    label:
-      "Several days",
+    label: "Several days",
+    helper: "It happened on a few days",
     value: 1
   },
-
   {
-    label:
-      "More than half the days",
+    label: "More than half the days",
+    helper: "It happened on many days",
     value: 2
   },
-
   {
-    label:
-      "Nearly every day",
+    label: "Nearly every day",
+    helper: "It happened almost every day",
     value: 3
   }
-
 ];
 
 
 export const phq9DifficultyChoices = [
-
   "Not difficult at all",
-
   "Somewhat difficult",
-
   "Very difficult",
-
   "Extremely difficult"
-
 ];
 
 
-// ======================================================
-// GAD-7
-// ======================================================
-
 export const gad7Questions = [
-
   {
     id: "gad7_q1",
-    text:
-      "Feeling nervous, anxious or on edge"
+    text: "Feeling nervous, anxious or on edge"
   },
-
   {
     id: "gad7_q2",
-    text:
-      "Not being able to stop or control worrying"
+    text: "Not being able to stop or control worrying"
   },
-
   {
     id: "gad7_q3",
-    text:
-      "Worrying too much about different things"
+    text: "Worrying too much about different things"
   },
-
   {
     id: "gad7_q4",
-    text:
-      "Trouble relaxing"
+    text: "Trouble relaxing"
   },
-
   {
     id: "gad7_q5",
-    text:
-      "Being so restless that it is hard to sit still"
+    text: "Being so restless that it is hard to sit still"
   },
-
   {
     id: "gad7_q6",
-    text:
-      "Becoming easily annoyed or irritable"
+    text: "Becoming easily annoyed or irritable"
   },
-
   {
     id: "gad7_q7",
-    text:
-      "Feeling afraid as if something awful might happen"
+    text: "Feeling afraid as if something awful might happen"
   }
-
 ];
 
 
 export const gad7Choices = [
-
   {
-    label:
-      "Not at all",
+    label: "Not at all",
+    helper: "It did not happen",
     value: 0
   },
-
   {
-    label:
-      "Several days",
+    label: "Several days",
+    helper: "It happened on a few days",
     value: 1
   },
-
   {
-    label:
-      "More than half the days",
+    label: "More than half the days",
+    helper: "It happened on many days",
     value: 2
   },
-
   {
-    label:
-      "Nearly every day",
+    label: "Nearly every day",
+    helper: "It happened almost every day",
     value: 3
   }
-
 ];
 
 
-// ======================================================
-// DASS-21
-// ======================================================
-
 export const dass21Questions = [
-
   {
     id: "dass21_q1",
-    text:
-      "I found it hard to wind down"
+    text: "I found it hard to wind down"
   },
-
   {
     id: "dass21_q2",
-    text:
-      "I was aware of dryness of my mouth"
+    text: "I was aware of dryness of my mouth"
   },
-
   {
     id: "dass21_q3",
-    text:
-      "I couldn't seem to experience any positive feeling at all"
+    text: "I couldn't seem to experience any positive feeling at all"
   },
-
   {
     id: "dass21_q4",
-    text:
-      "I experienced breathing difficulty (eg, excessively rapid breathing, breathlessness in the absence of physical exertion)"
+    text: "I experienced breathing difficulty (eg, excessively rapid breathing, breathlessness in the absence of physical exertion)"
   },
-
   {
     id: "dass21_q5",
-    text:
-      "I found it difficult to work up the initiative to do things"
+    text: "I found it difficult to work up the initiative to do things"
   },
-
   {
     id: "dass21_q6",
-    text:
-      "I tended to over-react to situations"
+    text: "I tended to over-react to situations"
   },
-
   {
     id: "dass21_q7",
-    text:
-      "I experienced trembling (eg, in the hands)"
+    text: "I experienced trembling (eg, in the hands)"
   },
-
   {
     id: "dass21_q8",
-    text:
-      "I felt that I was using a lot of nervous energy"
+    text: "I felt that I was using a lot of nervous energy"
   },
-
   {
     id: "dass21_q9",
-    text:
-      "I was worried about situations in which I might panic and make a fool of myself"
+    text: "I was worried about situations in which I might panic and make a fool of myself"
   },
-
   {
     id: "dass21_q10",
-    text:
-      "I felt that I had nothing to look forward to"
+    text: "I felt that I had nothing to look forward to"
   },
-
   {
     id: "dass21_q11",
-    text:
-      "I found myself getting agitated"
+    text: "I found myself getting agitated"
   },
-
   {
     id: "dass21_q12",
-    text:
-      "I found it difficult to relax"
+    text: "I found it difficult to relax"
   },
-
   {
     id: "dass21_q13",
-    text:
-      "I felt down-hearted and blue"
+    text: "I felt down-hearted and blue"
   },
-
   {
     id: "dass21_q14",
-    text:
-      "I was intolerant of anything that kept me from getting on with what I was doing"
+    text: "I was intolerant of anything that kept me from getting on with what I was doing"
   },
-
   {
     id: "dass21_q15",
-    text:
-      "I felt I was close to panic"
+    text: "I felt I was close to panic"
   },
-
   {
     id: "dass21_q16",
-    text:
-      "I was unable to become enthusiastic about anything"
+    text: "I was unable to become enthusiastic about anything"
   },
-
   {
     id: "dass21_q17",
-    text:
-      "I felt I wasn't worth much as a person"
+    text: "I felt I wasn't worth much as a person"
   },
-
   {
     id: "dass21_q18",
-    text:
-      "I felt that I was rather touchy"
+    text: "I felt that I was rather touchy"
   },
-
   {
     id: "dass21_q19",
-    text:
-      "I was aware of the action of my heart in the absence of physical exertion (eg, sense of heart rate increase, heart missing a beat)"
+    text: "I was aware of the action of my heart in the absence of physical exertion (eg, sense of heart rate increase, heart missing a beat)"
   },
-
   {
     id: "dass21_q20",
-    text:
-      "I felt scared without any good reason"
+    text: "I felt scared without any good reason"
   },
-
   {
     id: "dass21_q21",
-    text:
-      "I felt that life was meaningless"
+    text: "I felt that life was meaningless"
   }
-
 ];
 
 
 export const dass21Choices = [
-
   {
-    label:
-      "Did not apply to me at all",
+    label: "Did not apply to me at all",
+    helper: "This did not happen to me",
     value: 0
   },
-
   {
-    label:
-      "Applied to me to some degree, or some of the time",
+    label: "Applied to me to some degree, or some of the time",
+    helper: "This happened a little or sometimes",
     value: 1
   },
-
   {
-    label:
-      "Applied to me to a considerable degree, or a good part of time",
+    label: "Applied to me to a considerable degree, or a good part of time",
+    helper: "This happened quite a lot or often",
     value: 2
   },
-
   {
-    label:
-      "Applied to me very much, or most of the time",
+    label: "Applied to me very much, or most of the time",
+    helper: "This happened a lot or most of the time",
     value: 3
   }
-
 ];
 
-
-// ======================================================
-// ALL SCORED QUESTIONS
-// ======================================================
 
 export const scoredQuestionIds = [
-
   ...who5Questions.map(
-    question =>
-      question.id
+    question => question.id
   ),
-
   ...phq9Questions.map(
-    question =>
-      question.id
+    question => question.id
   ),
-
   ...gad7Questions.map(
-    question =>
-      question.id
+    question => question.id
   ),
-
   ...dass21Questions.map(
-    question =>
-      question.id
+    question => question.id
   )
-
 ];
 
-
-// ======================================================
-// HELPER
-// ======================================================
 
 function sumAnswers(
   questions,
@@ -497,157 +349,87 @@ function sumAnswers(
 ) {
 
   return questions.reduce(
-
     (total, question) =>
-
       total +
-
       Number(
         answers[
           question.id
         ] ?? 0
       ),
-
     0
-
   );
 }
 
 
-// ======================================================
-// PHQ-9 SEVERITY
-// ======================================================
+function phq9Severity(score) {
 
-function phq9Severity(
-  score
-) {
-
-  if (
-    score >= 20
-  ) {
-
+  if (score >= 20) {
     return "Severe";
   }
 
-
-  if (
-    score >= 15
-  ) {
-
+  if (score >= 15) {
     return "Moderately severe";
   }
 
-
-  if (
-    score >= 10
-  ) {
-
+  if (score >= 10) {
     return "Moderate";
   }
 
-
-  if (
-    score >= 5
-  ) {
-
+  if (score >= 5) {
     return "Mild";
   }
-
 
   return "Minimal";
 }
 
 
-// ======================================================
-// GAD-7 SEVERITY
-// ======================================================
+function gad7Severity(score) {
 
-function gad7Severity(
-  score
-) {
-
-  if (
-    score >= 15
-  ) {
-
+  if (score >= 15) {
     return "Severe";
   }
 
-
-  if (
-    score >= 10
-  ) {
-
+  if (score >= 10) {
     return "Moderate";
   }
 
-
-  if (
-    score >= 5
-  ) {
-
+  if (score >= 5) {
     return "Mild";
   }
-
 
   return "Minimal";
 }
 
 
-// ======================================================
-// MINDTRACK MONITORING PRIORITY
-//
-// Low / Moderate / High / Critical
-// are INTERNAL MindTrack classifications.
-//
-// They are not official classifications
-// of WHO-5, PHQ-9, GAD-7, or DASS-21.
-// ======================================================
-
 function deriveMonitoringPriority({
-
   who5Percentage,
-
   phq9Score,
-
   gad7Score,
-
   safetyFlag
-
 }) {
 
+  // MindTrack operational monitoring logic.
+  // This does not replace clinical judgment and is not an
+  // official priority scale from any of the three tools.
 
-  // PHQ-9 Item 9
-  if (
-    safetyFlag
-  ) {
-
+  if (safetyFlag) {
     return "Critical";
   }
 
 
-  // Higher monitoring need
   if (
-
     who5Percentage < 50 ||
-
     phq9Score >= 10 ||
-
     gad7Score >= 10
-
   ) {
 
     return "High";
   }
 
 
-  // Moderate monitoring need
   if (
-
     phq9Score >= 5 ||
-
     gad7Score >= 5
-
   ) {
 
     return "Moderate";
@@ -658,41 +440,24 @@ function deriveMonitoringPriority({
 }
 
 
-// ======================================================
-// MINDTRACK RECOMMENDATION
-// ======================================================
-
 function monitoringRecommendation({
-
   priority,
-
   who5BelowCutoff,
-
   safetyFlag
-
 }) {
 
-
-  if (
-    priority ===
-    "Critical"
-  ) {
+  if (priority === "Critical") {
 
     return (
-      "Prompt counselor safety review is recommended because the PHQ-9 safety-related item was endorsed. " +
+      "Prompt counselor safety review is recommended because the PHQ-9 self-harm/death item was endorsed. " +
       "This screening result is not a diagnosis."
     );
   }
 
 
-  if (
-    priority ===
-    "High"
-  ) {
+  if (priority === "High") {
 
-    if (
-      who5BelowCutoff
-    ) {
+    if (who5BelowCutoff) {
 
       return (
         "Counselor review and further assessment are recommended. " +
@@ -707,10 +472,7 @@ function monitoringRecommendation({
   }
 
 
-  if (
-    priority ===
-    "Moderate"
-  ) {
+  if (priority === "Moderate") {
 
     return (
       "Continue monitoring and consider counseling or follow-up support based on the user's concerns and functioning."
@@ -724,30 +486,14 @@ function monitoringRecommendation({
 }
 
 
-// ======================================================
-// CALCULATE COMPLETE ASSESSMENT
-// ======================================================
-
 export function calculateAssessment(
-
   answers,
-
   phq9Difficulty = ""
-
 ) {
 
-
-  // ====================================================
   // WHO-5
-  //
-  // 5 questions
-  // Each: 0 - 5
-  //
-  // Raw = 0 - 25
-  // Percentage = Raw × 4
-  // Final = 0 - 100
-  // ====================================================
-
+  // Raw score = sum of 5 answers, range 0-25.
+  // Percentage = raw score x 4, range 0-100.
   const who5RawScore =
     sumAnswers(
       who5Questions,
@@ -760,20 +506,12 @@ export function calculateAssessment(
 
 
   const who5BelowCutoff =
-
     who5RawScore < 13 ||
-
     who5Percentage < 50;
 
 
-  // ====================================================
   // PHQ-9
-  //
-  // 9 questions
-  // Each: 0 - 3
-  // Total = 0 - 27
-  // ====================================================
-
+  // Total = sum of 9 answers, range 0-27.
   const phq9Score =
     sumAnswers(
       phq9Questions,
@@ -781,14 +519,8 @@ export function calculateAssessment(
     );
 
 
-  // ====================================================
   // GAD-7
-  //
-  // 7 questions
-  // Each: 0 - 3
-  // Total = 0 - 21
-  // ====================================================
-
+  // Total = sum of 7 answers, range 0-21.
   const gad7Score =
     sumAnswers(
       gad7Questions,
@@ -796,28 +528,16 @@ export function calculateAssessment(
     );
 
 
-  // ====================================================
-  // DASS-21
+  // DASS-21 project total.
+  // Per the requested project rule, this is calculated
+  // the same way as PHQ-9: sum all item scores.
+  // 21 items x 0-3 = 0-63.
   //
-  // Your requested project formula:
-  //
-  // Same summation style as PHQ-9.
-  //
-  // 21 questions
-  // Each: 0 - 3
-  //
-  // Total:
-  // Q1 + Q2 + ... + Q21
-  //
-  // Minimum = 0
-  // Maximum = 63
-  //
-  // No severity category is added here because
-  // the provided DASS-21 file contains the questions
-  // and response scale but does not provide a
-  // severity interpretation formula.
-  // ====================================================
-
+  // The supplied DASS-21 page provides the 0-3 response
+  // scale and 21 items, but does not provide a severity
+  // interpretation formula. Therefore MindTrack stores
+  // and displays the total without assigning a clinical
+  // DASS-21 severity category.
   const dass21Score =
     sumAnswers(
       dass21Questions,
@@ -825,202 +545,122 @@ export function calculateAssessment(
     );
 
 
-  // ====================================================
-  // SAFETY FLAG
-  //
-  // PHQ-9 Question 9
-  //
-  // Any answer greater than 0 is kept as a separate
-  // counselor safety-review signal.
-  // ====================================================
-
+  // PHQ-9 item 9 is retained as a separate safety signal.
+  // Any response above "Not at all" requires counselor review.
   const safetyFlag =
-
     Number(
-      answers.phq9_q9 ?? 0
+      answers.phq9_q9 ??
+      0
     ) > 0;
 
 
-  // ====================================================
-  // MINDTRACK PRIORITY
-  // ====================================================
-
   const priority =
     deriveMonitoringPriority({
-
       who5Percentage,
-
       phq9Score,
-
       gad7Score,
-
       safetyFlag
-
     });
 
-
-  // ====================================================
-  // RECOMMENDATION
-  // ====================================================
 
   const recommendation =
     monitoringRecommendation({
-
       priority,
-
       who5BelowCutoff,
-
       safetyFlag
-
     });
 
 
-  // ====================================================
-  // RETURN RESULTS
-  // ====================================================
-
   return {
 
-
-    // Existing MindTrack code expects a 0-100
-    // score, so WHO-5 percentage remains here.
+    // Backward-compatible fields used by existing MindTrack
+    // dashboard, reports, Firestore rules, and profile badge.
     score:
       who5Percentage,
 
-
     priority,
 
-
     recommendation,
-
 
     safetyFlag,
 
 
+    // New standardized assessment results.
     instrumentResults: {
 
-
-      // =================================================
-      // WHO-5
-      // =================================================
-
       who5: {
-
         title:
           WHO5_TITLE,
-
 
         rawScore:
           who5RawScore,
 
-
         maximumRawScore:
           25,
-
 
         percentageScore:
           who5Percentage,
 
-
         belowCutoff:
           who5BelowCutoff,
 
-
         interpretation:
-
           who5BelowCutoff
-
-            ? (
-              "Below the WHO-5 suggested cut-off; further assessment is indicated."
-            )
-
-            : (
-              "At or above the WHO-5 suggested cut-off."
-            )
-
+            ? "Below the WHO-5 suggested cut-off; further assessment is indicated."
+            : "At or above the WHO-5 suggested cut-off."
       },
 
 
-      // =================================================
-      // PHQ-9
-      // =================================================
-
       phq9: {
-
         title:
           PHQ9_TITLE,
-
 
         totalScore:
           phq9Score,
 
-
         maximumScore:
           27,
-
 
         severity:
           phq9Severity(
             phq9Score
           ),
 
-
         difficulty:
-
           phq9Difficulty ||
-
           "Not provided"
-
       },
 
 
-      // =================================================
-      // GAD-7
-      // =================================================
-
       gad7: {
-
         title:
           GAD7_TITLE,
-
 
         totalScore:
           gad7Score,
 
-
         maximumScore:
           21,
-
 
         severity:
           gad7Severity(
             gad7Score
           )
-
       },
 
 
-      // =================================================
-      // DASS-21
-      // =================================================
-
       dass21: {
-
         title:
           DASS21_TITLE,
-
 
         totalScore:
           dass21Score,
 
-
         maximumScore:
           63,
 
-
         scoringNote:
-          "Project scoring rule: sum all 21 item scores from 0 to 3. No DASS-21 severity category is assigned because the provided source does not include a severity interpretation formula."
-
+          "Project scoring rule: sum all 21 item scores (0-3 each). No DASS-21 severity category is assigned because the provided source page does not include an interpretation formula."
       }
 
     }

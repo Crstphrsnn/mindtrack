@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
+  Activity,
   BarChart3,
+  Bell,
   Calendar,
   ClipboardList,
   FileText,
@@ -14,13 +16,18 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
+import {
+  subscribeCollection
+} from "../services/dataService";
 import psuLogo from "../assets/psu-logo.jpg";
 
 const menu = {
   student: [
     ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
+    ["/monitoring", "Monitoring", Activity],
     ["/consultations", "Counseling", Calendar],
+    ["/notifications", "Notifications", Bell],
     ["/history", "History", FileText],
     ["/feedback", "Ratings & Feedback", Star],
     ["/profile", "Profile", User],
@@ -29,6 +36,7 @@ const menu = {
   faculty: [
     ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
+    ["/monitoring", "Monitoring", Activity],
     ["/consultations", "Counseling", Calendar],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -39,6 +47,7 @@ const menu = {
   personnel: [
     ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
+    ["/monitoring", "Monitoring", Activity],
     ["/consultations", "Counseling", Calendar],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -72,6 +81,63 @@ export default function Layout({ children }) {
   const links =
     menu[user?.role] ||
     menu.student;
+
+
+  const [
+    unreadNotifications,
+    setUnreadNotifications
+  ] = useState(0);
+
+
+  useEffect(
+    () => {
+
+      const isGeneralUser =
+        [
+          "student",
+          "faculty",
+          "personnel"
+        ].includes(
+          user?.role
+        );
+
+
+      if (
+        !user?.id ||
+        !isGeneralUser
+      ) {
+
+        setUnreadNotifications(0);
+
+        return undefined;
+      }
+
+
+      return subscribeCollection(
+        "notifications",
+        rows => {
+
+          setUnreadNotifications(
+            rows.filter(
+              row =>
+                !row.read
+            ).length
+          );
+        },
+        {
+          ownerId:
+            user.id
+        }
+      );
+
+    },
+
+    [
+      user?.id,
+      user?.role
+    ]
+  );
+
 
   async function handleLogout() {
 
@@ -148,7 +214,25 @@ export default function Layout({ children }) {
                 }
               >
                 <Icon size={19} />
+
                 <span>{label}</span>
+
+
+                {
+                  to === "/notifications" &&
+                  unreadNotifications > 0 && (
+
+                    <span className="sidebar-notification-badge">
+                      {
+                        unreadNotifications > 99
+                          ? "99+"
+                          : unreadNotifications
+                      }
+                    </span>
+
+                  )
+                }
+
               </NavLink>
 
             )
