@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  NavLink,
-  useNavigate
-} from "react-router-dom";
-
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   Activity,
   BarChart3,
@@ -20,16 +16,12 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
-
 import {
   subscribeCollection
 } from "../services/dataService";
-
 import psuLogo from "../assets/psu-logo.jpg";
 
-
 const menu = {
-
   student: [
     ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
@@ -38,9 +30,8 @@ const menu = {
     ["/notifications", "Notifications", Bell],
     ["/history", "History", FileText],
     ["/feedback", "Ratings & Feedback", Star],
-    ["/profile", "Profile", User]
+    ["/profile", "Profile", User],
   ],
-
 
   faculty: [
     ["/dashboard", "Home", Home],
@@ -51,9 +42,8 @@ const menu = {
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
     ["/feedback", "Ratings & Feedback", Star],
-    ["/profile", "Profile", User]
+    ["/profile", "Profile", User],
   ],
-
 
   personnel: [
     ["/dashboard", "Home", Home],
@@ -64,9 +54,8 @@ const menu = {
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
     ["/feedback", "Ratings & Feedback", Star],
-    ["/profile", "Profile", User]
+    ["/profile", "Profile", User],
   ],
-
 
   counselor: [
     ["/dashboard", "Dashboard", Home],
@@ -74,9 +63,8 @@ const menu = {
     ["/counseling-requests", "Counseling Requests", Calendar],
     ["/user-profiles", "User Profiles", Users],
     ["/schedule", "Schedule", Calendar],
-    ["/reports", "Reports", BarChart3]
+    ["/reports", "Reports", BarChart3],
   ],
-
 
   super_admin: [
     ["/dashboard", "Dashboard", Shield],
@@ -84,30 +72,17 @@ const menu = {
     ["/user-profiles", "User Profiles", Users],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
-    ["/reports", "Reports", BarChart3]
-  ]
+    ["/reports", "Reports", BarChart3],
+  ],
 };
 
+export default function Layout({ children }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
-export default function Layout({
-  children
-}) {
-
-  const {
-    user,
-    logout
-  } = useAuth();
-
-
-  const navigate =
-    useNavigate();
-
-
-  // Do not fall back to Student menu when user is logged out.
   const links =
-    user?.role
-      ? menu[user.role] || []
-      : [];
+    menu[user?.role] ||
+    menu.student;
 
 
   const [
@@ -115,10 +90,6 @@ export default function Layout({
     setUnreadNotifications
   ] = useState(0);
 
-
-  // =====================================================
-  // USER NOTIFICATION BADGE
-  // =====================================================
 
   useEffect(
     () => {
@@ -144,45 +115,26 @@ export default function Layout({
       }
 
 
-      const unsubscribe =
-        subscribeCollection(
-          "notifications",
+      return subscribeCollection(
+        "notifications",
+        rows => {
 
-          rows => {
-
-            const unreadCount =
-              rows.filter(
-                row =>
-                  row.read !== true &&
-                  row.notificationType ===
-                    "counselor_update" &&
-                  row.senderRole ===
-                    "counselor"
-              ).length;
-
-
-            setUnreadNotifications(
-              unreadCount
-            );
-          },
-
-          {
-            ownerId:
-              user.id
-          }
-        );
-
-
-      return () => {
-
-        if (
-          typeof unsubscribe ===
-          "function"
-        ) {
-
-          unsubscribe();
+          setUnreadNotifications(
+            rows.filter(
+              row =>
+                !row.read &&
+                row.notificationType ===
+                  "counselor_update" &&
+                row.senderRole ===
+                  "counselor"
+            ).length
+          );
+        },
+        {
+          ownerId:
+            user.id
         }
-      };
+      );
 
     },
 
@@ -193,10 +145,6 @@ export default function Layout({
   );
 
 
-  // =====================================================
-  // LOGOUT
-  // =====================================================
-
   async function handleLogout() {
 
     const confirmed =
@@ -204,25 +152,18 @@ export default function Layout({
         "Are you sure you want to log out?"
       );
 
-
     if (!confirmed) {
       return;
     }
 
-
     try {
 
-      // Sign out from Firebase/Auth first.
       await logout();
 
-
-      // Return ALL roles to the public website Home page.
-      navigate(
-        "/",
-        {
-          replace: true
-        }
-      );
+      // Force the browser to load the public Home page.
+      // This prevents a protected-route redirect from sending
+      // the user to /login during the logout state change.
+      window.location.replace("/");
 
     } catch (error) {
 
@@ -231,35 +172,14 @@ export default function Layout({
         error
       );
 
-
-      window.alert(
+      alert(
         "Unable to log out. Please try again."
       );
     }
   }
 
-
-  // =====================================================
-  // ROLE DISPLAY
-  // =====================================================
-
-  const roleLabel =
-    user?.role
-      ? user.role
-          .replaceAll(
-            "_",
-            " "
-          )
-      : "user";
-
-
   return (
-
     <div className="app-shell">
-
-      {/* ================================================
-          SIDEBAR
-      ================================================= */}
 
       <aside className="sidebar">
 
@@ -271,74 +191,47 @@ export default function Layout({
             className="sidebar-logo-image"
           />
 
-
           <div>
-
-            <strong>
-              MindTrack
-            </strong>
-
+            <strong>MindTrack</strong>
 
             <small>
-              {roleLabel}
+              {user?.role
+                ? user.role.replace("_", " ")
+                : "user"}
             </small>
-
           </div>
 
         </div>
 
-
         <nav>
 
           {links.map(
-            ([
-              to,
-              label,
-              Icon
-            ]) => (
+            ([to, label, Icon]) => (
 
               <NavLink
-
                 key={to}
-
                 to={to}
-
-                className={
-                  ({
-                    isActive
-                  }) =>
-                    isActive
-                      ? "nav-link active"
-                      : "nav-link"
+                className={({ isActive }) =>
+                  isActive
+                    ? "nav-link active"
+                    : "nav-link"
                 }
-
               >
+                <Icon size={19} />
 
-                <Icon
-                  size={19}
-                />
-
-
-                <span>
-                  {label}
-                </span>
+                <span>{label}</span>
 
 
                 {
-                  to ===
-                    "/notifications" &&
-                  unreadNotifications >
-                    0 && (
+                  to === "/notifications" &&
+                  unreadNotifications > 0 && (
 
                     <span className="sidebar-notification-badge">
-
                       {
-                        unreadNotifications >
-                        99
+                        unreadNotifications > 99
                           ? "99+"
                           : unreadNotifications
                       }
-
                     </span>
 
                   )
@@ -351,36 +244,16 @@ export default function Layout({
 
         </nav>
 
-
         <button
-
           type="button"
-
           className="nav-link logout"
-
-          onClick={
-            handleLogout
-          }
-
+          onClick={handleLogout}
         >
-
-          <LogOut
-            size={19}
-          />
-
-
-          <span>
-            Logout
-          </span>
-
+          <LogOut size={19} />
+          <span>Logout</span>
         </button>
 
       </aside>
-
-
-      {/* ================================================
-          MAIN WORKSPACE
-      ================================================= */}
 
       <div className="workspace">
 
@@ -394,38 +267,26 @@ export default function Layout({
 
           </div>
 
-
           <div className="top-user">
 
             <strong>
-              {
-                user?.name ||
-                "User"
-              }
+              {user?.name || "User"}
             </strong>
 
-
             <small>
-              {
-                user?.department ||
-                ""
-              }
+              {user?.department || ""}
             </small>
 
           </div>
 
         </header>
 
-
         <main className="content">
-
           {children}
-
         </main>
 
       </div>
 
     </div>
-
   );
 }
