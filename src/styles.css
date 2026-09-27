@@ -3661,3 +3661,168 @@ th {
     flex-direction: column;
   }
 }
+
+/* =====================================================
+   STRUCTURED COUNSELOR NOTES
+===================================================== */
+
+.counselor-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.counselor-note-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.counselor-note-field > span {
+  color: #273246;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.counselor-note-field textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+}
+
+.counselor-note-field textarea[readonly] {
+  background: #f3f5f8;
+  color: #5f6879;
+  cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+  .counselor-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================
+   COUNSELOR TRANSFER WORKFLOW
+===================================================== */
+
+.transfer-dashboard-panel {
+  border-left: 4px solid #173f8f;
+}
+
+.transfer-dashboard-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.transfer-dashboard-heading h2 {
+  margin: 0;
+}
+
+.transfer-dashboard-heading p {
+  margin: 5px 0 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.transfer-count-badge {
+  min-width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #173f8f;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.transfer-request-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 12px;
+}
+
+.transfer-request-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.transfer-request-card > div {
+  display: grid;
+  gap: 4px;
+}
+
+.transfer-request-card p,
+.transfer-request-card small {
+  margin: 0;
+  color: #667085;
+}
+
+.transfer-empty-state {
+  padding: 14px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  color: #667085;
+}
+
+.transfer-user-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #173f8f;
+  border-radius: 9px;
+  background: #eef4ff;
+  color: #173f8f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.transfer-user-button:hover {
+  background: #e2ecff;
+}
+
+.transfer-pending-label,
+.transferred-table-badge,
+.transferred-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #fff0d8;
+  color: #8a5400;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.transferred-profile-badge {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.transfer-profile-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 850px) {
+  .transfer-profile-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transfer-request-card,
+  .transfer-dashboard-heading {
+    flex-direction: column;
+  }
+}

@@ -1,169 +1,55 @@
-# MindTrack Realtime Capstone System
+MINDTRACK COUNSELOR TRANSFER WORKFLOW UPDATE
 
-## Recommended capstone technology
+Replace:
+1. App_COUNSELOR_TRANSFER_FIXED.jsx -> src/App.jsx
+2. Layout_COUNSELOR_TRANSFER_FIXED.jsx -> src/components/Layout.jsx
+3. UserProfileFullScreen_COUNSELOR_TRANSFER_FIXED.jsx -> src/components/UserProfileFullScreen.jsx
+4. styles_COUNSELOR_TRANSFER_FIXED.css -> src/styles.css
+5. dataService_COUNSELOR_TRANSFER_FIXED.js -> src/services/dataService.js
+6. firestore_rules_COUNSELOR_TRANSFER_FIXED.rules -> Firebase Firestore Rules, then Publish
 
-- **Programming language:** JavaScript
-- **Frontend framework:** React.js with Vite
-- **Database and backend services:** Firebase Authentication + Cloud Firestore
-- **UI:** HTML5 and CSS3
-- **Hosting:** Firebase Hosting or Vercel
+NEW FEATURE
+- Scheduled counseling requests handled by a counselor show "Request counselor transfer" before the counseling session starts.
+- A reason is required before sending the transfer request.
+- Transfer does not take effect immediately. Status is Pending approval.
+- Every other counselor receives a notification and sees the pending transfer on the Counselor Dashboard.
+- The first counselor who accepts becomes the assigned counselor.
+- The accepting counselor receives transferAccess to the user's profile, counseling history, and assessment history.
+- The user is notified when transfer is requested and when it is approved.
+- The previous counselor is notified when another counselor accepts.
+- Transfer history stays in transferRequests and the consultation keeps transferred-from fields for documentation.
+- The original/source-college counselor still retains read access through the normal department rules.
+- Cross-college assigned users show a Transferred badge at the top of User Profile.
+- User Profiles now include a Transfer Status filter: All Users / Transferred / Not Transferred.
+- Counselor User Profiles include users formally transferred to that counselor, even from another college.
+- Super Admin can filter transferred users system-wide.
+- Counselor Notifications is added to the sidebar and includes transfer requests/status updates.
 
-This stack is defendable because the programming language is clear (JavaScript), React organizes the interface into reusable components, and Firestore supports live database listeners.
+IMPORTANT WORKFLOW
+1. Counselor schedules counseling request.
+2. Before session starts, assigned counselor clicks Request counselor transfer.
+3. Other counselors see the pending transfer on Dashboard and Notifications.
+4. Another counselor clicks Accept transfer.
+5. Firestore atomically records approval, changes assigned counselor, creates transfer access, and preserves previous counselor information.
+6. User receives the new counselor update.
+7. New counselor can open the transferred user's profile and histories.
 
-## Included roles
+NEW FIRESTORE COLLECTIONS
+- transferRequests
+- transferAccess
 
-- Super Admin
-- Counselor / Admin per college or department
-- Student
-- Faculty
-- Personnel
-
-## Included working modules
-
-- Role-based login and dashboards
-- Psychological assessment and weighted priority calculation
-- Critical safety flag
-- User consultation requests
-- Counselor approval/status updates
-- Faculty and personnel referral forms
-- Case review, counselor remarks, and case status
-- Appointment schedule
-- User history
-- Account overview
-- Live reports
-- Demo mode using localStorage
-- Real-time Firebase mode using Firestore onSnapshot listeners
-
-## Run immediately in demo mode
-
-```bash
-npm install
-npm run dev
-```
-
-Open the local address shown by Vite.
-
-Demo password for all accounts:
-
-```text
-password123
-```
-
-Accounts:
-
-```text
-counselor.cte@psu.edu.ph
-counselor.cthm@psu.edu.ph
-counselor.cit@psu.edu.ph
-counselor.csl@psu.edu.ph
-counselor.ccs@psu.edu.ph
-counselor.cbpa@psu.edu.ph
-
-```
-
-## Enable real-time Firebase
-
-1. Create a Firebase project.
-2. Enable Authentication > Email/Password.
-3. Create Firestore Database.
-4. Copy `.env.example` to `.env`.
-5. Paste your Firebase web configuration values.
-6. Create the five Authentication accounts.
-7. Create matching documents in the `users` collection using each Authentication UID.
-
-Example `users/{uid}` document:
-
-```json
-{
-  "name": "CCS Guidance Counselor",
-  "email": "counselor.ccs@psu.edu.ph",
-  "role": "counselor",
-  "department": "CCS"
-}
-```
-
-## Firestore collections
-
-- users
-- assessments
-- consultations
-- referrals
-- notifications
-
-## Starter Firestore rules
-
-Use these only as a development baseline. Review with your adviser before production.
-
-```text
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function profile() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isSuperAdmin() {
-      return signedIn() && profile().role == 'super_admin';
-    }
-
-    function isCounselor() {
-      return signedIn() && profile().role == 'counselor';
-    }
-
-    match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isSuperAdmin());
-      allow write: if isSuperAdmin();
-    }
-
-    match /assessments/{id} {
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read: if signedIn() && (
-        resource.data.ownerId == request.auth.uid ||
-        isSuperAdmin() ||
-        (isCounselor() && resource.data.department == profile().department)
-      );
-      allow update: if isSuperAdmin() ||
-        (isCounselor() && resource.data.department == profile().department);
-    }
-
-    match /consultations/{id} {
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read: if signedIn() && (
-        resource.data.ownerId == request.auth.uid ||
-        isSuperAdmin() ||
-        (isCounselor() && resource.data.department == profile().department)
-      );
-      allow update: if isSuperAdmin() ||
-        (isCounselor() && resource.data.department == profile().department);
-    }
-
-    match /referrals/{id} {
-      allow create: if signedIn() &&
-        (profile().role == 'faculty' || profile().role == 'personnel');
-      allow read: if signedIn() && (
-        resource.data.referrerId == request.auth.uid ||
-        isSuperAdmin() ||
-        isCounselor()
-      );
-      allow update: if isSuperAdmin() || isCounselor();
-    }
-
-    match /notifications/{id} {
-      allow create: if signedIn();
-      allow read: if signedIn() && resource.data.ownerId == request.auth.uid;
-    }
-  }
-}
-```
-
-## Important academic and ethical wording
-
-The assessment result must be described as:
-
-> A screening and decision-support output for monitoring and counseling support. It is not a medical or psychological diagnosis.
-
-Validated psychological instruments and final thresholds must be reviewed and approved by qualified guidance or mental-health professionals before real deployment.
+TEST
+1. Publish updated Firestore Rules.
+2. Replace all five source files.
+3. npm run dev
+4. Log in as Counselor A and schedule a request.
+5. Confirm Request counselor transfer appears only before the appointment starts.
+6. Submit transfer reason.
+7. Log in as Counselor B. Check dashboard and Notifications.
+8. Accept the transfer.
+9. Open User Profiles as Counselor B and confirm the user is accessible.
+10. If Counselor B is from another college, confirm Transferred badge appears on the profile.
+11. Confirm Counseling Requests / Schedule contains the transferred assigned request.
+12. Log in as the user and confirm transfer notifications.
+13. Check Super Admin User Profiles -> Transfer Status -> Transferred.
+14. npm run build

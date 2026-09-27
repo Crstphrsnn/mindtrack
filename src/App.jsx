@@ -4,9 +4,13 @@ import psuLogo from "./assets/psu-logo.jpg";
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
   onSnapshot,
   query,
+  runTransaction,
   serverTimestamp,
+  setDoc,
   where
 } from "firebase/firestore";
 
@@ -2408,12 +2412,91 @@ function useRows(
     [
       name,
       filters.ownerId,
-      filters.department
+      filters.department,
+      filters.role,
+      filters.status,
+      filters.assignedCounselorId,
+      filters.counselorId,
+      filters.active
     ]
   );
 
 
   return rows;
+}
+
+
+
+// ======================================================
+// COUNSELOR TRANSFER HELPERS
+// ======================================================
+
+function transferAccessDocumentId(
+  ownerId,
+  counselorId
+) {
+
+  return `${ownerId}_${counselorId}`;
+}
+
+
+function mergeRowsById(...lists) {
+
+  const map = new Map();
+
+  lists
+    .flat()
+    .forEach(
+      row => {
+
+        if (row?.id) {
+          map.set(
+            row.id,
+            {
+              ...(map.get(row.id) || {}),
+              ...row
+            }
+          );
+        }
+      }
+    );
+
+  return Array.from(
+    map.values()
+  );
+}
+
+
+function appointmentHasStarted(row) {
+
+  if (!row?.date || !row?.time) {
+    return false;
+  }
+
+  const timeMap = {
+    "8:00 AM": "08:00",
+    "9:00 AM": "09:00",
+    "10:00 AM": "10:00",
+    "11:00 AM": "11:00",
+    "1:00 PM": "13:00",
+    "2:00 PM": "14:00",
+    "3:00 PM": "15:00",
+    "4:00 PM": "16:00"
+  };
+
+  const normalizedTime =
+    timeMap[row.time] ||
+    row.time;
+
+  const date = new Date(
+    `${row.date}T${normalizedTime}`
+  );
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return Date.now() >= date.getTime();
 }
 
 
@@ -2508,6 +2591,408 @@ function Dashboard() {
       "referrals",
       referralFilters
     );
+
+
+  const pendingTransferRequests =
+    useRows(
+      "transferRequests",
+      {
+        status:
+          "Pending approval"
+      }
+    )
+      .filter(
+        row =>
+          isCounselor &&
+          row.requestedById !==
+            user.id
+      );
+
+
+  const [
+    approvingTransferId,
+    setApprovingTransferId
+  ] = useState("");
+
+
+  async function approveTransfer(
+    transfer
+  ) {
+
+    if (!isCounselor) {
+      return;
+    }
+
+
+    if (
+      !window.confirm(
+        `Approve the counselor transfer for ${transfer.ownerName || "this user"}? You will become the assigned counselor for this scheduled counseling request.`
+      )
+    ) {
+      return;
+    }
+
+
+    try {
+
+      setApprovingTransferId(
+        transfer.id
+      );
+
+
+      const transferRef =
+        doc(
+          db,
+          "transferRequests",
+          transfer.id
+        );
+
+
+      const consultationRef =
+        doc(
+          db,
+          "consultations",
+          transfer.consultationId
+        );
+
+
+      const profileRef =
+        doc(
+          db,
+          "counselingProfiles",
+          transfer.ownerId
+        );
+
+
+      const accessRef =
+        doc(
+          db,
+          "transferAccess",
+          transferAccessDocumentId(
+            transfer.ownerId,
+            user.id
+          )
+        );
+
+
+      await runTransaction(
+        db,
+        async transaction => {
+
+          const transferSnap =
+            await transaction.get(
+              transferRef
+            );
+
+
+          if (!transferSnap.exists()) {
+            throw new Error(
+              "This transfer request no longer exists."
+            );
+          }
+
+
+          const current =
+            transferSnap.data();
+
+
+          if (
+            current.status !==
+            "Pending approval"
+          ) {
+            throw new Error(
+              "This transfer request has already been handled by another counselor."
+            );
+          }
+
+
+          if (
+            current.requestedById ===
+            user.id
+          ) {
+            throw new Error(
+              "The requesting counselor cannot approve their own transfer request."
+            );
+          }
+
+
+          transaction.update(
+            transferRef,
+            {
+              status:
+                "Approved",
+
+              acceptedById:
+                user.id,
+
+              acceptedByName:
+                user.name ||
+                "Guidance Counselor",
+
+              acceptedByDepartment:
+                user.department ||
+                "",
+
+              approvedAt:
+                serverTimestamp(),
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.set(
+            accessRef,
+            {
+              ownerId:
+                current.ownerId,
+
+              ownerName:
+                current.ownerName ||
+                "",
+
+              ownerDepartment:
+                current.ownerDepartment ||
+                "",
+
+              counselorId:
+                user.id,
+
+              counselorName:
+                user.name ||
+                "Guidance Counselor",
+
+              counselorDepartment:
+                user.department ||
+                "",
+
+              previousCounselorId:
+                current.requestedById,
+
+              previousCounselorName:
+                current.requestedByName ||
+                "",
+
+              transferRequestId:
+                transfer.id,
+
+              consultationId:
+                current.consultationId,
+
+              active:
+                true,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.update(
+            consultationRef,
+            {
+              assignedCounselorId:
+                user.id,
+
+              assignedCounselorName:
+                user.name ||
+                "Guidance Counselor",
+
+              assignedCounselorDepartment:
+                user.department ||
+                "",
+
+              transferStatus:
+                "Approved",
+
+              transferRequestId:
+                transfer.id,
+
+              transferredFromCounselorId:
+                current.requestedById,
+
+              transferredFromCounselorName:
+                current.requestedByName ||
+                "",
+
+              transferredAt:
+                serverTimestamp(),
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.set(
+            profileRef,
+            {
+              ownerId:
+                current.ownerId,
+
+              ownerName:
+                current.ownerName ||
+                "",
+
+              department:
+                current.ownerDepartment ||
+                "",
+
+              assignedCounselorId:
+                user.id,
+
+              assignedCounselorName:
+                user.name ||
+                "Guidance Counselor",
+
+              assignedCounselorDepartment:
+                user.department ||
+                "",
+
+              transferActive:
+                true,
+
+              transferRequestId:
+                transfer.id,
+
+              transferredFromCounselorId:
+                current.requestedById,
+
+              transferredFromCounselorName:
+                current.requestedByName ||
+                "",
+
+              transferApprovedAt:
+                serverTimestamp(),
+
+              updatedById:
+                user.id,
+
+              updatedByName:
+                user.name ||
+                "Guidance Counselor",
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          );
+        }
+      );
+
+
+      await Promise.allSettled([
+        addRecord(
+          "notifications",
+          {
+            ownerId:
+              transfer.ownerId,
+
+            title:
+              "Counselor transfer approved",
+
+            message:
+              `${user.name || "A Guidance Counselor"} approved the transfer and is now assigned to your scheduled counseling request. Your counseling schedule remains available in MindTrack.`,
+
+            notificationType:
+              "counselor_transfer_update",
+
+            senderRole:
+              "counselor",
+
+            senderId:
+              user.id,
+
+            senderName:
+              user.name ||
+              "Guidance Counselor",
+
+            targetPath:
+              "/consultations",
+
+            sourceType:
+              "consultation",
+
+            sourceId:
+              transfer.consultationId,
+
+            transferRequestId:
+              transfer.id,
+
+            read:
+              false
+          }
+        ),
+
+        addRecord(
+          "notifications",
+          {
+            ownerId:
+              transfer.requestedById,
+
+            title:
+              "Counselor transfer accepted",
+
+            message:
+              `${user.name || "Another counselor"} accepted the transfer for ${transfer.ownerName || "the user"}. The original transfer record remains available for documentation.`,
+
+            notificationType:
+              "transfer_status",
+
+            senderRole:
+              "counselor",
+
+            senderId:
+              user.id,
+
+            senderName:
+              user.name ||
+              "Guidance Counselor",
+
+            targetPath:
+              "/dashboard",
+
+            sourceType:
+              "transfer",
+
+            sourceId:
+              transfer.id,
+
+            read:
+              false
+          }
+        )
+      ]);
+
+
+      alert(
+        `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you for the scheduled counseling request.`
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to approve counselor transfer:",
+        error
+      );
+
+
+      alert(
+        error?.message ||
+        "Unable to approve the counselor transfer."
+      );
+
+    } finally {
+
+      setApprovingTransferId(
+        ""
+      );
+    }
+  }
 
 
   const ownAssessments =
@@ -2611,6 +3096,117 @@ function Dashboard() {
           />
 
         </div>
+
+
+        {isCounselor && (
+
+          <section className="panel transfer-dashboard-panel">
+
+            <div className="transfer-dashboard-heading">
+
+              <div>
+
+                <h2>
+                  Counselor Transfer Requests
+                </h2>
+
+                <p>
+                  These scheduled counseling cases are waiting for another counselor to accept the transfer.
+                </p>
+
+              </div>
+
+
+              <span className="transfer-count-badge">
+                {pendingTransferRequests.length}
+              </span>
+
+            </div>
+
+
+            {pendingTransferRequests.length === 0
+
+              ? (
+
+                <div className="transfer-empty-state">
+                  No users are currently waiting for counselor transfer approval.
+                </div>
+
+              )
+
+              : (
+
+                <div className="transfer-request-grid">
+
+                  {pendingTransferRequests.map(
+                    transfer => (
+
+                      <article
+                        className="transfer-request-card"
+                        key={transfer.id}
+                      >
+
+                        <div>
+
+                          <strong>
+                            {transfer.ownerName || "User"}
+                          </strong>
+
+                          <p>
+                            {transfer.ownerDepartment || "No college / office"}
+                          </p>
+
+                          <small>
+                            Schedule: {transfer.date || "No date"} · {transfer.time || "No time"}
+                          </small>
+
+                          <small>
+                            Requested by: {transfer.requestedByName || "Counselor"}
+                          </small>
+
+                          {transfer.reason && (
+                            <small>
+                              Reason: {transfer.reason}
+                            </small>
+                          )}
+
+                        </div>
+
+
+                        <button
+                          type="button"
+                          className="primary-button"
+                          disabled={
+                            approvingTransferId ===
+                            transfer.id
+                          }
+                          onClick={
+                            () =>
+                              approveTransfer(
+                                transfer
+                              )
+                          }
+                        >
+                          {
+                            approvingTransferId ===
+                            transfer.id
+                              ? "Approving..."
+                              : "Accept transfer"
+                          }
+                        </button>
+
+                      </article>
+                    )
+                  )}
+
+                </div>
+
+              )
+            }
+
+          </section>
+
+        )}
 
 
         <section className="panel">
@@ -7674,13 +8270,17 @@ function UserProfilesContent({
     "super_admin";
 
 
-  const [rows, setRows] =
+  const [departmentRows, setDepartmentRows] =
     useState([]);
 
+  const [transferredRows, setTransferredRows] =
+    useState([]);
+
+  const [profileTransferMap, setProfileTransferMap] =
+    useState({});
 
   const [loadingUsers, setLoadingUsers] =
     useState(true);
-
 
   const [usersError, setUsersError] =
     useState("");
@@ -7692,16 +8292,13 @@ function UserProfilesContent({
       setLoadingUsers(true);
       setUsersError("");
 
-
       let usersQuery =
         collection(
           db,
           "users"
         );
 
-
       if (!isSuperAdmin) {
-
         usersQuery =
           query(
             usersQuery,
@@ -7713,11 +8310,9 @@ function UserProfilesContent({
           );
       }
 
-
       const unsubscribe =
         onSnapshot(
           usersQuery,
-
           snapshot => {
 
             const data =
@@ -7728,23 +8323,9 @@ function UserProfilesContent({
                 })
               );
 
-
-            data.sort(
-              (a, b) =>
-                String(
-                  a.name || ""
-                ).localeCompare(
-                  String(
-                    b.name || ""
-                  )
-                )
-            );
-
-
-            setRows(data);
+            setDepartmentRows(data);
             setLoadingUsers(false);
           },
-
           error => {
 
             console.error(
@@ -7752,32 +8333,18 @@ function UserProfilesContent({
               error
             );
 
-
-            setRows([]);
-
-
+            setDepartmentRows([]);
             setUsersError(
-              error?.code ===
-              "permission-denied"
-
-                ? "Firestore denied access to the users collection. Check the account role and department access."
-
-                : (
-                    error?.message ||
-                    "Unable to load user profiles."
-                  )
+              error?.message ||
+              "Unable to load user profiles."
             );
-
-
             setLoadingUsers(false);
           }
         );
 
-
       return unsubscribe;
 
     },
-
     [
       isSuperAdmin,
       currentUser.department
@@ -7785,8 +8352,135 @@ function UserProfilesContent({
   );
 
 
+  useEffect(
+    () => {
+
+      if (isSuperAdmin) {
+
+        const unsubscribe =
+          onSnapshot(
+            collection(
+              db,
+              "counselingProfiles"
+            ),
+            snapshot => {
+
+              const map = {};
+
+              snapshot.docs.forEach(
+                item => {
+                  map[item.id] =
+                    item.data();
+                }
+              );
+
+              setProfileTransferMap(map);
+            },
+            () =>
+              setProfileTransferMap({})
+          );
+
+        return unsubscribe;
+      }
+
+
+      const accessQuery =
+        query(
+          collection(
+            db,
+            "transferAccess"
+          ),
+          where(
+            "counselorId",
+            "==",
+            currentUser.id
+          ),
+          where(
+            "active",
+            "==",
+            true
+          )
+        );
+
+
+      const unsubscribe =
+        onSnapshot(
+          accessQuery,
+          async snapshot => {
+
+            try {
+
+              const rows =
+                await Promise.all(
+                  snapshot.docs.map(
+                    async accessDoc => {
+
+                      const access =
+                        accessDoc.data();
+
+                      const userSnap =
+                        await getDoc(
+                          doc(
+                            db,
+                            "users",
+                            access.ownerId
+                          )
+                        );
+
+                      if (!userSnap.exists()) {
+                        return null;
+                      }
+
+                      return {
+                        id:
+                          userSnap.id,
+                        ...userSnap.data(),
+                        _transferredAccess:
+                          true,
+                        _transferAccessId:
+                          accessDoc.id
+                      };
+                    }
+                  )
+                );
+
+              setTransferredRows(
+                rows.filter(Boolean)
+              );
+
+            } catch (error) {
+
+              console.error(
+                "Unable to load transferred users:",
+                error
+              );
+
+              setTransferredRows([]);
+            }
+          }
+        );
+
+      return unsubscribe;
+
+    },
+    [
+      isSuperAdmin,
+      currentUser.id
+    ]
+  );
+
+
+  const combinedRows =
+    isSuperAdmin
+      ? departmentRows
+      : mergeRowsById(
+          departmentRows,
+          transferredRows
+        );
+
+
   const users =
-    rows.filter(
+    combinedRows.filter(
       account => {
 
         const role =
@@ -7795,7 +8489,6 @@ function UserProfilesContent({
           )
             .trim()
             .toLowerCase();
-
 
         return [
           "student",
@@ -7809,21 +8502,34 @@ function UserProfilesContent({
   const [selected, setSelected] =
     useState(null);
 
+  const [selectedCollege, setSelectedCollege] =
+    useState(
+      isSuperAdmin
+        ? "All Colleges / Offices"
+        : currentUser.department
+    );
 
-  const [
-    selectedCollege,
-    setSelectedCollege
-  ] = useState(
-    isSuperAdmin
-      ? "All Colleges / Offices"
-      : currentUser.department
-  );
+  const [selectedProgram, setSelectedProgram] =
+    useState("All Programs");
+
+  const [selectedTransferStatus, setSelectedTransferStatus] =
+    useState("All Users");
 
 
-  const [
-    selectedProgram,
-    setSelectedProgram
-  ] = useState("All Programs");
+  function isTransferredAccount(account) {
+
+    if (isSuperAdmin) {
+      return Boolean(
+        profileTransferMap[
+          account.id
+        ]?.transferActive
+      );
+    }
+
+    return Boolean(
+      account._transferredAccess
+    );
+  }
 
 
   const collegeOptions =
@@ -7877,40 +8583,66 @@ function UserProfilesContent({
 
 
   const visibleUsers =
-    users.filter(
-      account => {
+    users
+      .filter(
+        account => {
 
-        const collegeMatches =
-          !isSuperAdmin ||
-          selectedCollege ===
-            "All Colleges / Offices" ||
-          account.department ===
-            selectedCollege;
+          const collegeMatches =
+            !isSuperAdmin ||
+            selectedCollege ===
+              "All Colleges / Offices" ||
+            account.department ===
+              selectedCollege;
 
+          const programMatches =
+            selectedProgram ===
+              "All Programs" ||
+            (
+              account.role ===
+                "student" &&
+              account.program ===
+                selectedProgram
+            );
 
-        const programMatches =
-          selectedProgram ===
-            "All Programs" ||
-          (
-            account.role ===
-              "student" &&
-            account.program ===
-              selectedProgram
+          const transferred =
+            isTransferredAccount(
+              account
+            );
+
+          const transferMatches =
+            selectedTransferStatus ===
+              "All Users" ||
+            (
+              selectedTransferStatus ===
+                "Transferred" &&
+              transferred
+            ) ||
+            (
+              selectedTransferStatus ===
+                "Not Transferred" &&
+              !transferred
+            );
+
+          return (
+            collegeMatches &&
+            programMatches &&
+            transferMatches
           );
+        }
+      )
+      .sort(
+        (a, b) =>
+          String(
+            a.name || ""
+          ).localeCompare(
+            String(
+              b.name || ""
+            )
+          )
+      );
 
 
-        return (
-          collegeMatches &&
-          programMatches
-        );
-      }
-    );
-
-
-  function changeCollegeFilter(
-    value
-  ) {
-
+  function changeCollegeFilter(value) {
     setSelectedCollege(value);
     setSelectedProgram(
       "All Programs"
@@ -7919,43 +8651,11 @@ function UserProfilesContent({
   }
 
 
-  function changeProgramFilter(
-    value
-  ) {
-
-    setSelectedProgram(value);
-    setSelected(null);
-  }
-
-
   function displayRole(role) {
-
-    if (role === "student") {
-      return "Student";
-    }
-
-    if (role === "faculty") {
-      return "Faculty";
-    }
-
-    if (role === "personnel") {
-      return "Personnel";
-    }
-
+    if (role === "student") return "Student";
+    if (role === "faculty") return "Faculty";
+    if (role === "personnel") return "Personnel";
     return role || "—";
-  }
-
-
-  function displayValue(value) {
-
-    const clean =
-      String(
-        value || ""
-      ).trim();
-
-
-    return clean ||
-      "Not provided";
   }
 
 
@@ -7964,126 +8664,103 @@ function UserProfilesContent({
     <>
 
       <PageTitle
-
         title="User Profiles"
-
         subtitle={
           isSuperAdmin
-
-            ? "Filter users by college/office and student program, then open the complete user profile."
-
-            : `Filter users from ${currentUser.department} by student program, then open the complete user profile.`
+            ? "Filter users by college/office, program, and transfer status, then open the complete user profile."
+            : `View users from ${currentUser.department} together with users formally transferred to you.`
         }
-
       />
 
 
       <div className="readonly-access-notice">
-
-        <strong>
-          Profile access
-        </strong>
-
+        <strong>Profile access</strong>
         <span>
-          User profile information is read-only. Counseling notes can only be edited by the assigned counselor or the Super Admin.
+          User profile information is read-only. The assigned counselor may manage Counselor Notes. Approved transferred users remain accessible to the accepting counselor through transfer access.
         </span>
-
       </div>
 
 
       <section className="panel profile-filter-panel">
 
         <div className="profile-filter-heading">
-
           <div>
-            <h2>
-              Find Users
-            </h2>
-
+            <h2>Find Users</h2>
             <p>
-              Use the filters below to narrow the list without changing any account information.
+              Use the filters below to narrow the user list.
             </p>
           </div>
 
           <span className="profile-result-count">
             {visibleUsers.length} result{visibleUsers.length === 1 ? "" : "s"}
           </span>
-
         </div>
 
 
-        <div className="profile-filter-grid">
+        <div className="profile-filter-grid transfer-profile-filter-grid">
 
           {isSuperAdmin && (
-
             <label>
               College / Office
-
               <select
                 value={selectedCollege}
                 onChange={
-                  e =>
+                  event =>
                     changeCollegeFilter(
-                      e.target.value
+                      event.target.value
                     )
                 }
               >
-
-                <option>
-                  All Colleges / Offices
-                </option>
-
-
+                <option>All Colleges / Offices</option>
                 {collegeOptions.map(
                   college => (
-
-                    <option
-                      key={college}
-                      value={college}
-                    >
+                    <option key={college} value={college}>
                       {college}
                     </option>
-
                   )
                 )}
-
               </select>
             </label>
-
           )}
 
 
           <label>
             Program
-
             <select
               value={selectedProgram}
               onChange={
-                e =>
-                  changeProgramFilter(
-                    e.target.value
+                event =>
+                  setSelectedProgram(
+                    event.target.value
                   )
               }
             >
-
-              <option>
-                All Programs
-              </option>
-
-
+              <option>All Programs</option>
               {programOptions.map(
                 program => (
-
-                  <option
-                    key={program}
-                    value={program}
-                  >
+                  <option key={program} value={program}>
                     {program}
                   </option>
-
                 )
               )}
+            </select>
+          </label>
 
+
+          <label>
+            Transfer Status
+            <select
+              value={selectedTransferStatus}
+              onChange={
+                event =>
+                  setSelectedTransferStatus(
+                    event.target.value
+                  )
+              }
+            >
+              <option>All Users</option>
+              <option>Transferred</option>
+              <option>Not Transferred</option>
             </select>
           </label>
 
@@ -8092,209 +8769,83 @@ function UserProfilesContent({
       </section>
 
 
-      <div className="user-profile-view-layout">
+      <section className="panel">
 
-
-        <section className="panel">
-
-          <div className="user-list-heading">
-
-            <div>
-
-              <h2>
-                User List
-              </h2>
-
-              <p>
-                Student programs are shown when available.
-              </p>
-
-            </div>
-
+        <div className="user-list-heading">
+          <div>
+            <h2>User List</h2>
+            <p>
+              A Transferred indicator is shown in the list when the account is available through an approved counselor transfer.
+            </p>
           </div>
+        </div>
 
 
-          {loadingUsers
-
-            ? (
-
-              <Empty
-                text="Loading user profiles..."
-              />
-
-            )
-
-            : usersError
-
-              ? (
-
-                <div className="error-box">
-                  {usersError}
+        {loadingUsers
+          ? <Empty text="Loading user profiles..." />
+          : usersError
+            ? <div className="error-box">{usersError}</div>
+            : visibleUsers.length === 0
+              ? <Empty text="No users match the selected filters." />
+              : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>College / Office</th>
+                        <th>Program</th>
+                        <th>Transfer</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleUsers.map(
+                        account => (
+                          <tr key={account.id}>
+                            <td>{account.name}</td>
+                            <td>{displayRole(account.role)}</td>
+                            <td>{account.department || "—"}</td>
+                            <td>
+                              {account.role === "student"
+                                ? account.program || "Not provided"
+                                : "—"}
+                            </td>
+                            <td>
+                              {isTransferredAccount(account)
+                                ? <span className="transferred-table-badge">Transferred</span>
+                                : "—"}
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="text-button"
+                                onClick={() => setSelected(account)}
+                              >
+                                View Profile
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
                 </div>
+              )}
 
-              )
-
-              : visibleUsers.length === 0
-
-                ? (
-
-                  <Empty
-                    text="No users match the selected filters."
-                  />
-
-                )
-
-                : (
-
-                  <div className="table-wrap">
-
-                    <table>
-
-                      <thead>
-
-                        <tr>
-
-                          <th>
-                            Name
-                          </th>
-
-                          <th>
-                            Role
-                          </th>
-
-                          <th>
-                            College / Office
-                          </th>
-
-                          <th>
-                            Program
-                          </th>
-
-                          <th>
-                            Student / Employee No.
-                          </th>
-
-                          <th>
-                            Action
-                          </th>
-
-                        </tr>
-
-                      </thead>
-
-
-                      <tbody>
-
-                        {visibleUsers.map(
-                          account => (
-
-                            <tr
-                              key={
-                                account.id
-                              }
-                            >
-
-                              <td>
-                                {
-                                  account.name
-                                }
-                              </td>
-
-                              <td>
-                                {
-                                  displayRole(
-                                    account.role
-                                  )
-                                }
-                              </td>
-
-                              <td>
-                                {
-                                  account.department ||
-                                  "—"
-                                }
-                              </td>
-
-                              <td>
-                                {
-                                  account.role ===
-                                    "student"
-                                    ? (
-                                        account.program ||
-                                        "Not provided"
-                                      )
-                                    : "—"
-                                }
-                              </td>
-
-                              <td>
-                                {
-                                  account.userNumber ||
-                                  "—"
-                                }
-                              </td>
-
-                              <td>
-
-                                <button
-                                  type="button"
-                                  className="text-button"
-                                  onClick={
-                                    () =>
-                                      setSelected(
-                                        account
-                                      )
-                                  }
-                                >
-                                  View Profile
-                                </button>
-
-                              </td>
-
-                            </tr>
-
-                          )
-                        )}
-
-                      </tbody>
-
-                    </table>
-
-                  </div>
-
-                )
-          }
-
-        </section>
-
-
-      </div>
+      </section>
 
 
       {selected && (
-
         <UserProfileFullScreen
           profile={selected}
           currentUser={currentUser}
-
-          onClose={
-            () =>
-              setSelected(null)
-          }
-
-          displayRole={
-            displayRole
-          }
-
-          displayValue={
-            displayValue
-          }
+          onClose={() => setSelected(null)}
         />
-
       )}
 
     </>
-
   );
 }
 
@@ -8312,7 +8863,9 @@ function Notifications() {
   if (
     !generalUserRole(
       user.role
-    )
+    ) &&
+    user.role !==
+      "counselor"
   ) {
 
     return (
@@ -8352,11 +8905,31 @@ function UserNotificationsContent({
 
   const rows =
     allRows.filter(
-      row =>
-        row.notificationType ===
-          "counselor_update" &&
-        row.senderRole ===
+      row => {
+
+        if (
+          user.role ===
           "counselor"
+        ) {
+
+          return [
+            "transfer_request",
+            "transfer_status"
+          ].includes(
+            row.notificationType
+          );
+        }
+
+
+        return [
+          "counselor_update",
+          "counselor_transfer_update"
+        ].includes(
+          row.notificationType
+        ) &&
+        row.senderRole ===
+          "counselor";
+      }
     );
 
 
@@ -8440,6 +9013,27 @@ function UserNotificationsContent({
     }
 
 
+    if (
+      row.sourceType ===
+        "transfer"
+    ) {
+
+      navigate(
+        "/dashboard",
+        {
+          state: {
+            transferRequestId:
+              row.sourceId ||
+              row.transferRequestId ||
+              ""
+          }
+        }
+      );
+
+      return;
+    }
+
+
     navigate(
       row.targetPath ||
       "/history"
@@ -8495,7 +9089,11 @@ function UserNotificationsContent({
 
         title="Notifications"
 
-        subtitle="Counselor updates about your psychological assessment cases and counseling requests."
+        subtitle={
+          user.role === "counselor"
+            ? "Transfer requests and transfer status updates for Guidance Counselors."
+            : "Counselor updates about your psychological assessment cases, counseling requests, and counselor transfers."
+        }
 
       />
 
@@ -11631,31 +12229,78 @@ function CounselingRequestsManagement() {
     "super_admin";
 
 
-  const consultationFilters =
-    !hasAccess
-      ? {
-          ownerId:
-            "__NO_ACCESS__"
-        }
-      : isSuperAdmin
-        ? {}
+  const departmentConsultations =
+    useRows(
+      "consultations",
+      !hasAccess
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
+        : isSuperAdmin
+          ? {}
+          : {
+              department:
+                user.department
+            }
+    );
+
+
+  const assignedConsultations =
+    useRows(
+      "consultations",
+      !hasAccess ||
+      isSuperAdmin
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
         : {
-            department:
-              user.department
-          };
+            assignedCounselorId:
+              user.id
+          }
+    );
 
 
   const rows =
-    useRows(
-      "consultations",
-      consultationFilters
-    );
+    isSuperAdmin
+      ? departmentConsultations
+      : mergeRowsById(
+          departmentConsultations,
+          assignedConsultations
+        );
 
 
   const assessmentRows =
     useRows(
       "assessments",
-      consultationFilters
+      !hasAccess
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
+        : isSuperAdmin
+          ? {}
+          : {
+              department:
+                user.department
+            }
+    );
+
+
+  const counselors =
+    useRows(
+      "users",
+      {
+        role:
+          "counselor"
+      }
+    );
+
+
+  const transferRequests =
+    useRows(
+      "transferRequests"
     );
 
 
@@ -12024,6 +12669,430 @@ function CounselingRequestsManagement() {
   }
 
 
+  function transferRequestForConsultation(
+    consultationId
+  ) {
+
+    return transferRequests.find(
+      row =>
+        row.consultationId ===
+          consultationId &&
+        row.status ===
+          "Pending approval"
+    );
+  }
+
+
+  function canRequestTransfer(row) {
+
+    if (
+      user.role !== "counselor" ||
+      row.status !==
+        "Schedule for counseling" ||
+      !row.date ||
+      !row.time ||
+      appointmentHasStarted(row) ||
+      transferRequestForConsultation(
+        row.id
+      )
+    ) {
+      return false;
+    }
+
+
+    return (
+      !row.assignedCounselorId ||
+      row.assignedCounselorId ===
+        user.id
+    );
+  }
+
+
+  async function requestCounselorTransfer(
+    row
+  ) {
+
+    if (!canRequestTransfer(row)) {
+
+      alert(
+        "This counseling request cannot be transferred. Transfers are only available to the currently assigned counselor before the scheduled counseling session starts."
+      );
+
+      return;
+    }
+
+
+    const reason =
+      window.prompt(
+        "Briefly state why this scheduled counseling request needs to be transferred to another counselor."
+      );
+
+
+    if (reason === null) {
+      return;
+    }
+
+
+    if (!reason.trim()) {
+
+      alert(
+        "Please enter a short reason for the counselor transfer."
+      );
+
+      return;
+    }
+
+
+    if (
+      !window.confirm(
+        `Request another counselor to take over ${row.ownerName || "this user's"} scheduled counseling session?`
+      )
+    ) {
+      return;
+    }
+
+
+    try {
+
+      const counselingProfileRef =
+        doc(
+          db,
+          "counselingProfiles",
+          row.ownerId
+        );
+
+
+      const counselingProfileSnap =
+        await getDoc(
+          counselingProfileRef
+        );
+
+
+      if (counselingProfileSnap.exists()) {
+
+        const existingProfile =
+          counselingProfileSnap.data();
+
+
+        if (
+          existingProfile.assignedCounselorId &&
+          existingProfile.assignedCounselorId !==
+            user.id
+        ) {
+
+          throw new Error(
+            `This user is currently assigned to ${existingProfile.assignedCounselorName || "another counselor"}. Only the assigned counselor can request a transfer.`
+          );
+        }
+
+
+        if (
+          !existingProfile.assignedCounselorId
+        ) {
+
+          await setDoc(
+            counselingProfileRef,
+            {
+              assignedCounselorId:
+                user.id,
+
+              assignedCounselorName:
+                user.name ||
+                "Guidance Counselor",
+
+              assignedCounselorDepartment:
+                user.department ||
+                "",
+
+              updatedById:
+                user.id,
+
+              updatedByName:
+                user.name ||
+                "Guidance Counselor",
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          );
+        }
+
+      } else {
+
+        await setDoc(
+          counselingProfileRef,
+          {
+            ownerId:
+              row.ownerId,
+
+            ownerName:
+              row.ownerName ||
+              "",
+
+            department:
+              row.department ||
+              "",
+
+            assignedCounselorId:
+              user.id,
+
+            assignedCounselorName:
+              user.name ||
+              "Guidance Counselor",
+
+            assignedCounselorDepartment:
+              user.department ||
+              "",
+
+            caseHistory:
+              "",
+
+            counselingSessionSummary:
+              "",
+
+            counselorObservation:
+              "",
+
+            recommendations:
+              "",
+
+            updatedById:
+              user.id,
+
+            updatedByName:
+              user.name ||
+              "Guidance Counselor",
+
+            updatedAt:
+              serverTimestamp()
+          }
+        );
+      }
+
+
+      const transferRef =
+        doc(
+          collection(
+            db,
+            "transferRequests"
+          )
+        );
+
+
+      await setDoc(
+        transferRef,
+        {
+          ownerId:
+            row.ownerId,
+
+          ownerName:
+            row.ownerName ||
+            "",
+
+          ownerDepartment:
+            row.department ||
+            "",
+
+          consultationId:
+            row.id,
+
+          date:
+            row.date ||
+            "",
+
+          time:
+            row.time ||
+            "",
+
+          mode:
+            row.mode ||
+            "Face-to-face",
+
+          requestedById:
+            user.id,
+
+          requestedByName:
+            user.name ||
+            "Guidance Counselor",
+
+          requestedByDepartment:
+            user.department ||
+            "",
+
+          reason:
+            reason.trim(),
+
+          status:
+            "Pending approval",
+
+          acceptedById:
+            "",
+
+          acceptedByName:
+            "",
+
+          acceptedByDepartment:
+            "",
+
+          createdAt:
+            serverTimestamp(),
+
+          updatedAt:
+            serverTimestamp()
+        }
+      );
+
+
+      await updateRecord(
+        "consultations",
+        row.id,
+        {
+          assignedCounselorId:
+            row.assignedCounselorId ||
+            user.id,
+
+          assignedCounselorName:
+            row.assignedCounselorName ||
+            user.name ||
+            "Guidance Counselor",
+
+          assignedCounselorDepartment:
+            row.assignedCounselorDepartment ||
+            user.department ||
+            "",
+
+          transferStatus:
+            "Pending approval",
+
+          transferRequestId:
+            transferRef.id
+        }
+      );
+
+
+      const otherCounselors =
+        counselors.filter(
+          counselor =>
+            counselor.id !==
+            user.id
+        );
+
+
+      await Promise.allSettled(
+        otherCounselors.map(
+          counselor =>
+            addRecord(
+              "notifications",
+              {
+                ownerId:
+                  counselor.id,
+
+                title:
+                  "User waiting for counselor transfer",
+
+                message:
+                  `${row.ownerName || "A user"} has a scheduled counseling request that ${user.name || "the assigned counselor"} needs to transfer. Open your Dashboard to review and accept the transfer if you are available.`,
+
+                notificationType:
+                  "transfer_request",
+
+                senderRole:
+                  "counselor",
+
+                senderId:
+                  user.id,
+
+                senderName:
+                  user.name ||
+                  "Guidance Counselor",
+
+                targetPath:
+                  "/dashboard",
+
+                sourceType:
+                  "transfer",
+
+                sourceId:
+                  transferRef.id,
+
+                consultationId:
+                  row.id,
+
+                read:
+                  false
+              }
+            )
+        )
+      );
+
+
+      await addRecord(
+        "notifications",
+        {
+          ownerId:
+            row.ownerId,
+
+          title:
+            "Counselor transfer requested",
+
+          message:
+            `${user.name || "Your assigned counselor"} requested another Guidance Counselor to take over your scheduled counseling session. Your schedule remains active while another counselor reviews the transfer request.`,
+
+          notificationType:
+            "counselor_transfer_update",
+
+          senderRole:
+            "counselor",
+
+          senderId:
+            user.id,
+
+          senderName:
+            user.name ||
+            "Guidance Counselor",
+
+          targetPath:
+            "/consultations",
+
+          sourceType:
+            "consultation",
+
+          sourceId:
+            row.id,
+
+          transferRequestId:
+            transferRef.id,
+
+          read:
+            false
+        }
+      );
+
+
+      alert(
+        "Transfer request sent. Other counselors have been notified and the transfer will only take effect after another counselor approves it."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to request counselor transfer:",
+        error
+      );
+
+
+      alert(
+        error?.message ||
+        "Unable to request the counselor transfer."
+      );
+    }
+  }
+
+
   async function saveRequestUpdate() {
 
     if (!selected) {
@@ -12049,16 +13118,42 @@ function CounselingRequestsManagement() {
           );
 
 
+      const requestUpdate = {
+
+        status:
+          statusDraft,
+
+        counselorRemarks:
+          remarksDraft
+
+      };
+
+
+      if (
+        user.role ===
+          "counselor" &&
+        statusDraft ===
+          "Schedule for counseling" &&
+        !selected.assignedCounselorId
+      ) {
+
+        requestUpdate.assignedCounselorId =
+          user.id;
+
+        requestUpdate.assignedCounselorName =
+          user.name ||
+          "Guidance Counselor";
+
+        requestUpdate.assignedCounselorDepartment =
+          user.department ||
+          "";
+      }
+
+
       await updateRecord(
         "consultations",
         selected.id,
-        {
-          status:
-            statusDraft,
-
-          counselorRemarks:
-            remarksDraft
-        }
+        requestUpdate
       );
 
 
@@ -12488,6 +13583,33 @@ function CounselingRequestsManagement() {
                       Review request
                     </button>
 
+
+                    {canRequestTransfer(row) && (
+
+                      <button
+                        type="button"
+                        className="transfer-user-button"
+                        onClick={
+                          () =>
+                            requestCounselorTransfer(
+                              row
+                            )
+                        }
+                      >
+                        Request counselor transfer
+                      </button>
+
+                    )}
+
+
+                    {transferRequestForConsultation(row.id) && (
+
+                      <span className="transfer-pending-label">
+                        Transfer awaiting approval
+                      </span>
+
+                    )}
+
                   </div>
 
                 </article>
@@ -12884,20 +14006,40 @@ function Schedule() {
     "super_admin";
 
 
-  const consultationFilters =
-    isSuperAdmin
-      ? {}
-      : {
-          department:
-            user.department
-        };
+  const departmentRows =
+    useRows(
+      "consultations",
+      isSuperAdmin
+        ? {}
+        : {
+            department:
+              user.department
+          }
+    );
+
+
+  const transferredAssignedRows =
+    useRows(
+      "consultations",
+      isSuperAdmin
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
+        : {
+            assignedCounselorId:
+              user.id
+          }
+    );
 
 
   const rows =
-    useRows(
-      "consultations",
-      consultationFilters
-    );
+    isSuperAdmin
+      ? departmentRows
+      : mergeRowsById(
+          departmentRows,
+          transferredAssignedRows
+        );
 
 
   const appointments =

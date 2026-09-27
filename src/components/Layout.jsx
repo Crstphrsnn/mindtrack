@@ -59,6 +59,7 @@ const menu = {
 
   counselor: [
     ["/dashboard", "Dashboard", Home],
+    ["/notifications", "Notifications", Bell],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
     ["/user-profiles", "User Profiles", Users],
@@ -94,11 +95,12 @@ export default function Layout({ children }) {
   useEffect(
     () => {
 
-      const isGeneralUser =
+      const supportsNotifications =
         [
           "student",
           "faculty",
-          "personnel"
+          "personnel",
+          "counselor"
         ].includes(
           user?.role
         );
@@ -106,7 +108,7 @@ export default function Layout({ children }) {
 
       if (
         !user?.id ||
-        !isGeneralUser
+        !supportsNotifications
       ) {
 
         setUnreadNotifications(0);
@@ -121,12 +123,36 @@ export default function Layout({ children }) {
 
           setUnreadNotifications(
             rows.filter(
-              row =>
-                !row.read &&
-                row.notificationType ===
-                  "counselor_update" &&
-                row.senderRole ===
+              row => {
+
+                if (row.read) {
+                  return false;
+                }
+
+
+                if (
+                  user?.role ===
                   "counselor"
+                ) {
+
+                  return [
+                    "transfer_request",
+                    "transfer_status"
+                  ].includes(
+                    row.notificationType
+                  );
+                }
+
+
+                return [
+                  "counselor_update",
+                  "counselor_transfer_update"
+                ].includes(
+                  row.notificationType
+                ) &&
+                row.senderRole ===
+                  "counselor";
+              }
             ).length
           );
         },

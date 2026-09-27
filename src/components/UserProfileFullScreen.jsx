@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import {
+  deleteField,
   doc,
   onSnapshot,
   serverTimestamp,
@@ -225,8 +226,26 @@ export default function UserProfileFullScreen({
 
 
   const [
-    notesDraft,
-    setNotesDraft
+    caseHistoryDraft,
+    setCaseHistoryDraft
+  ] = useState("");
+
+
+  const [
+    sessionSummaryDraft,
+    setSessionSummaryDraft
+  ] = useState("");
+
+
+  const [
+    observationDraft,
+    setObservationDraft
+  ] = useState("");
+
+
+  const [
+    recommendationsDraft,
+    setRecommendationsDraft
   ] = useState("");
 
 
@@ -295,8 +314,31 @@ export default function UserProfileFullScreen({
             );
 
 
-            setNotesDraft(
+            const legacyNotes =
               data?.notes ||
+              "";
+
+
+            setCaseHistoryDraft(
+              data?.caseHistory ||
+              legacyNotes
+            );
+
+
+            setSessionSummaryDraft(
+              data?.counselingSessionSummary ||
+              ""
+            );
+
+
+            setObservationDraft(
+              data?.counselorObservation ||
+              ""
+            );
+
+
+            setRecommendationsDraft(
+              data?.recommendations ||
               ""
             );
 
@@ -307,7 +349,7 @@ export default function UserProfileFullScreen({
           error => {
 
             console.error(
-              "Unable to load counseling notes:",
+              "Unable to load counselor notes:",
               error
             );
 
@@ -321,11 +363,11 @@ export default function UserProfileFullScreen({
               error?.code ===
               "permission-denied"
 
-                ? "You do not have permission to view counseling notes for this user."
+                ? "You do not have permission to view counselor notes for this user."
 
                 : (
                     error?.message ||
-                    "Unable to load counseling notes."
+                    "Unable to load counselor notes."
                   )
             );
 
@@ -432,15 +474,32 @@ export default function UserProfileFullScreen({
     "";
 
 
-  const canEditNotes =
+  const isAssignedCounselor =
+    currentUser.role ===
+      "counselor" &&
+    assignedCounselorId ===
+      currentUser.id;
+
+
+  const canEditCounselorNotes =
     isSuperAdmin ||
+    isAssignedCounselor ||
     (
       isSameDepartmentCounselor &&
-      (
-        !assignedCounselorId ||
-        assignedCounselorId ===
-          currentUser.id
-      )
+      !assignedCounselorId
+    );
+
+
+  const isCrossCollegeTransferred =
+    Boolean(
+      counselingProfile
+        ?.transferActive &&
+      counselingProfile
+        ?.assignedCounselorDepartment &&
+      profile.department &&
+      counselingProfile
+        .assignedCounselorDepartment !==
+        profile.department
     );
 
 
@@ -514,7 +573,7 @@ export default function UserProfileFullScreen({
 
   async function saveNotes() {
 
-    if (!canEditNotes) {
+    if (!canEditCounselorNotes) {
       return;
     }
 
@@ -578,8 +637,20 @@ export default function UserProfileFullScreen({
           assignedCounselorName:
             counselorName,
 
+          caseHistory:
+            caseHistoryDraft.trim(),
+
+          counselingSessionSummary:
+            sessionSummaryDraft.trim(),
+
+          counselorObservation:
+            observationDraft.trim(),
+
+          recommendations:
+            recommendationsDraft.trim(),
+
           notes:
-            notesDraft.trim(),
+            deleteField(),
 
           updatedById:
             currentUser.id,
@@ -599,13 +670,13 @@ export default function UserProfileFullScreen({
 
 
       setNotesMessage(
-        "Counseling notes saved successfully."
+        "Counselor notes saved successfully."
       );
 
     } catch (error) {
 
       console.error(
-        "Unable to save counseling notes:",
+        "Unable to save counselor notes:",
         error
       );
 
@@ -614,11 +685,11 @@ export default function UserProfileFullScreen({
         error?.code ===
         "permission-denied"
 
-          ? "You are not allowed to edit the counseling notes for this user."
+          ? "You are not allowed to edit the counselor notes for this user."
 
           : (
               error?.message ||
-              "Unable to save counseling notes."
+              "Unable to save counselor notes."
             )
       );
 
@@ -697,6 +768,15 @@ export default function UserProfileFullScreen({
                   {priority}
                 </span>
 
+
+                {isCrossCollegeTransferred && (
+
+                  <span className="transferred-profile-badge">
+                    Transferred
+                  </span>
+
+                )}
+
               </div>
 
 
@@ -723,9 +803,14 @@ export default function UserProfileFullScreen({
                 <span className="assigned-counselor-badge">
                   Assigned Counselor:
                   {" "}
-                  {
-                    assignedCounselorLabel
-                  }
+                  {assignedCounselorLabel}
+
+                  {counselingProfile?.assignedCounselorDepartment && (
+                    <>
+                      {" · "}
+                      {counselingProfile.assignedCounselorDepartment}
+                    </>
+                  )}
                 </span>
 
               </div>
@@ -1145,11 +1230,11 @@ export default function UserProfileFullScreen({
               <div>
 
                 <h3>
-                  Counseling Notes
+                  Counselor Notes
                 </h3>
 
                 <p>
-                  Private counselor notes for this user. Only the assigned counselor or Super Admin can edit them.
+                  Structured private case notes. Only the assigned counselor or Super Admin can edit this section.
                 </p>
 
               </div>
@@ -1166,7 +1251,7 @@ export default function UserProfileFullScreen({
               ? (
 
                 <div className="user-profile-empty">
-                  Loading counseling notes...
+                  Loading counselor notes...
                 </div>
 
               )
@@ -1175,58 +1260,81 @@ export default function UserProfileFullScreen({
 
                 <>
 
-                  <label>
-                    Notes
+                  <div className="counselor-notes-grid">
 
-                    <textarea
-                      rows="10"
-                      value={notesDraft}
-                      readOnly={
-                        !canEditNotes
-                      }
-                      onChange={
-                        event =>
-                          setNotesDraft(
-                            event.target.value
-                          )
-                      }
-                      placeholder={
-                        canEditNotes
-                          ? "Enter private counseling notes for this user."
-                          : "Only the assigned counselor or Super Admin can edit these notes."
-                      }
-                    />
-                  </label>
-
-
-                  <div className="counseling-notes-meta">
-
-                    <span>
-                      Assigned counselor:
-                      {" "}
-                      <strong>
-                        {
-                          assignedCounselorLabel
+                    <label className="counselor-note-field">
+                      <span>Case History</span>
+                      <textarea
+                        rows="6"
+                        value={caseHistoryDraft}
+                        readOnly={!canEditCounselorNotes}
+                        onChange={event => setCaseHistoryDraft(event.target.value)}
+                        placeholder={
+                          canEditCounselorNotes
+                            ? "Record relevant case background, previous concerns, and important case developments."
+                            : "Only the assigned counselor or Super Admin can edit this field."
                         }
-                      </strong>
-                    </span>
+                      />
+                    </label>
 
-
-                    <span>
-                      Last updated:
-                      {" "}
-                      <strong>
-                        {
-                          formatTimestamp(
-                            counselingProfile
-                              ?.updatedAt
-                          )
+                    <label className="counselor-note-field">
+                      <span>Counseling Session Summary</span>
+                      <textarea
+                        rows="6"
+                        value={sessionSummaryDraft}
+                        readOnly={!canEditCounselorNotes}
+                        onChange={event => setSessionSummaryDraft(event.target.value)}
+                        placeholder={
+                          canEditCounselorNotes
+                            ? "Summarize the important topics, concerns, and outcomes discussed during counseling."
+                            : "Only the assigned counselor or Super Admin can edit this field."
                         }
-                      </strong>
-                    </span>
+                      />
+                    </label>
+
+                    <label className="counselor-note-field">
+                      <span>Counselor's Observation</span>
+                      <textarea
+                        rows="6"
+                        value={observationDraft}
+                        readOnly={!canEditCounselorNotes}
+                        onChange={event => setObservationDraft(event.target.value)}
+                        placeholder={
+                          canEditCounselorNotes
+                            ? "Record relevant professional observations from the counseling interaction."
+                            : "Only the assigned counselor or Super Admin can edit this field."
+                        }
+                      />
+                    </label>
+
+                    <label className="counselor-note-field">
+                      <span>Recommendations</span>
+                      <textarea
+                        rows="6"
+                        value={recommendationsDraft}
+                        readOnly={!canEditCounselorNotes}
+                        onChange={event => setRecommendationsDraft(event.target.value)}
+                        placeholder={
+                          canEditCounselorNotes
+                            ? "Record follow-up steps, support recommendations, or other counselor guidance."
+                            : "Only the assigned counselor or Super Admin can edit this field."
+                        }
+                      />
+                    </label>
 
                   </div>
 
+                  <div className="counseling-notes-meta">
+                    <span>
+                      Assigned counselor:{" "}
+                      <strong>{assignedCounselorLabel}</strong>
+                    </span>
+
+                    <span>
+                      Last updated:{" "}
+                      <strong>{formatTimestamp(counselingProfile?.updatedAt)}</strong>
+                    </span>
+                  </div>
 
                   {notesMessage && (
                     <div className="success-box">
@@ -1234,49 +1342,28 @@ export default function UserProfileFullScreen({
                     </div>
                   )}
 
-
                   {notesError && (
                     <div className="error-box">
                       {notesError}
                     </div>
                   )}
 
-
-                  {canEditNotes
-
+                  {canEditCounselorNotes
                     ? (
-
                       <button
                         type="button"
                         className="primary-button counseling-notes-save"
-                        disabled={
-                          notesSaving
-                        }
-                        onClick={
-                          saveNotes
-                        }
+                        disabled={notesSaving}
+                        onClick={saveNotes}
                       >
-
-                        <Save
-                          size={18}
-                        />
-
-                        {
-                          notesSaving
-                            ? "Saving..."
-                            : "Save Counseling Notes"
-                        }
-
+                        <Save size={18} />
+                        {notesSaving ? "Saving..." : "Save Counselor Notes"}
                       </button>
-
                     )
-
                     : (
-
                       <div className="profile-note">
-                        These notes are locked because another counselor is assigned to this user. Super Admin can still edit them.
+                        Counselor notes are locked because another counselor is assigned to this user. Super Admin can still edit them.
                       </div>
-
                     )
                   }
 

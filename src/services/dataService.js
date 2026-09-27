@@ -224,6 +224,66 @@ export function subscribeCollection(
     }
 
 
+    if (filters.role) {
+
+      constraints.push(
+        where(
+          "role",
+          "==",
+          filters.role
+        )
+      );
+    }
+
+
+    if (filters.status) {
+
+      constraints.push(
+        where(
+          "status",
+          "==",
+          filters.status
+        )
+      );
+    }
+
+
+    if (filters.assignedCounselorId) {
+
+      constraints.push(
+        where(
+          "assignedCounselorId",
+          "==",
+          filters.assignedCounselorId
+        )
+      );
+    }
+
+
+    if (filters.counselorId) {
+
+      constraints.push(
+        where(
+          "counselorId",
+          "==",
+          filters.counselorId
+        )
+      );
+    }
+
+
+    if (filters.active !== undefined) {
+
+      constraints.push(
+        where(
+          "active",
+          "==",
+          filters.active
+        )
+      );
+    }
+
+
     const q =
       query(
         collection(
