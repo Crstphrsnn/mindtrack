@@ -1,169 +1,340 @@
 import React, {
 
+
+
   useEffect,
+
+
 
   useMemo,
 
+
+
   useState
+
+
 
 } from "react";
 
 
 
+
+
+
+
 import {
+
+
 
   Calendar,
 
+
+
   Clock3,
+
+
 
   FileText,
 
+
+
   Save,
 
+
+
   X
+
+
 
 } from "lucide-react";
 
 
 
+
+
+
+
 import {
+
   collection,
+
   deleteField,
+
   doc,
+
   onSnapshot,
+
   query,
+
   serverTimestamp,
+
   setDoc,
+
   where
+
 } from "firebase/firestore";
+
+
+
+
 
 
 
 import { db } from "../services/firebase";
 
+
+
 function useProfileRows(
+
   collectionName,
+
   profile,
+
   currentUser
+
 ) {
 
+
+
   const [rows, setRows] =
+
     useState([]);
 
 
+
+
+
   useEffect(
+
     () => {
 
+
+
       if (
+
         !profile?.id ||
+
         !currentUser
+
       ) {
+
+
 
         setRows([]);
 
+
+
         return undefined;
+
       }
+
+
+
 
 
       const constraints = [
+
         where(
+
           "ownerId",
+
           "==",
+
           profile.id
+
         )
+
       ];
 
 
+
+
+
       const isSameDepartmentCounselor =
+
         currentUser.role ===
+
           "counselor" &&
+
         currentUser.department ===
+
           profile.department;
 
 
+
+
+
       // Same-department counselors use both ownerId and
+
       // department. A transferred counselor from another
+
       // department uses ownerId only because access is
+
       // granted through the approved transfer.
+
       if (isSameDepartmentCounselor) {
 
+
+
         constraints.push(
+
           where(
+
             "department",
+
             "==",
+
             profile.department
+
           )
+
         );
+
       }
 
 
+
+
+
       const rowsQuery =
+
         query(
+
           collection(
+
             db,
+
             collectionName
+
           ),
+
           ...constraints
+
         );
 
 
+
+
+
       return onSnapshot(
+
         rowsQuery,
+
+
 
         snapshot => {
 
+
+
           setRows(
+
             snapshot.docs.map(
+
               item => ({
+
                 id:
+
                   item.id,
 
+
+
                 ...item.data()
+
               })
+
             )
+
           );
+
         },
+
+
 
         error => {
 
+
+
           console.error(
+
             `Unable to load ${collectionName} for ${profile.id}:`,
+
             error
+
           );
 
 
+
+
+
           // Keep the profile page open even when a Firestore
+
           // listener is denied. This avoids another blank page.
+
           setRows([]);
+
         }
+
       );
+
+
 
     },
 
+
+
     [
+
       collectionName,
+
       profile?.id,
+
       profile?.department,
+
       currentUser?.id,
+
       currentUser?.role,
+
       currentUser?.department
+
     ]
+
   );
 
 
+
+
+
   return rows;
+
 }
+
+
+
 
 
 function formatDate(dateKey) {
 
 
 
+
+
+
+
   if (!dateKey) {
+
+
 
     return "No date";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -171,9 +342,15 @@ function formatDate(dateKey) {
 
   const date =
 
+
+
     new Date(
 
+
+
       `${dateKey}T00:00:00`
+
+
 
     );
 
@@ -181,19 +358,39 @@ function formatDate(dateKey) {
 
 
 
+
+
+
+
+
+
   if (
+
+
 
     Number.isNaN(
 
+
+
       date.getTime()
 
+
+
     )
+
+
 
   ) {
 
 
 
+
+
+
+
     return dateKey;
+
+
 
   }
 
@@ -201,23 +398,51 @@ function formatDate(dateKey) {
 
 
 
+
+
+
+
+
+
   return date.toLocaleDateString(
+
+
 
     "en-PH",
 
+
+
     {
+
+
 
       month: "short",
 
+
+
       day: "numeric",
+
+
 
       year: "numeric"
 
+
+
     }
+
+
 
   );
 
+
+
 }
+
+
+
+
+
+
 
 
 
@@ -227,11 +452,25 @@ function formatTimestamp(value) {
 
 
 
+
+
+
+
   if (!value) {
+
+
 
     return "Not yet saved";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -243,35 +482,73 @@ function formatTimestamp(value) {
 
 
 
+
+
+
+
+
+
   if (
+
+
 
     typeof value.toMillis ===
 
+
+
     "function"
+
+
 
   ) {
 
 
 
+
+
+
+
     timestamp =
+
+
 
       value.toMillis();
 
 
 
+
+
+
+
   } else if (
+
+
 
     typeof value.seconds ===
 
+
+
     "number"
+
+
 
   ) {
 
 
 
+
+
+
+
     timestamp =
 
+
+
       value.seconds * 1000;
+
+
+
+
 
 
 
@@ -279,15 +556,33 @@ function formatTimestamp(value) {
 
 
 
+
+
+
+
     timestamp =
+
+
 
       new Date(
 
+
+
         value
+
+
 
       ).getTime();
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -295,17 +590,35 @@ function formatTimestamp(value) {
 
   if (
 
+
+
     !timestamp ||
 
+
+
     Number.isNaN(timestamp)
+
+
 
   ) {
 
 
 
+
+
+
+
     return "Not yet saved";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -313,15 +626,31 @@ function formatTimestamp(value) {
 
   return new Date(
 
+
+
     timestamp
+
+
 
   ).toLocaleString(
 
+
+
     "en-PH"
+
+
 
   );
 
+
+
 }
+
+
+
+
+
+
 
 
 
@@ -329,17 +658,35 @@ function formatTimestamp(value) {
 
 function displayRoleValue(
 
+
+
   role
+
+
 
 ) {
 
 
 
+
+
+
+
   if (role === "student") {
+
+
 
     return "Student";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -347,9 +694,19 @@ function displayRoleValue(
 
   if (role === "faculty") {
 
+
+
     return "Faculty";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -357,9 +714,19 @@ function displayRoleValue(
 
   if (role === "personnel") {
 
+
+
     return "Personnel";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -367,9 +734,19 @@ function displayRoleValue(
 
   if (role === "counselor") {
 
+
+
     return "Guidance Counselor";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -377,9 +754,19 @@ function displayRoleValue(
 
   if (role === "super_admin") {
 
+
+
     return "Super Administrator";
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -387,9 +774,19 @@ function displayRoleValue(
 
   return role ||
 
+
+
     "—";
 
+
+
 }
+
+
+
+
+
+
 
 
 
@@ -397,25 +794,47 @@ function displayRoleValue(
 
 function displayFieldValue(
 
+
+
   value
+
+
 
 ) {
 
 
 
+
+
+
+
   if (
+
+
 
     value === null ||
 
+
+
     value === undefined ||
 
+
+
     String(value).trim() === ""
+
+
 
   ) {
 
 
 
+
+
+
+
     return "Not provided";
+
+
 
   }
 
@@ -423,7 +842,15 @@ function displayFieldValue(
 
 
 
+
+
+
+
+
+
   return String(value);
+
+
 
 }
 
@@ -431,29 +858,63 @@ function displayFieldValue(
 
 
 
+
+
+
+
+
+
 export default function UserProfileFullScreen({
+
+
 
   profile,
 
+
+
   currentUser,
 
+
+
   onClose
+
+
 
 }) {
 
 
 
+
+
+
+
   const assessments =
+
+
 
     useProfileRows(
 
+
+
       "assessments",
+
+
 
       profile,
 
+
+
       currentUser
 
+
+
     );
+
+
+
+
+
+
 
 
 
@@ -461,13 +922,23 @@ export default function UserProfileFullScreen({
 
   const consultations =
 
+
+
     useProfileRows(
+
+
 
       "consultations",
 
+
+
       profile,
 
+
+
       currentUser
+
+
 
     );
 
@@ -475,11 +946,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     counselingProfile,
 
+
+
     setCounselingProfile
+
+
 
   ] = useState(null);
 
@@ -487,11 +970,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     caseHistoryDraft,
 
+
+
     setCaseHistoryDraft
+
+
 
   ] = useState("");
 
@@ -499,11 +994,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     sessionSummaryDraft,
 
+
+
     setSessionSummaryDraft
+
+
 
   ] = useState("");
 
@@ -511,11 +1018,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     observationDraft,
 
+
+
     setObservationDraft
+
+
 
   ] = useState("");
 
@@ -523,11 +1042,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     recommendationsDraft,
 
+
+
     setRecommendationsDraft
+
+
 
   ] = useState("");
 
@@ -535,11 +1066,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     notesLoading,
 
+
+
     setNotesLoading
+
+
 
   ] = useState(true);
 
@@ -547,11 +1090,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     notesSaving,
 
+
+
     setNotesSaving
+
+
 
   ] = useState(false);
 
@@ -559,13 +1114,31 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const [
+
+
 
     notesMessage,
 
+
+
     setNotesMessage
 
+
+
   ] = useState("");
+
+
+
+
+
+
 
 
 
@@ -573,11 +1146,23 @@ export default function UserProfileFullScreen({
 
   const [
 
+
+
     notesError,
+
+
 
     setNotesError
 
+
+
   ] = useState("");
+
+
+
+
+
+
 
 
 
@@ -585,13 +1170,23 @@ export default function UserProfileFullScreen({
 
   useEffect(
 
+
+
     () => {
+
+
+
+
 
 
 
       if (!profile?.id) {
 
+
+
         return undefined;
+
+
 
       }
 
@@ -599,7 +1194,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
       setNotesLoading(true);
+
+
 
       setNotesError("");
 
@@ -607,17 +1210,39 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
       const noteRef =
+
+
 
         doc(
 
+
+
           db,
+
+
 
           "counselingProfiles",
 
+
+
           profile.id
 
+
+
         );
+
+
+
+
+
+
 
 
 
@@ -625,9 +1250,17 @@ export default function UserProfileFullScreen({
 
       const unsubscribe =
 
+
+
         onSnapshot(
 
+
+
           noteRef,
+
+
+
+
 
 
 
@@ -635,19 +1268,37 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
             const data =
+
+
 
               snapshot.exists()
 
+
+
                 ? {
+
+
 
                     id:
 
+
+
                       snapshot.id,
+
+
 
                     ...snapshot.data()
 
+
+
                   }
+
+
 
                 : null;
 
@@ -655,11 +1306,27 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
             setCounselingProfile(
+
+
 
               data
 
+
+
             );
+
+
+
+
+
+
 
 
 
@@ -667,7 +1334,11 @@ export default function UserProfileFullScreen({
 
             const legacyNotes =
 
+
+
               data?.notes ||
+
+
 
               "";
 
@@ -675,13 +1346,31 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
             setCaseHistoryDraft(
+
+
 
               data?.caseHistory ||
 
+
+
               legacyNotes
 
+
+
             );
+
+
+
+
+
+
 
 
 
@@ -689,11 +1378,23 @@ export default function UserProfileFullScreen({
 
             setSessionSummaryDraft(
 
+
+
               data?.counselingSessionSummary ||
+
+
 
               ""
 
+
+
             );
+
+
+
+
+
+
 
 
 
@@ -701,11 +1402,23 @@ export default function UserProfileFullScreen({
 
             setObservationDraft(
 
+
+
               data?.counselorObservation ||
+
+
 
               ""
 
+
+
             );
+
+
+
+
+
+
 
 
 
@@ -713,9 +1426,15 @@ export default function UserProfileFullScreen({
 
             setRecommendationsDraft(
 
+
+
               data?.recommendations ||
 
+
+
               ""
+
+
 
             );
 
@@ -723,9 +1442,21 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
             setNotesLoading(false);
 
+
+
           },
+
+
+
+
 
 
 
@@ -733,13 +1464,29 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
             console.error(
+
+
 
               "Unable to load counselor notes:",
 
+
+
               error
 
+
+
             );
+
+
+
+
+
+
 
 
 
@@ -747,9 +1494,19 @@ export default function UserProfileFullScreen({
 
             setCounselingProfile(
 
+
+
               null
 
+
+
             );
+
+
+
+
+
+
 
 
 
@@ -757,9 +1514,17 @@ export default function UserProfileFullScreen({
 
             setNotesError(
 
+
+
               error?.code ===
 
+
+
               "permission-denied"
+
+
+
+
 
 
 
@@ -767,13 +1532,25 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                 : (
+
+
 
                     error?.message ||
 
+
+
                     "Unable to load counselor notes."
 
+
+
                   )
+
+
 
             );
 
@@ -781,11 +1558,27 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
             setNotesLoading(false);
+
+
 
           }
 
+
+
         );
+
+
+
+
+
+
 
 
 
@@ -795,15 +1588,29 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
     },
+
+
+
+
 
 
 
     [
 
+
+
       profile?.id
 
+
+
     ]
+
+
 
   );
 
@@ -811,33 +1618,67 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   useEffect(
+
+
 
     () => {
 
 
 
+
+
+
+
       function closeOnEscape(
 
+
+
         event
+
+
 
       ) {
 
 
 
+
+
+
+
         if (
+
+
 
           event.key ===
 
+
+
           "Escape"
+
+
 
         ) {
 
 
 
+
+
+
+
           onClose();
 
+
+
         }
+
+
 
       }
 
@@ -845,7 +1686,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
       const previousOverflow =
+
+
 
         document.body.style.overflow;
 
@@ -853,7 +1702,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
       document.body.style.overflow =
+
+
 
         "hidden";
 
@@ -861,13 +1718,31 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
       window.addEventListener(
+
+
 
         "keydown",
 
+
+
         closeOnEscape
 
+
+
       );
+
+
+
+
+
+
 
 
 
@@ -877,7 +1752,13 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
         document.body.style.overflow =
+
+
 
           previousOverflow;
 
@@ -885,15 +1766,33 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
         window.removeEventListener(
+
+
 
           "keydown",
 
+
+
           closeOnEscape
+
+
 
         );
 
+
+
       };
+
+
+
+
 
 
 
@@ -901,7 +1800,13 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
     [onClose]
+
+
 
   );
 
@@ -909,9 +1814,19 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const latestAssessment =
 
+
+
     assessments[0] ||
+
+
 
     null;
 
@@ -919,9 +1834,19 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const priority =
 
+
+
     latestAssessment?.priority ||
+
+
 
     "No Assessment";
 
@@ -929,19 +1854,39 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const priorityClass =
+
+
 
     latestAssessment?.priority
 
+
+
       ? String(
+
+
 
           latestAssessment.priority
 
+
+
         )
+
+
 
           .trim()
 
+
+
           .toLowerCase()
+
+
 
       : "none";
 
@@ -949,9 +1894,19 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const isSuperAdmin =
 
+
+
     currentUser.role ===
+
+
 
     "super_admin";
 
@@ -959,13 +1914,27 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const isSameDepartmentCounselor =
+
+
 
     currentUser.role ===
 
+
+
       "counselor" &&
 
+
+
     currentUser.department ===
+
+
 
       profile.department;
 
@@ -973,11 +1942,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const assignedCounselorId =
+
+
 
     counselingProfile
 
+
+
       ?.assignedCounselorId ||
+
+
 
     "";
 
@@ -985,13 +1966,27 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const isAssignedCounselor =
+
+
 
     currentUser.role ===
 
+
+
       "counselor" &&
 
+
+
     assignedCounselorId ===
+
+
 
       currentUser.id;
 
@@ -999,32 +1994,69 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const canEditCounselorNotes =
+
+
 
     isSuperAdmin ||
 
+
+
     isAssignedCounselor ||
+
+
 
     (
 
+
+
       isSameDepartmentCounselor &&
+
+
 
       !assignedCounselorId
 
+
+
     );
+
+
+
 
 
   const isFormerAssignedCounselor =
+
     Boolean(
+
       currentUser.role ===
+
         "counselor" &&
+
       counselingProfile
+
         ?.transferredFromCounselorId ===
+
         currentUser.id &&
+
       assignedCounselorId &&
+
       assignedCounselorId !==
+
         currentUser.id
+
     );
+
+
+
+
+
+
 
 
 
@@ -1032,25 +2064,51 @@ export default function UserProfileFullScreen({
 
   const isCrossCollegeTransferred =
 
+
+
     Boolean(
 
+
+
       counselingProfile
+
+
 
         ?.transferActive &&
 
+
+
       counselingProfile
+
+
 
         ?.assignedCounselorDepartment &&
 
+
+
       profile.department &&
+
+
 
       counselingProfile
 
+
+
         .assignedCounselorDepartment !==
+
+
 
         profile.department
 
+
+
     );
+
+
+
+
+
+
 
 
 
@@ -1058,19 +2116,35 @@ export default function UserProfileFullScreen({
 
   const assignedCounselorLabel =
 
+
+
     counselingProfile
+
+
 
       ?.assignedCounselorName
 
 
 
+
+
+
+
       || (
+
+
 
         assignedCounselorId
 
+
+
           ? "Assigned counselor"
 
+
+
           : "Not assigned yet"
+
+
 
       );
 
@@ -1078,7 +2152,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const today =
+
+
 
     new Date();
 
@@ -1086,35 +2168,71 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const todayKey =
+
+
 
     [
 
+
+
       today.getFullYear(),
 
+
+
       String(
+
+
 
         today.getMonth() + 1
 
+
+
       ).padStart(
+
+
 
         2,
 
+
+
         "0"
+
+
 
       ),
 
+
+
       String(
+
+
 
         today.getDate()
 
+
+
       ).padStart(
+
+
 
         2,
 
+
+
         "0"
 
+
+
       )
+
+
 
     ].join("-");
 
@@ -1122,71 +2240,147 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
   const upcomingSchedules =
+
+
 
     useMemo(
 
+
+
       () =>
+
+
 
         consultations
 
+
+
           .filter(
+
+
 
             row =>
 
+
+
               [
+
+
 
                 "Schedule for counseling",
 
+
+
                 "Approved",
+
+
 
                 "Rescheduled"
 
+
+
               ].includes(
+
+
 
                 row.status
 
+
+
               ) &&
+
+
 
               row.date &&
 
+
+
               row.date >=
+
+
 
                 todayKey
 
+
+
           )
+
+
 
           .sort(
 
+
+
             (a, b) =>
+
+
 
               String(
 
+
+
                 a.date || ""
+
+
 
               ).localeCompare(
 
+
+
                 String(
+
+
 
                   b.date || ""
 
+
+
                 )
 
+
+
               )
+
+
 
           ),
 
 
 
+
+
+
+
       [
+
+
 
         consultations,
 
+
+
         todayKey
+
+
 
       ]
 
+
+
     );
+
+
+
+
+
+
 
 
 
@@ -1196,11 +2390,25 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
     if (!canEditCounselorNotes) {
+
+
 
       return;
 
+
+
     }
+
+
+
+
+
+
 
 
 
@@ -1210,9 +2418,17 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
       setNotesSaving(true);
 
+
+
       setNotesMessage("");
+
+
 
       setNotesError("");
 
@@ -1220,17 +2436,39 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
       const noteRef =
+
+
 
         doc(
 
+
+
           db,
+
+
 
           "counselingProfiles",
 
+
+
           profile.id
 
+
+
         );
+
+
+
+
+
+
 
 
 
@@ -1238,23 +2476,47 @@ export default function UserProfileFullScreen({
 
       const counselorId =
 
+
+
         counselingProfile
+
+
 
           ?.assignedCounselorId
 
 
 
+
+
+
+
         || (
+
+
 
           currentUser.role ===
 
+
+
           "counselor"
+
+
 
             ? currentUser.id
 
+
+
             : ""
 
+
+
         );
+
+
+
+
+
+
 
 
 
@@ -1262,21 +2524,39 @@ export default function UserProfileFullScreen({
 
       const counselorName =
 
+
+
         counselingProfile
+
+
 
           ?.assignedCounselorName
 
 
 
+
+
+
+
         || (
+
+
 
           currentUser.role ===
 
+
+
           "counselor"
+
+
 
             ? currentUser.name
 
+
+
             : ""
+
+
 
         );
 
@@ -1284,116 +2564,237 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
       await setDoc(
+
+
 
         noteRef,
 
+
+
         {
 
+
+
           ownerId:
+
+
 
             profile.id,
 
 
 
+
+
+
+
           ownerName:
+
+
 
             profile.name ||
 
+
+
             "",
+
+
+
+
 
 
 
           department:
 
+
+
             profile.department ||
+
+
 
             "",
 
 
 
+
+
+
+
           assignedCounselorId:
+
+
 
             counselorId,
 
 
 
+
+
+
+
           assignedCounselorName:
+
+
 
             counselorName,
 
 
 
+
+
+
+
           assignedCounselorDepartment:
+
             counselingProfile
+
               ?.assignedCounselorDepartment ||
+
             (
+
               currentUser.role ===
+
                 "counselor"
+
                 ? currentUser.department ||
+
                   ""
+
                 : ""
+
             ),
 
+
+
           caseHistory:
+
+
 
             caseHistoryDraft.trim(),
 
 
 
+
+
+
+
           counselingSessionSummary:
+
+
 
             sessionSummaryDraft.trim(),
 
 
 
+
+
+
+
           counselorObservation:
+
+
 
             observationDraft.trim(),
 
 
 
+
+
+
+
           recommendations:
+
+
 
             recommendationsDraft.trim(),
 
 
 
+
+
+
+
           notes:
+
+
 
             deleteField(),
 
 
 
+
+
+
+
           updatedById:
+
+
 
             currentUser.id,
 
 
 
+
+
+
+
           updatedByName:
+
+
 
             currentUser.name ||
 
+
+
             currentUser.email ||
+
+
 
             "Authorized user",
 
 
 
+
+
+
+
           updatedAt:
+
+
 
             serverTimestamp()
 
+
+
         },
+
+
 
         {
 
+
+
           merge: true
+
+
 
         }
 
+
+
       );
+
+
+
+
+
+
 
 
 
@@ -1401,9 +2802,17 @@ export default function UserProfileFullScreen({
 
       setNotesMessage(
 
+
+
         "Counselor notes saved successfully."
 
+
+
       );
+
+
+
+
 
 
 
@@ -1411,13 +2820,29 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
       console.error(
+
+
 
         "Unable to save counselor notes:",
 
+
+
         error
 
+
+
       );
+
+
+
+
+
+
 
 
 
@@ -1425,9 +2850,17 @@ export default function UserProfileFullScreen({
 
       setNotesError(
 
+
+
         error?.code ===
 
+
+
         "permission-denied"
+
+
+
+
 
 
 
@@ -1435,15 +2868,31 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
           : (
+
+
 
               error?.message ||
 
+
+
               "Unable to save counselor notes."
+
+
 
             )
 
+
+
       );
+
+
+
+
 
 
 
@@ -1451,11 +2900,25 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
       setNotesSaving(false);
+
+
 
     }
 
+
+
   }
+
+
+
+
+
+
 
 
 
@@ -1465,55 +2928,111 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
     <div
+
+
 
       className="user-profile-modal-backdrop"
 
+
+
       role="presentation"
 
+
+
       onMouseDown={
+
+
 
         event => {
 
 
 
+
+
+
+
           if (
+
+
 
             event.target ===
 
+
+
             event.currentTarget
+
+
 
           ) {
 
 
 
+
+
+
+
             onClose();
+
+
 
           }
 
+
+
         }
 
+
+
       }
+
+
 
     >
 
 
 
+
+
+
+
       <section
+
+
 
         className="user-profile-modal"
 
+
+
         role="dialog"
+
+
 
         aria-modal="true"
 
+
+
         aria-label={
+
+
 
           `${profile.name || "User"} profile`
 
+
+
         }
 
+
+
       >
+
+
+
+
 
 
 
@@ -1521,35 +3040,73 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
           <div className="user-profile-modal-identity">
+
+
+
+
 
 
 
             <div
 
+
+
               className="profile-avatar"
+
+
 
               aria-hidden="true"
 
+
+
             >
+
+
 
               {
 
+
+
                 profile.name
+
+
 
                   ?.trim()
 
+
+
                   ?.charAt(0)
+
+
 
                   ?.toUpperCase()
 
+
+
                 ||
+
+
 
                 "U"
 
+
+
               }
 
+
+
             </div>
+
+
+
+
+
+
 
 
 
@@ -1559,21 +3116,41 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               <div className="user-profile-name-row">
+
+
+
+
 
 
 
                 <h2>
 
+
+
                   {
+
+
 
                     displayFieldValue(
 
+
+
                       profile.name
+
+
 
                     )
 
+
+
                   }
+
+
 
                 </h2>
 
@@ -1581,19 +3158,43 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
                 <span
+
+
 
                   className={
 
+
+
                     `priority ${priorityClass}`
+
+
 
                   }
 
+
+
                 >
+
+
 
                   {priority}
 
+
+
                 </span>
+
+
+
+
+
+
 
 
 
@@ -1603,15 +3204,31 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                   <span className="transferred-profile-badge">
 
+
+
                     Transferred
+
+
 
                   </span>
 
 
 
+
+
+
+
                 )}
+
+
+
+
 
 
 
@@ -1621,19 +3238,43 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
               <p>
+
+
 
                 {
 
+
+
                   displayFieldValue(
+
+
 
                     profile.email
 
+
+
                   )
+
+
 
                 }
 
+
+
               </p>
+
+
+
+
+
+
 
 
 
@@ -1643,19 +3284,41 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                 <span className="profile-role-badge">
+
+
 
                   {
 
+
+
                     displayRoleValue(
+
+
 
                       profile.role
 
+
+
                     )
+
+
 
                   }
 
+
+
                 </span>
+
+
+
+
+
+
 
 
 
@@ -1663,27 +3326,53 @@ export default function UserProfileFullScreen({
 
                 <span className="assigned-counselor-badge">
 
+
+
                   Assigned Counselor:
 
+
+
                   {" "}
+
+
 
                   {assignedCounselorLabel}
 
 
 
+
+
+
+
                   {counselingProfile?.assignedCounselorDepartment && (
+
+
 
                     <>
 
+
+
                       {" · "}
+
+
 
                       {counselingProfile.assignedCounselorDepartment}
 
+
+
                     </>
+
+
 
                   )}
 
+
+
                 </span>
+
+
+
+
 
 
 
@@ -1691,7 +3380,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
             </div>
+
+
+
+
 
 
 
@@ -1701,23 +3398,49 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
           <button
+
+
 
             type="button"
 
+
+
             className="user-profile-close-button"
+
+
 
             onClick={onClose}
 
+
+
             aria-label="Close user profile"
+
+
 
             title="Close"
 
+
+
           >
+
+
 
             <X size={24} />
 
+
+
           </button>
+
+
+
+
 
 
 
@@ -1727,7 +3450,17 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
         <div className="user-profile-modal-body">
+
+
+
+
 
 
 
@@ -1735,11 +3468,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
             <div className="notice">
+
+
 
               This user has been transferred to another counselor. Your previous case records remain available for reference, but this profile and its counselor notes are read-only for you.
 
+
+
             </div>
+
+
+
+
 
 
 
@@ -1747,15 +3492,33 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
           <section className="user-profile-modal-card">
+
+
+
+
 
 
 
             <h3>
 
+
+
               Account Information
 
+
+
             </h3>
+
+
+
+
+
+
 
 
 
@@ -1765,27 +3528,53 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               <div className="readonly-profile-item">
 
+
+
                 <span>
+
+
 
                   Full Name
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
 
+
+
                     displayFieldValue(
+
+
 
                       profile.name
 
+
+
                     )
+
+
 
                   }
 
+
+
                 </strong>
+
+
 
               </div>
 
@@ -1793,29 +3582,63 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
               <div className="readonly-profile-item">
 
+
+
                 <span>
+
+
 
                   Account Type
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
+
+
 
                     displayRoleValue(
 
+
+
                       profile.role
+
+
 
                     )
 
+
+
                   }
+
+
 
                 </strong>
 
+
+
               </div>
+
+
+
+
+
+
 
 
 
@@ -1823,27 +3646,55 @@ export default function UserProfileFullScreen({
 
               <div className="readonly-profile-item">
 
+
+
                 <span>
+
+
 
                   College / Office
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
+
+
 
                     displayFieldValue(
 
+
+
                       profile.department
+
+
 
                     )
 
+
+
                   }
+
+
 
                 </strong>
 
+
+
               </div>
+
+
+
+
+
+
 
 
 
@@ -1851,33 +3702,65 @@ export default function UserProfileFullScreen({
 
               {profile.role ===
 
+
+
                 "student" && (
+
+
+
+
 
 
 
                 <div className="readonly-profile-item">
 
+
+
                   <span>
+
+
 
                     Program
 
+
+
                   </span>
+
+
 
                   <strong>
 
+
+
                     {
+
+
 
                       displayFieldValue(
 
+
+
                         profile.program
+
+
 
                       )
 
+
+
                     }
+
+
 
                   </strong>
 
+
+
                 </div>
+
+
+
+
 
 
 
@@ -1887,41 +3770,87 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
               <div className="readonly-profile-item">
+
+
 
                 <span>
 
+
+
                   {
+
+
 
                     profile.role ===
 
+
+
                     "student"
+
+
 
                       ? "Student Number"
 
+
+
                       : "Employee Number"
 
+
+
                   }
+
+
 
                 </span>
 
 
 
+
+
+
+
                 <strong>
+
+
 
                   {
 
+
+
                     displayFieldValue(
+
+
 
                       profile.userNumber
 
+
+
                     )
+
+
 
                   }
 
+
+
                 </strong>
 
+
+
               </div>
+
+
+
+
+
+
 
 
 
@@ -1929,27 +3858,55 @@ export default function UserProfileFullScreen({
 
               <div className="readonly-profile-item">
 
+
+
                 <span>
+
+
 
                   Phone Number
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
+
+
 
                     displayFieldValue(
 
+
+
                       profile.phoneNumber
+
+
 
                     )
 
+
+
                   }
+
+
 
                 </strong>
 
+
+
               </div>
+
+
+
+
+
+
 
 
 
@@ -1957,25 +3914,47 @@ export default function UserProfileFullScreen({
 
               <div className="readonly-profile-item full">
 
+
+
                 <span>
+
+
 
                   Address
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
 
+
+
                     displayFieldValue(
+
+
 
                       profile.address
 
+
+
                     )
+
+
 
                   }
 
+
+
                 </strong>
+
+
 
               </div>
 
@@ -1983,27 +3962,55 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
               <div className="readonly-profile-item">
 
+
+
                 <span>
+
+
 
                   Facebook Account
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
 
+
+
                     displayFieldValue(
+
+
 
                       profile.facebookAccount
 
+
+
                     )
+
+
 
                   }
 
+
+
                 </strong>
+
+
 
               </div>
 
@@ -2011,29 +4018,63 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
               <div className="readonly-profile-item">
 
+
+
                 <span>
+
+
 
                   Contact Person
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
+
+
 
                     displayFieldValue(
 
+
+
                       profile.contactPersonName
+
+
 
                     )
 
+
+
                   }
+
+
 
                 </strong>
 
+
+
               </div>
+
+
+
+
+
+
 
 
 
@@ -2041,31 +4082,63 @@ export default function UserProfileFullScreen({
 
               <div className="readonly-profile-item">
 
+
+
                 <span>
+
+
 
                   Contact Person Phone
 
+
+
                 </span>
+
+
 
                 <strong>
 
+
+
                   {
+
+
 
                     displayFieldValue(
 
+
+
                       profile.contactPersonPhone
+
+
 
                     )
 
+
+
                   }
+
+
 
                 </strong>
 
+
+
               </div>
+
+
+
+
 
 
 
             </div>
+
+
+
+
+
+
 
 
 
@@ -2073,9 +4146,17 @@ export default function UserProfileFullScreen({
 
             <div className="profile-note">
 
+
+
               Profile information is view-only for counselors and Super Admin.
 
+
+
             </div>
+
+
+
+
 
 
 
@@ -2085,7 +4166,17 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
           <section className="user-profile-modal-card">
+
+
+
+
 
 
 
@@ -2093,23 +4184,47 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               <div>
+
+
+
+
 
 
 
                 <h3>
 
+
+
                   Counseling Schedule
+
+
 
                 </h3>
 
 
 
+
+
+
+
                 <p>
+
+
 
                   Shows upcoming approved or rescheduled counseling appointments so the counselor can quickly see the user's next session.
 
+
+
                 </p>
+
+
+
+
 
 
 
@@ -2117,15 +4232,33 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               <Calendar
 
+
+
                 size={24}
+
+
 
               />
 
 
 
+
+
+
+
             </div>
+
+
+
+
+
+
 
 
 
@@ -2135,19 +4268,39 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               ? (
+
+
+
+
 
 
 
                 <div className="user-profile-empty">
 
+
+
                   No upcoming approved counseling schedule.
+
+
 
                 </div>
 
 
 
+
+
+
+
               )
+
+
+
+
 
 
 
@@ -2155,79 +4308,157 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                 <div className="profile-schedule-list">
+
+
+
+
 
 
 
                   {upcomingSchedules.map(
 
+
+
                     row => (
+
+
+
+
 
 
 
                       <article
 
+
+
                         key={row.id}
 
+
+
                         className="profile-schedule-card"
+
+
 
                       >
 
 
 
+
+
+
+
                         <div>
+
+
 
                           <strong>
 
+
+
                             {
+
+
 
                               row.category ||
 
+
+
                               "Counseling"
 
+
+
                             }
+
+
 
                           </strong>
 
 
 
+
+
+
+
                           <span>
 
+
+
                             {
+
+
 
                               formatDate(
 
+
+
                                 row.date
+
+
 
                               )
 
+
+
                             }
+
+
 
                             {" · "}
 
+
+
                             {
+
+
 
                               row.time ||
 
+
+
                               "No time"
 
+
+
                             }
+
+
+
+
 
 
 
                             {row.mode && (
 
+
+
                               <>
+
+
 
                                 {" · "}
 
+
+
                                 {row.mode}
+
+
 
                               </>
 
+
+
                             )}
 
+
+
                           </span>
+
+
 
                         </div>
 
@@ -2235,15 +4466,33 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
                         <span className="status">
+
+
 
                           {
 
+
+
                             row.status
+
+
 
                           }
 
+
+
                         </span>
+
+
+
+
 
 
 
@@ -2251,9 +4500,19 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                     )
 
+
+
                   )}
+
+
+
+
 
 
 
@@ -2261,13 +4520,29 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               )
+
+
 
             }
 
 
 
+
+
+
+
           </section>
+
+
+
+
+
+
 
 
 
@@ -2277,7 +4552,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
             <div className="user-profile-section-title">
+
+
+
+
 
 
 
@@ -2285,19 +4568,39 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                 <h3>
 
+
+
                   Counseling Request History
+
+
 
                 </h3>
 
 
 
+
+
+
+
                 <p>
+
+
 
                   Shows the user's submitted counseling requests from newest to oldest.
 
+
+
                 </p>
+
+
+
+
 
 
 
@@ -2305,15 +4608,33 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               <Clock3
 
+
+
                 size={24}
+
+
 
               />
 
 
 
+
+
+
+
             </div>
+
+
+
+
+
+
 
 
 
@@ -2323,15 +4644,31 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               ? (
+
+
+
+
 
 
 
                 <div className="user-profile-empty">
 
+
+
                   No counseling request history.
 
+
+
                 </div>
+
+
+
+
 
 
 
@@ -2339,7 +4676,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               : (
+
+
+
+
 
 
 
@@ -2347,19 +4692,39 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                   {consultations.map(
+
+
 
                     row => (
 
 
 
+
+
+
+
                       <article
+
+
 
                         key={row.id}
 
+
+
                         className="profile-history-card"
 
+
+
                       >
+
+
+
+
 
 
 
@@ -2367,31 +4732,63 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                           <strong>
+
+
 
                             {
 
+
+
                               row.category ||
+
+
 
                               "Counseling request"
 
+
+
                             }
+
+
 
                           </strong>
 
 
 
+
+
+
+
                           <span className="status">
+
+
 
                             {
 
+
+
                               row.status ||
+
+
 
                               "Pending approval"
 
+
+
                             }
 
+
+
                           </span>
+
+
+
+
 
 
 
@@ -2401,43 +4798,91 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
                         <p>
 
+
+
                           {
+
+
 
                             formatDate(
 
+
+
                               row.date
+
+
 
                             )
 
+
+
                           }
+
+
 
                           {" · "}
 
+
+
                           {
+
+
 
                             row.time ||
 
+
+
                             "No time"
 
+
+
                           }
+
+
+
+
 
 
 
                           {row.mode && (
 
+
+
                             <>
+
+
 
                               {" · "}
 
+
+
                               {row.mode}
+
+
 
                             </>
 
+
+
                           )}
 
+
+
                         </p>
+
+
+
+
+
+
 
 
 
@@ -2447,23 +4892,49 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                           <small>
+
+
 
                             <b>
 
+
+
                               Details:
+
+
 
                             </b>
 
+
+
                             {" "}
 
+
+
                             {row.message}
+
+
 
                           </small>
 
 
 
+
+
+
+
                         )}
+
+
+
+
+
+
 
 
 
@@ -2473,23 +4944,47 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                           <small>
+
+
 
                             <b>
 
+
+
                               Counselor remarks:
+
+
 
                             </b>
 
+
+
                             {" "}
+
+
 
                             {
 
+
+
                               row.counselorRemarks
+
+
 
                             }
 
+
+
                           </small>
+
+
+
+
 
 
 
@@ -2497,13 +4992,27 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                       </article>
+
+
+
+
 
 
 
                     )
 
+
+
                   )}
+
+
+
+
 
 
 
@@ -2511,13 +5020,29 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               )
+
+
 
             }
 
 
 
+
+
+
+
           </section>
+
+
+
+
+
+
 
 
 
@@ -2527,7 +5052,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
             <div className="user-profile-section-title">
+
+
+
+
 
 
 
@@ -2535,19 +5068,39 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                 <h3>
 
+
+
                   Counselor Notes
+
+
 
                 </h3>
 
 
 
+
+
+
+
                 <p>
+
+
 
                   Structured private case notes. Only the assigned counselor or Super Admin can edit this section.
 
+
+
                 </p>
+
+
+
+
 
 
 
@@ -2555,11 +5108,23 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               <FileText
+
+
 
                 size={24}
 
+
+
               />
+
+
+
+
 
 
 
@@ -2569,7 +5134,17 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
+
+
             {notesLoading
+
+
+
+
 
 
 
@@ -2577,15 +5152,31 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                 <div className="user-profile-empty">
 
+
+
                   Loading counselor notes...
+
+
 
                 </div>
 
 
 
+
+
+
+
               )
+
+
+
+
 
 
 
@@ -2593,7 +5184,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                 <>
+
+
+
+
 
 
 
@@ -2601,213 +5200,427 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
                     <label className="counselor-note-field">
+
+
 
                       <span>Case History</span>
 
+
+
                       <textarea
 
+
+
                         rows="6"
+
+
 
                         value={caseHistoryDraft}
 
+
+
                         readOnly={!canEditCounselorNotes}
+
+
 
                         onChange={event => setCaseHistoryDraft(event.target.value)}
 
+
+
                         placeholder={
 
+
+
                           canEditCounselorNotes
+
+
 
                             ? "Record relevant case background, previous concerns, and important case developments."
 
+
+
                             : "Only the assigned counselor or Super Admin can edit this field."
+
+
 
                         }
 
+
+
                       />
+
+
 
                     </label>
 
 
 
+
+
+
+
                     <label className="counselor-note-field">
+
+
 
                       <span>Counseling Session Summary</span>
 
+
+
                       <textarea
 
+
+
                         rows="6"
+
+
 
                         value={sessionSummaryDraft}
 
+
+
                         readOnly={!canEditCounselorNotes}
+
+
 
                         onChange={event => setSessionSummaryDraft(event.target.value)}
 
+
+
                         placeholder={
 
+
+
                           canEditCounselorNotes
+
+
 
                             ? "Summarize the important topics, concerns, and outcomes discussed during counseling."
 
+
+
                             : "Only the assigned counselor or Super Admin can edit this field."
+
+
 
                         }
 
+
+
                       />
+
+
 
                     </label>
 
 
 
+
+
+
+
                     <label className="counselor-note-field">
+
+
 
                       <span>Counselor's Observation</span>
 
+
+
                       <textarea
+
+
 
                         rows="6"
 
+
+
                         value={observationDraft}
+
+
 
                         readOnly={!canEditCounselorNotes}
 
+
+
                         onChange={event => setObservationDraft(event.target.value)}
+
+
 
                         placeholder={
 
+
+
                           canEditCounselorNotes
+
+
 
                             ? "Record relevant professional observations from the counseling interaction."
 
+
+
                             : "Only the assigned counselor or Super Admin can edit this field."
+
+
 
                         }
 
+
+
                       />
 
+
+
                     </label>
+
+
+
+
 
 
 
                     <label className="counselor-note-field">
 
+
+
                       <span>Recommendations</span>
+
+
 
                       <textarea
 
+
+
                         rows="6"
+
+
 
                         value={recommendationsDraft}
 
+
+
                         readOnly={!canEditCounselorNotes}
+
+
 
                         onChange={event => setRecommendationsDraft(event.target.value)}
 
+
+
                         placeholder={
+
+
 
                           canEditCounselorNotes
 
+
+
                             ? "Record follow-up steps, support recommendations, or other counselor guidance."
+
+
 
                             : "Only the assigned counselor or Super Admin can edit this field."
 
+
+
                         }
+
+
 
                       />
 
+
+
                     </label>
+
+
+
+
 
 
 
                   </div>
+
+
+
+
 
 
 
                   <div className="counseling-notes-meta">
 
+
+
                     <span>
+
+
 
                       Assigned counselor:{" "}
 
+
+
                       <strong>{assignedCounselorLabel}</strong>
 
+
+
                     </span>
+
+
+
+
 
 
 
                     <span>
 
+
+
                       Last updated:{" "}
+
+
 
                       <strong>{formatTimestamp(counselingProfile?.updatedAt)}</strong>
 
+
+
                     </span>
+
+
 
                   </div>
 
 
 
+
+
+
+
                   {notesMessage && (
+
+
 
                     <div className="success-box">
 
+
+
                       {notesMessage}
+
+
 
                     </div>
 
+
+
                   )}
+
+
+
+
 
 
 
                   {notesError && (
 
+
+
                     <div className="error-box">
+
+
 
                       {notesError}
 
+
+
                     </div>
+
+
 
                   )}
 
 
 
+
+
+
+
                   {canEditCounselorNotes
+
+
 
                     ? (
 
+
+
                       <button
+
+
 
                         type="button"
 
+
+
                         className="primary-button counseling-notes-save"
+
+
 
                         disabled={notesSaving}
 
+
+
                         onClick={saveNotes}
+
+
 
                       >
 
+
+
                         <Save size={18} />
+
+
 
                         {notesSaving ? "Saving..." : "Save Counselor Notes"}
 
+
+
                       </button>
 
+
+
                     )
+
+
 
                     : (
 
+
+
                       <div className="profile-note">
+
+
 
                         Counselor notes are locked because another counselor is assigned to this user. Super Admin can still edit them.
 
+
+
                       </div>
+
+
 
                     )
 
+
+
                   }
+
+
+
+
 
 
 
@@ -2815,9 +5628,19 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
               )
 
+
+
             }
+
+
+
+
 
 
 
@@ -2825,7 +5648,15 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
         </div>
+
+
+
+
 
 
 
@@ -2833,10 +5664,20 @@ export default function UserProfileFullScreen({
 
 
 
+
+
+
+
     </div>
 
 
 
+
+
+
+
   );
+
+
 
 }

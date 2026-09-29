@@ -21,7 +21,9 @@ const LOCAL_KEY =
 
 
 const seed = {
+
   users: [
+
     {
       id: "sa-1",
       name: "System Super Admin",
@@ -29,6 +31,7 @@ const seed = {
       role: "super_admin",
       department: "All"
     },
+
     {
       id: "c-1",
       name: "CCS Guidance Counselor",
@@ -36,6 +39,7 @@ const seed = {
       role: "counselor",
       department: "CCS"
     },
+
     {
       id: "u-1",
       name: "Juan Dela Cruz",
@@ -44,6 +48,7 @@ const seed = {
       department: "CCS",
       userNumber: "2024-12345"
     },
+
     {
       id: "f-1",
       name: "Maria Faculty",
@@ -52,6 +57,7 @@ const seed = {
       department: "CTE",
       userNumber: "EMP-1001"
     },
+
     {
       id: "p-1",
       name: "Pedro Personnel",
@@ -60,12 +66,26 @@ const seed = {
       department: "Administration",
       userNumber: "EMP-2001"
     }
+
   ],
 
+
   assessments: [],
+
   consultations: [],
+
   referrals: [],
-  notifications: []
+
+  notifications: [],
+
+  counselingProfiles: [],
+
+  transferRequests: [],
+
+  transferAccess: [],
+
+  feedback: []
+
 };
 
 
@@ -81,8 +101,11 @@ function readLocal() {
 
     localStorage.setItem(
       LOCAL_KEY,
-      JSON.stringify(seed)
+      JSON.stringify(
+        seed
+      )
     );
+
 
     return structuredClone(
       seed
@@ -90,17 +113,44 @@ function readLocal() {
   }
 
 
-  return JSON.parse(
-    current
-  );
+  try {
+
+    return JSON.parse(
+      current
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Unable to read local MindTrack data:",
+      error
+    );
+
+
+    localStorage.setItem(
+      LOCAL_KEY,
+      JSON.stringify(
+        seed
+      )
+    );
+
+
+    return structuredClone(
+      seed
+    );
+  }
 }
 
 
-function writeLocal(data) {
+function writeLocal(
+  data
+) {
 
   localStorage.setItem(
     LOCAL_KEY,
-    JSON.stringify(data)
+    JSON.stringify(
+      data
+    )
   );
 
 
@@ -112,9 +162,12 @@ function writeLocal(data) {
 }
 
 
-function timestampToMillis(value) {
+function timestampToMillis(
+  value
+) {
 
   if (!value) {
+
     return 0;
   }
 
@@ -139,7 +192,8 @@ function timestampToMillis(value) {
         (
           value.nanoseconds ||
           0
-        ) / 1000000
+        ) /
+        1000000
       )
     );
   }
@@ -167,15 +221,24 @@ function timestampToMillis(value) {
 }
 
 
-function newestFirst(rows) {
+function newestFirst(
+  rows
+) {
 
-  return [...rows].sort(
-    (a, b) =>
+  return [
+    ...rows
+  ].sort(
+    (
+      a,
+      b
+    ) =>
       timestampToMillis(
-        b.createdAt
+        b.createdAt ||
+        b.updatedAt
       ) -
       timestampToMillis(
-        a.createdAt
+        a.createdAt ||
+        a.updatedAt
       )
   );
 }
@@ -184,181 +247,437 @@ function newestFirst(rows) {
 export function resetDemoData() {
 
   writeLocal(
-    structuredClone(seed)
+    structuredClone(
+      seed
+    )
   );
 }
 
 
+// =====================================================
+// REALTIME COLLECTION SUBSCRIPTION
+// =====================================================
+
 export function subscribeCollection(
   name,
   callback,
-  filters = {}
+  filters = {},
+  onError = null
 ) {
 
-  if (firebaseEnabled) {
+  if (
+    typeof callback !==
+    "function"
+  ) {
 
-    const constraints = [];
-
-
-    if (filters.ownerId) {
-
-      constraints.push(
-        where(
-          "ownerId",
-          "==",
-          filters.ownerId
-        )
-      );
-    }
-
-
-    if (filters.department) {
-
-      constraints.push(
-        where(
-          "department",
-          "==",
-          filters.department
-        )
-      );
-    }
-
-
-    if (filters.role) {
-
-      constraints.push(
-        where(
-          "role",
-          "==",
-          filters.role
-        )
-      );
-    }
-
-
-    if (filters.status) {
-
-      constraints.push(
-        where(
-          "status",
-          "==",
-          filters.status
-        )
-      );
-    }
-
-
-    if (filters.assignedCounselorId) {
-
-      constraints.push(
-        where(
-          "assignedCounselorId",
-          "==",
-          filters.assignedCounselorId
-        )
-      );
-    }
-
-
-    if (filters.counselorId) {
-
-      constraints.push(
-        where(
-          "counselorId",
-          "==",
-          filters.counselorId
-        )
-      );
-    }
-
-
-    if (filters.active !== undefined) {
-
-      constraints.push(
-        where(
-          "active",
-          "==",
-          filters.active
-        )
-      );
-    }
-
-
-    const q =
-      query(
-        collection(
-          db,
-          name
-        ),
-        ...constraints
-      );
-
-
-    return onSnapshot(
-      q,
-      snap => {
-
-        const rows =
-          snap.docs.map(
-            item => ({
-              id: item.id,
-              ...item.data()
-            })
-          );
-
-
-        callback(
-          newestFirst(
-            rows
-          )
-        );
-      }
+    console.error(
+      `subscribeCollection("${name}") requires a callback function.`
     );
+
+
+    return () => {};
   }
 
 
+  // ===================================================
+  // FIREBASE / FIRESTORE
+  // ===================================================
+
+  if (firebaseEnabled) {
+
+    try {
+
+      const constraints = [];
+
+
+      if (
+        filters.ownerId
+      ) {
+
+        constraints.push(
+          where(
+            "ownerId",
+            "==",
+            filters.ownerId
+          )
+        );
+      }
+
+
+      if (
+        filters.department
+      ) {
+
+        constraints.push(
+          where(
+            "department",
+            "==",
+            filters.department
+          )
+        );
+      }
+
+
+      if (
+        filters.role
+      ) {
+
+        constraints.push(
+          where(
+            "role",
+            "==",
+            filters.role
+          )
+        );
+      }
+
+
+      if (
+        filters.status
+      ) {
+
+        constraints.push(
+          where(
+            "status",
+            "==",
+            filters.status
+          )
+        );
+      }
+
+
+      if (
+        filters.assignedCounselorId
+      ) {
+
+        constraints.push(
+          where(
+            "assignedCounselorId",
+            "==",
+            filters.assignedCounselorId
+          )
+        );
+      }
+
+
+      if (
+        filters.counselorId
+      ) {
+
+        constraints.push(
+          where(
+            "counselorId",
+            "==",
+            filters.counselorId
+          )
+        );
+      }
+
+
+      if (
+        filters.requestedById
+      ) {
+
+        constraints.push(
+          where(
+            "requestedById",
+            "==",
+            filters.requestedById
+          )
+        );
+      }
+
+
+      if (
+        filters.transferRequestId
+      ) {
+
+        constraints.push(
+          where(
+            "transferRequestId",
+            "==",
+            filters.transferRequestId
+          )
+        );
+      }
+
+
+      if (
+        filters.active !==
+        undefined
+      ) {
+
+        constraints.push(
+          where(
+            "active",
+            "==",
+            filters.active
+          )
+        );
+      }
+
+
+      const collectionQuery =
+        query(
+          collection(
+            db,
+            name
+          ),
+          ...constraints
+        );
+
+
+      const unsubscribe =
+        onSnapshot(
+
+          collectionQuery,
+
+
+          snapshot => {
+
+            const rows =
+              snapshot.docs.map(
+                item => ({
+
+                  id:
+                    item.id,
+
+                  ...item.data()
+
+                })
+              );
+
+
+            callback(
+              newestFirst(
+                rows
+              )
+            );
+          },
+
+
+          error => {
+
+            console.error(
+              `Unable to load ${name}:`,
+              error
+            );
+
+
+            // Keep React components alive even when
+            // Firestore rejects a query.
+            callback([]);
+
+
+            if (
+              typeof onError ===
+              "function"
+            ) {
+
+              onError(
+                error
+              );
+            }
+          }
+
+        );
+
+
+      return unsubscribe;
+
+    } catch (error) {
+
+      console.error(
+        `Unable to create ${name} subscription:`,
+        error
+      );
+
+
+      callback([]);
+
+
+      if (
+        typeof onError ===
+        "function"
+      ) {
+
+        onError(
+          error
+        );
+      }
+
+
+      return () => {};
+    }
+  }
+
+
+  // ===================================================
+  // LOCAL / DEMO DATABASE
+  // ===================================================
+
   const emit = () => {
 
-    const data =
-      readLocal();
+    try {
+
+      const data =
+        readLocal();
 
 
-    let rows =
-      [
-        ...(
-          data[name] ||
-          []
+      let rows =
+        [
+          ...(
+            data[name] ||
+            []
+          )
+        ];
+
+
+      if (
+        filters.ownerId
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.ownerId ===
+              filters.ownerId
+          );
+      }
+
+
+      if (
+        filters.department
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.department ===
+              filters.department
+          );
+      }
+
+
+      if (
+        filters.role
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.role ===
+              filters.role
+          );
+      }
+
+
+      if (
+        filters.status
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.status ===
+              filters.status
+          );
+      }
+
+
+      if (
+        filters.assignedCounselorId
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.assignedCounselorId ===
+              filters.assignedCounselorId
+          );
+      }
+
+
+      if (
+        filters.counselorId
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.counselorId ===
+              filters.counselorId
+          );
+      }
+
+
+      if (
+        filters.requestedById
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.requestedById ===
+              filters.requestedById
+          );
+      }
+
+
+      if (
+        filters.transferRequestId
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.transferRequestId ===
+              filters.transferRequestId
+          );
+      }
+
+
+      if (
+        filters.active !==
+        undefined
+      ) {
+
+        rows =
+          rows.filter(
+            row =>
+              row.active ===
+              filters.active
+          );
+      }
+
+
+      callback(
+        newestFirst(
+          rows
         )
-      ];
+      );
+
+    } catch (error) {
+
+      console.error(
+        `Unable to load local ${name}:`,
+        error
+      );
 
 
-    if (filters.ownerId) {
+      callback([]);
 
-      rows =
-        rows.filter(
-          row =>
-            row.ownerId ===
-            filters.ownerId
+
+      if (
+        typeof onError ===
+        "function"
+      ) {
+
+        onError(
+          error
         );
+      }
     }
-
-
-    if (filters.department) {
-
-      rows =
-        rows.filter(
-          row =>
-            row.department ===
-            filters.department
-        );
-    }
-
-
-    callback(
-      newestFirst(
-        rows
-      )
-    );
   };
 
 
@@ -371,13 +690,19 @@ export function subscribeCollection(
   );
 
 
-  return () =>
+  return () => {
+
     window.removeEventListener(
       "mindtrack-local-change",
       emit
     );
+  };
 }
 
+
+// =====================================================
+// ADD RECORD
+// =====================================================
 
 export async function addRecord(
   name,
@@ -386,17 +711,33 @@ export async function addRecord(
 
   if (firebaseEnabled) {
 
-    return addDoc(
-      collection(
-        db,
-        name
-      ),
-      {
-        ...payload,
-        createdAt:
-          serverTimestamp()
-      }
-    );
+    try {
+
+      return await addDoc(
+        collection(
+          db,
+          name
+        ),
+        {
+
+          ...payload,
+
+          createdAt:
+            serverTimestamp()
+
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        `Unable to add record to ${name}:`,
+        error
+      );
+
+
+      throw error;
+    }
   }
 
 
@@ -405,31 +746,43 @@ export async function addRecord(
 
 
   const record = {
+
     id:
       crypto.randomUUID(),
 
     ...payload,
 
     createdAt:
-      new Date().toISOString()
+      new Date()
+        .toISOString()
+
   };
 
 
   data[name] = [
+
     record,
+
     ...(
       data[name] ||
       []
     )
+
   ];
 
 
-  writeLocal(data);
+  writeLocal(
+    data
+  );
 
 
   return record;
 }
 
+
+// =====================================================
+// UPDATE RECORD
+// =====================================================
 
 export async function updateRecord(
   name,
@@ -437,20 +790,46 @@ export async function updateRecord(
   changes
 ) {
 
+  if (
+    !id
+  ) {
+
+    throw new Error(
+      `Unable to update ${name}: missing document ID.`
+    );
+  }
+
+
   if (firebaseEnabled) {
 
-    return updateDoc(
-      doc(
-        db,
-        name,
-        id
-      ),
-      {
-        ...changes,
-        updatedAt:
-          serverTimestamp()
-      }
-    );
+    try {
+
+      return await updateDoc(
+        doc(
+          db,
+          name,
+          id
+        ),
+        {
+
+          ...changes,
+
+          updatedAt:
+            serverTimestamp()
+
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        `Unable to update ${name}/${id}:`,
+        error
+      );
+
+
+      throw error;
+    }
   }
 
 
@@ -464,38 +843,78 @@ export async function updateRecord(
       []
     ).map(
       row =>
-        row.id === id
+        row.id ===
+          id
+
           ? {
+
               ...row,
+
               ...changes,
+
               updatedAt:
-                new Date().toISOString()
+                new Date()
+                  .toISOString()
+
             }
+
           : row
     );
 
 
-  writeLocal(data);
+  writeLocal(
+    data
+  );
 }
 
+
+// =====================================================
+// CREATE / UPDATE USER
+// =====================================================
 
 export async function upsertUser(
   user
 ) {
 
+  if (
+    !user?.id
+  ) {
+
+    throw new Error(
+      "Unable to save user: missing user ID."
+    );
+  }
+
+
   if (firebaseEnabled) {
 
-    return setDoc(
-      doc(
-        db,
-        "users",
-        user.id
-      ),
-      user,
-      {
-        merge: true
-      }
-    );
+    try {
+
+      return await setDoc(
+        doc(
+          db,
+          "users",
+          user.id
+        ),
+
+        user,
+
+        {
+          merge:
+            true
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        `Unable to save user ${user.id}:`,
+        error
+      );
+
+
+      throw error;
+    }
   }
 
 
@@ -513,33 +932,59 @@ export async function upsertUser(
     );
 
 
-  if (index >= 0) {
+  if (
+    index >= 0
+  ) {
 
     data.users[index] = {
+
       ...data.users[index],
+
       ...user
+
     };
 
   } else {
 
-    data.users.push(user);
+    data.users.push(
+      user
+    );
   }
 
 
-  writeLocal(data);
+  writeLocal(
+    data
+  );
 }
 
+
+// =====================================================
+// FIND DEMO USER
+// =====================================================
 
 export function findDemoUser(
   email
 ) {
 
+  if (!email) {
+
+    return undefined;
+  }
+
+
   return readLocal()
     .users
     .find(
       user =>
-        user.email
+        String(
+          user.email ||
+          ""
+        )
           .toLowerCase() ===
-        email.toLowerCase()
+
+        String(
+          email
+        )
+          .toLowerCase()
     );
 }

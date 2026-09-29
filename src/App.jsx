@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import psuLogo from "./assets/psu-logo.jpg";
 
 import {
@@ -48,7 +48,6 @@ import "./counseling-calendar.css";
 
 import {
   addRecord,
-  subscribeCollection,
   updateRecord
 } from "./services/dataService";
 
@@ -2402,12 +2401,208 @@ function useRows(
 
 
   useEffect(
-    () =>
-      subscribeCollection(
-        name,
-        setRows,
-        filters
-      ),
+    () => {
+
+      const constraints = [];
+
+
+      if (filters.ownerId) {
+
+        constraints.push(
+          where(
+            "ownerId",
+            "==",
+            filters.ownerId
+          )
+        );
+      }
+
+
+      if (filters.department) {
+
+        constraints.push(
+          where(
+            "department",
+            "==",
+            filters.department
+          )
+        );
+      }
+
+
+      if (filters.role) {
+
+        constraints.push(
+          where(
+            "role",
+            "==",
+            filters.role
+          )
+        );
+      }
+
+
+      if (filters.status) {
+
+        constraints.push(
+          where(
+            "status",
+            "==",
+            filters.status
+          )
+        );
+      }
+
+
+      if (filters.assignedCounselorId) {
+
+        constraints.push(
+          where(
+            "assignedCounselorId",
+            "==",
+            filters.assignedCounselorId
+          )
+        );
+      }
+
+
+      if (filters.counselorId) {
+
+        constraints.push(
+          where(
+            "counselorId",
+            "==",
+            filters.counselorId
+          )
+        );
+      }
+
+
+      if (
+        filters.active !==
+        undefined
+      ) {
+
+        constraints.push(
+          where(
+            "active",
+            "==",
+            filters.active
+          )
+        );
+      }
+
+
+      const rowsQuery =
+        query(
+          collection(
+            db,
+            name
+          ),
+          ...constraints
+        );
+
+
+      const unsubscribe =
+        onSnapshot(
+          rowsQuery,
+
+          snapshot => {
+
+            const incomingRows =
+              snapshot.docs.map(
+                item => ({
+                  id:
+                    item.id,
+
+                  ...item.data()
+                })
+              );
+
+
+            incomingRows.sort(
+              (a, b) => {
+
+                function valueToMillis(
+                  value
+                ) {
+
+                  if (!value) {
+                    return 0;
+                  }
+
+
+                  if (
+                    typeof value.toMillis ===
+                    "function"
+                  ) {
+
+                    return value.toMillis();
+                  }
+
+
+                  if (
+                    typeof value.seconds ===
+                    "number"
+                  ) {
+
+                    return (
+                      value.seconds *
+                      1000
+                    );
+                  }
+
+
+                  const parsed =
+                    new Date(
+                      value
+                    ).getTime();
+
+
+                  return Number.isNaN(
+                    parsed
+                  )
+                    ? 0
+                    : parsed;
+                }
+
+
+                return (
+                  valueToMillis(
+                    b.createdAt
+                  ) -
+                  valueToMillis(
+                    a.createdAt
+                  )
+                );
+              }
+            );
+
+
+            setRows(
+              incomingRows
+            );
+          },
+
+          error => {
+
+            // Keep Firestore listener errors contained inside
+            // this hook instead of leaving an uncaught snapshot
+            // listener error in React.
+            console.error(
+              `Unable to load ${name}:`,
+              error
+            );
+
+
+            setRows([]);
+          }
+        );
+
+
+      return unsubscribe;
+
+    },
 
     [
       name,
@@ -2425,6 +2620,204 @@ function useRows(
   return rows;
 }
 
+
+// ======================================================
+// TRANSFERRED OWNER ROWS
+// Loads records for users formally transferred to the
+// currently assigned counselor.
+// ======================================================
+
+function useTransferredOwnerRows(
+  collectionName,
+  counselorId
+) {
+
+  const [rows, setRows] =
+    useState([]);
+
+
+  useEffect(
+    () => {
+
+      if (!counselorId) {
+
+        setRows([]);
+
+        return undefined;
+      }
+
+
+      let ownerUnsubscribers = [];
+
+
+      const accessQuery =
+        query(
+          collection(
+            db,
+            "transferAccess"
+          ),
+          where(
+            "counselorId",
+            "==",
+            counselorId
+          ),
+          where(
+            "active",
+            "==",
+            true
+          )
+        );
+
+
+      const accessUnsubscribe =
+        onSnapshot(
+          accessQuery,
+
+          accessSnapshot => {
+
+            ownerUnsubscribers.forEach(
+              unsubscribe =>
+                unsubscribe()
+            );
+
+            ownerUnsubscribers = [];
+
+
+            if (
+              accessSnapshot.empty
+            ) {
+
+              setRows([]);
+
+              return;
+            }
+
+
+            const rowsByOwner =
+              new Map();
+
+
+            accessSnapshot.docs.forEach(
+              accessDocument => {
+
+                const access =
+                  accessDocument.data();
+
+
+                if (!access.ownerId) {
+                  return;
+                }
+
+
+                const ownerQuery =
+                  query(
+                    collection(
+                      db,
+                      collectionName
+                    ),
+                    where(
+                      "ownerId",
+                      "==",
+                      access.ownerId
+                    )
+                  );
+
+
+                const ownerUnsubscribe =
+                  onSnapshot(
+                    ownerQuery,
+
+                    snapshot => {
+
+                      rowsByOwner.set(
+                        access.ownerId,
+
+                        snapshot.docs.map(
+                          item => ({
+                            id:
+                              item.id,
+
+                            ...item.data()
+                          })
+                        )
+                      );
+
+
+                      setRows(
+                        mergeRowsById(
+                          ...Array.from(
+                            rowsByOwner.values()
+                          )
+                        )
+                      );
+                    },
+
+                    error => {
+
+                      console.error(
+                        `Unable to load transferred ${collectionName} records for ${access.ownerId}:`,
+                        error
+                      );
+
+
+                      rowsByOwner.set(
+                        access.ownerId,
+                        []
+                      );
+
+
+                      setRows(
+                        mergeRowsById(
+                          ...Array.from(
+                            rowsByOwner.values()
+                          )
+                        )
+                      );
+                    }
+                  );
+
+
+                ownerUnsubscribers.push(
+                  ownerUnsubscribe
+                );
+              }
+            );
+          },
+
+          error => {
+
+            console.error(
+              "Unable to load transferred-user access:",
+              error
+            );
+
+            setRows([]);
+          }
+        );
+
+
+      return () => {
+
+        accessUnsubscribe();
+
+
+        ownerUnsubscribers.forEach(
+          unsubscribe =>
+            unsubscribe()
+        );
+      };
+
+    },
+
+    [
+      collectionName,
+      counselorId
+    ]
+  );
+
+
+  return rows;
+}
 
 
 // ======================================================
@@ -8352,35 +8745,87 @@ function UserProfilesContent({
   );
 
 
+  // Track assignment state for users from the counselor's
+  // home department. This lets the old counselor remove a
+  // successfully transferred user from User Profiles.
+  useEffect(
+    () => {
+
+      const profileQuery =
+        isSuperAdmin
+          ? collection(
+              db,
+              "counselingProfiles"
+            )
+          : query(
+              collection(
+                db,
+                "counselingProfiles"
+              ),
+              where(
+                "department",
+                "==",
+                currentUser.department
+              )
+            );
+
+
+      return onSnapshot(
+        profileQuery,
+
+        snapshot => {
+
+          const map = {};
+
+
+          snapshot.docs.forEach(
+            item => {
+
+              map[
+                item.id
+              ] =
+                item.data();
+            }
+          );
+
+
+          setProfileTransferMap(
+            map
+          );
+        },
+
+        error => {
+
+          console.error(
+            "Unable to load counseling assignment state:",
+            error
+          );
+
+
+          setProfileTransferMap(
+            {}
+          );
+        }
+      );
+
+    },
+
+    [
+      isSuperAdmin,
+      currentUser.department
+    ]
+  );
+
+
+  // Load users formally transferred TO the current counselor.
   useEffect(
     () => {
 
       if (isSuperAdmin) {
 
-        const unsubscribe =
-          onSnapshot(
-            collection(
-              db,
-              "counselingProfiles"
-            ),
-            snapshot => {
+        setTransferredRows([]);
 
-              const map = {};
-
-              snapshot.docs.forEach(
-                item => {
-                  map[item.id] =
-                    item.data();
-                }
-              );
-
-              setProfileTransferMap(map);
-            },
-            () =>
-              setProfileTransferMap({})
-          );
-
-        return unsubscribe;
+        return undefined;
       }
 
 
@@ -8403,66 +8848,89 @@ function UserProfilesContent({
         );
 
 
-      const unsubscribe =
-        onSnapshot(
-          accessQuery,
-          async snapshot => {
+      return onSnapshot(
+        accessQuery,
 
-            try {
+        async snapshot => {
 
-              const rows =
-                await Promise.all(
-                  snapshot.docs.map(
-                    async accessDoc => {
+          try {
 
-                      const access =
-                        accessDoc.data();
+            const rows =
+              await Promise.all(
+                snapshot.docs.map(
+                  async accessDoc => {
 
-                      const userSnap =
-                        await getDoc(
-                          doc(
-                            db,
-                            "users",
-                            access.ownerId
-                          )
-                        );
+                    const access =
+                      accessDoc.data();
 
-                      if (!userSnap.exists()) {
-                        return null;
-                      }
 
-                      return {
-                        id:
-                          userSnap.id,
-                        ...userSnap.data(),
-                        _transferredAccess:
-                          true,
-                        _transferAccessId:
-                          accessDoc.id
-                      };
+                    if (!access.ownerId) {
+                      return null;
                     }
-                  )
-                );
 
-              setTransferredRows(
-                rows.filter(Boolean)
+
+                    const userSnap =
+                      await getDoc(
+                        doc(
+                          db,
+                          "users",
+                          access.ownerId
+                        )
+                      );
+
+
+                    if (!userSnap.exists()) {
+                      return null;
+                    }
+
+
+                    return {
+                      id:
+                        userSnap.id,
+
+                      ...userSnap.data(),
+
+                      _transferredAccess:
+                        true,
+
+                      _transferAccessId:
+                        accessDoc.id
+                    };
+                  }
+                )
               );
 
-            } catch (error) {
 
-              console.error(
-                "Unable to load transferred users:",
-                error
-              );
+            setTransferredRows(
+              rows.filter(Boolean)
+            );
 
-              setTransferredRows([]);
-            }
+          } catch (error) {
+
+            console.error(
+              "Unable to load transferred users:",
+              error
+            );
+
+
+            setTransferredRows([]);
           }
-        );
+        },
 
-      return unsubscribe;
+        error => {
+
+          console.error(
+            "Unable to load transfer access for User Profiles:",
+            error
+          );
+
+
+          setTransferredRows([]);
+        }
+      );
 
     },
+
     [
       isSuperAdmin,
       currentUser.id
@@ -8470,11 +8938,36 @@ function UserProfilesContent({
   );
 
 
+  const activeDepartmentRows =
+    isSuperAdmin
+      ? departmentRows
+      : departmentRows.filter(
+          account => {
+
+            const counselingProfile =
+              profileTransferMap[
+                account.id
+              ];
+
+
+            return !(
+              counselingProfile
+                ?.transferActive &&
+              counselingProfile
+                ?.assignedCounselorId &&
+              counselingProfile
+                .assignedCounselorId !==
+                currentUser.id
+            );
+          }
+        );
+
+
   const combinedRows =
     isSuperAdmin
       ? departmentRows
       : mergeRowsById(
-          departmentRows,
+          activeDepartmentRows,
           transferredRows
         );
 
@@ -10400,11 +10893,136 @@ function Cases() {
         };
 
 
-  const rows =
+  const departmentAssessmentRows =
     useRows(
       "assessments",
       assessmentFilters
     );
+
+
+  const transferredAssessmentRows =
+    useTransferredOwnerRows(
+      "assessments",
+      isSuperAdmin
+        ? ""
+        : user.id
+    );
+
+
+  const rows =
+    useMemo(
+      () =>
+        isSuperAdmin
+          ? departmentAssessmentRows
+          : mergeRowsById(
+              departmentAssessmentRows,
+              transferredAssessmentRows
+            ),
+      [
+        isSuperAdmin,
+        departmentAssessmentRows,
+        transferredAssessmentRows
+      ]
+    );
+
+
+  const departmentCaseProfiles =
+    useRows(
+      "counselingProfiles",
+      isSuperAdmin
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
+        : {
+            department:
+              user.department
+          }
+    );
+
+
+  const assignedCaseProfiles =
+    useRows(
+      "counselingProfiles",
+      isSuperAdmin
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
+        : {
+            assignedCounselorId:
+              user.id
+          }
+    );
+
+
+  const caseProfileMap =
+    useMemo(
+      () => {
+
+        const map = {};
+
+
+        mergeRowsById(
+          departmentCaseProfiles,
+          assignedCaseProfiles
+        ).forEach(
+          counselingProfile => {
+
+            const ownerId =
+              counselingProfile.ownerId ||
+              counselingProfile.id;
+
+
+            if (ownerId) {
+
+              map[
+                ownerId
+              ] =
+                counselingProfile;
+            }
+          }
+        );
+
+
+        return map;
+      },
+
+      [
+        departmentCaseProfiles,
+        assignedCaseProfiles
+      ]
+    );
+
+
+  function assessmentIsReadOnly(
+    row
+  ) {
+
+    if (
+      isSuperAdmin ||
+      user.role !==
+        "counselor"
+    ) {
+
+      return false;
+    }
+
+
+    const counselingProfile =
+      caseProfileMap[
+        row?.ownerId
+      ];
+
+
+    return Boolean(
+      counselingProfile
+        ?.assignedCounselorId &&
+      counselingProfile
+        .assignedCounselorId !==
+        user.id
+    );
+  }
 
 
   function ownerKey(
@@ -10803,6 +11421,20 @@ function Cases() {
   async function saveAssessmentUpdate() {
 
     if (!selected) {
+      return;
+    }
+
+
+    if (
+      assessmentIsReadOnly(
+        selected
+      )
+    ) {
+
+      alert(
+        "This user is currently assigned to another counselor. You may view the assessment record, but only the assigned counselor can change its status or remarks."
+      );
+
       return;
     }
 
@@ -12067,6 +12699,17 @@ function Cases() {
                 </p>
 
 
+                {assessmentIsReadOnly(
+                  selected
+                ) && (
+
+                  <div className="notice">
+                    Read-only assessment record: this user is assigned to another counselor. You can review the assessment history and scores, but you cannot change the status or counselor remarks.
+                  </div>
+
+                )}
+
+
                 <label>
 
                   Status
@@ -12075,6 +12718,12 @@ function Cases() {
 
                     value={
                       statusDraft
+                    }
+
+                    disabled={
+                      assessmentIsReadOnly(
+                        selected
+                      )
                     }
 
                     onChange={
@@ -12120,6 +12769,12 @@ function Cases() {
                       remarksDraft
                     }
 
+                    readOnly={
+                      assessmentIsReadOnly(
+                        selected
+                      )
+                    }
+
                     onChange={
                       event =>
                         setRemarksDraft(
@@ -12158,7 +12813,10 @@ function Cases() {
                     className="primary-button"
 
                     disabled={
-                      savingCase
+                      savingCase ||
+                      assessmentIsReadOnly(
+                        selected
+                      )
                     }
 
                     onClick={
@@ -12168,9 +12826,13 @@ function Cases() {
                   >
 
                     {
-                      savingCase
-                        ? "Saving..."
-                        : "Save case update"
+                      assessmentIsReadOnly(
+                        selected
+                      )
+                        ? "Read only"
+                        : savingCase
+                          ? "Saving..."
+                          : "Save case update"
                     }
 
                   </button>
@@ -12229,6 +12891,49 @@ function CounselingRequestsManagement() {
     "super_admin";
 
 
+  // Once a user has an assigned counselor, only that
+  // counselor may change the user's counseling records.
+  // Former counselors keep read-only access for continuity.
+  function requestIsReadOnly(
+    row
+  ) {
+
+    if (
+      user.role !==
+        "counselor"
+    ) {
+
+      return false;
+    }
+
+
+    const counselingProfile =
+      caseProfileMap[
+        row?.ownerId
+      ];
+
+
+    if (
+      counselingProfile
+        ?.assignedCounselorId
+    ) {
+
+      return (
+        counselingProfile
+          .assignedCounselorId !==
+        user.id
+      );
+    }
+
+
+    return Boolean(
+      row?.assignedCounselorId &&
+      row.assignedCounselorId !==
+        user.id
+    );
+  }
+
+
   const departmentConsultations =
     useRows(
       "consultations",
@@ -12262,16 +12967,107 @@ function CounselingRequestsManagement() {
     );
 
 
+  const transferredOwnerConsultations =
+    useTransferredOwnerRows(
+      "consultations",
+      !hasAccess ||
+      isSuperAdmin
+        ? ""
+        : user.id
+    );
+
+
   const rows =
-    isSuperAdmin
-      ? departmentConsultations
-      : mergeRowsById(
-          departmentConsultations,
-          assignedConsultations
+    useMemo(
+      () =>
+        isSuperAdmin
+          ? departmentConsultations
+          : mergeRowsById(
+              departmentConsultations,
+              assignedConsultations,
+              transferredOwnerConsultations
+            ),
+      [
+        isSuperAdmin,
+        departmentConsultations,
+        assignedConsultations,
+        transferredOwnerConsultations
+      ]
+    );
+
+
+  const departmentCaseProfiles =
+    useRows(
+      "counselingProfiles",
+      !hasAccess ||
+      isSuperAdmin
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
+        : {
+            department:
+              user.department
+          }
+    );
+
+
+  const assignedCaseProfiles =
+    useRows(
+      "counselingProfiles",
+      !hasAccess ||
+      isSuperAdmin
+        ? {
+            ownerId:
+              "__NO_ACCESS__"
+          }
+        : {
+            assignedCounselorId:
+              user.id
+          }
+    );
+
+
+  const caseProfileMap =
+    useMemo(
+      () => {
+
+        const map = {};
+
+
+        mergeRowsById(
+          departmentCaseProfiles,
+          assignedCaseProfiles
+        ).forEach(
+          counselingProfile => {
+
+            const ownerId =
+              counselingProfile.ownerId ||
+              counselingProfile.id;
+
+
+            if (ownerId) {
+
+              map[
+                ownerId
+              ] =
+                counselingProfile;
+            }
+          }
         );
 
 
-  const assessmentRows =
+        return map;
+      },
+
+      [
+        departmentCaseProfiles,
+        assignedCaseProfiles
+      ]
+    );
+
+
+  const departmentAssessmentRows =
     useRows(
       "assessments",
       !hasAccess
@@ -12285,6 +13081,33 @@ function CounselingRequestsManagement() {
               department:
                 user.department
             }
+    );
+
+
+  const transferredAssessmentRows =
+    useTransferredOwnerRows(
+      "assessments",
+      !hasAccess ||
+      isSuperAdmin
+        ? ""
+        : user.id
+    );
+
+
+  const assessmentRows =
+    useMemo(
+      () =>
+        isSuperAdmin
+          ? departmentAssessmentRows
+          : mergeRowsById(
+              departmentAssessmentRows,
+              transferredAssessmentRows
+            ),
+      [
+        isSuperAdmin,
+        departmentAssessmentRows,
+        transferredAssessmentRows
+      ]
     );
 
 
@@ -12305,58 +13128,76 @@ function CounselingRequestsManagement() {
 
 
   const latestAssessmentByOwner =
-    {};
+    useMemo(
+      () => {
+
+        const map = {};
 
 
-  assessmentRows.forEach(
-    assessment => {
+        assessmentRows.forEach(
+          assessment => {
 
-      const ownerId =
-        assessment.ownerId;
+            const ownerId =
+              assessment.ownerId;
 
 
-      if (
-        ownerId &&
-        !latestAssessmentByOwner[
-          ownerId
-        ]
-      ) {
+            if (
+              ownerId &&
+              !map[
+                ownerId
+              ]
+            ) {
 
-        latestAssessmentByOwner[
-          ownerId
-        ] = assessment;
-      }
-    }
-  );
+              map[
+                ownerId
+              ] = assessment;
+            }
+          }
+        );
+
+
+        return map;
+      },
+      [
+        assessmentRows
+      ]
+    );
 
 
   const enrichedRows =
-    rows.map(
-      row => {
+    useMemo(
+      () =>
+        rows.map(
+          row => {
 
-        const latestAssessment =
-          latestAssessmentByOwner[
-            row.ownerId
-          ];
+            const latestAssessment =
+              latestAssessmentByOwner[
+                row.ownerId
+              ];
 
 
-        return {
+            return {
 
-          ...row,
+              ...row,
 
-          program:
-            row.program ||
-            latestAssessment
-              ?.program ||
-            "",
+              program:
+                row.program ||
+                latestAssessment
+                  ?.program ||
+                "",
 
-          priority:
-            latestAssessment
-              ?.priority ||
-            "No Assessment"
+              priority:
+                latestAssessment
+                  ?.priority ||
+                "No Assessment"
 
-        };
-      }
+            };
+          }
+        ),
+      [
+        rows,
+        latestAssessmentByOwner
+      ]
     );
 
 
@@ -12506,6 +13347,71 @@ function CounselingRequestsManagement() {
   ] = useState(false);
 
 
+  // Keep modal navigation metadata in refs rather than state.
+  // This prevents the Schedule -> Counseling Requests flow from
+  // creating a render loop while the request modal is opening.
+  const reviewReturnPathRef =
+    useRef("");
+
+
+  const handledRequestNavigationRef =
+    useRef("");
+
+
+  const closingRequestReviewRef =
+    useRef(false);
+
+
+  function closeRequestReview() {
+
+    const destination =
+      reviewReturnPathRef.current;
+
+
+    // Block the route-state opening effect while the close
+    // navigation is being processed.
+    closingRequestReviewRef.current =
+      true;
+
+
+    reviewReturnPathRef.current =
+      "";
+
+
+    setSelected(null);
+
+    setStatusDraft("");
+
+    setRemarksDraft("");
+
+
+    if (destination) {
+
+      navigate(
+        destination,
+        {
+          replace: true,
+          state: null
+        }
+      );
+
+      return;
+    }
+
+
+    if (requestedRequestId) {
+
+      navigate(
+        location.pathname,
+        {
+          replace: true,
+          state: null
+        }
+      );
+    }
+  }
+
+
   useEffect(
     () => {
 
@@ -12521,7 +13427,7 @@ function CounselingRequestsManagement() {
       function closeOnEscape(event) {
 
         if (event.key === "Escape") {
-          setSelected(null);
+          closeRequestReview();
         }
       }
 
@@ -12560,10 +13466,52 @@ function CounselingRequestsManagement() {
     "";
 
 
+  const requestedFromSchedule =
+    location.state
+      ?.fromSchedule ===
+    true;
+
+
+  const requestedNavigationKey =
+    location.state
+      ?.requestNavigationKey ||
+    "";
+
+
   useEffect(
     () => {
 
       if (!requestedRequestId) {
+
+        closingRequestReviewRef.current =
+          false;
+
+        return;
+      }
+
+
+      if (
+        closingRequestReviewRef.current
+      ) {
+
+        return;
+      }
+
+
+      const navigationKey =
+        requestedNavigationKey ||
+        `${requestedRequestId}:${
+          requestedFromSchedule
+            ? "schedule"
+            : "direct"
+        }`;
+
+
+      if (
+        handledRequestNavigationRef.current ===
+        navigationKey
+      ) {
+
         return;
       }
 
@@ -12579,6 +13527,16 @@ function CounselingRequestsManagement() {
       if (!target) {
         return;
       }
+
+
+      handledRequestNavigationRef.current =
+        navigationKey;
+
+
+      reviewReturnPathRef.current =
+        requestedFromSchedule
+          ? "/schedule"
+          : "";
 
 
       const allowedReviewStatuses = [
@@ -12609,26 +13567,15 @@ function CounselingRequestsManagement() {
         ""
       );
 
-
-      navigate(
-        location.pathname,
-        {
-          replace: true,
-          state: {}
-        }
-      );
-
     },
 
     [
       requestedRequestId,
-      rows,
-      assessmentRows,
-      navigate,
-      location.pathname
+      requestedFromSchedule,
+      requestedNavigationKey,
+      enrichedRows
     ]
   );
-
 
   if (!hasAccess) {
 
@@ -12642,6 +13589,15 @@ function CounselingRequestsManagement() {
 
 
   function selectRequest(row) {
+
+    reviewReturnPathRef.current =
+      "";
+
+    handledRequestNavigationRef.current =
+      "";
+
+    closingRequestReviewRef.current =
+      false;
 
     setSelected(row);
 
@@ -13096,6 +14052,20 @@ function CounselingRequestsManagement() {
   async function saveRequestUpdate() {
 
     if (!selected) {
+      return;
+    }
+
+
+    if (
+      requestIsReadOnly(
+        selected
+      )
+    ) {
+
+      alert(
+        "This counseling request has already been transferred to another counselor. You may view the record, but only the currently assigned counselor can make changes."
+      );
+
       return;
     }
 
@@ -13580,7 +14550,13 @@ function CounselingRequestsManagement() {
                       }
 
                     >
-                      Review request
+                      {
+                        requestIsReadOnly(
+                          row
+                        )
+                          ? "View record"
+                          : "Review request"
+                      }
                     </button>
 
 
@@ -13637,7 +14613,7 @@ function CounselingRequestsManagement() {
                 event.currentTarget
               ) {
 
-                setSelected(null);
+                closeRequestReview();
               }
             }
           }
@@ -13702,8 +14678,7 @@ function CounselingRequestsManagement() {
                 className="review-request-close-button"
 
                 onClick={
-                  () =>
-                    setSelected(null)
+                  closeRequestReview
                 }
 
                 aria-label="Close counseling request review"
@@ -13859,6 +14834,17 @@ function CounselingRequestsManagement() {
                 </h3>
 
 
+                {requestIsReadOnly(
+                  selected
+                ) && (
+
+                  <div className="notice">
+                    Read-only record: this counseling request was transferred to another counselor. You can review the existing information, but you cannot change the status or counselor remarks.
+                  </div>
+
+                )}
+
+
                 <label>
 
                   Status
@@ -13867,6 +14853,12 @@ function CounselingRequestsManagement() {
 
                     value={
                       statusDraft
+                    }
+
+                    disabled={
+                      requestIsReadOnly(
+                        selected
+                      )
                     }
 
                     onChange={
@@ -13915,6 +14907,12 @@ function CounselingRequestsManagement() {
                       remarksDraft
                     }
 
+                    readOnly={
+                      requestIsReadOnly(
+                        selected
+                      )
+                    }
+
                     onChange={
                       e =>
                         setRemarksDraft(
@@ -13938,8 +14936,7 @@ function CounselingRequestsManagement() {
                     className="secondary-button"
 
                     onClick={
-                      () =>
-                        setSelected(null)
+                      closeRequestReview
                     }
 
                   >
@@ -13954,7 +14951,10 @@ function CounselingRequestsManagement() {
                     className="primary-button"
 
                     disabled={
-                      saving
+                      saving ||
+                      requestIsReadOnly(
+                        selected
+                      )
                     }
 
                     onClick={
@@ -13964,9 +14964,13 @@ function CounselingRequestsManagement() {
                   >
 
                     {
-                      saving
-                        ? "Saving..."
-                        : "Save request update"
+                      requestIsReadOnly(
+                        selected
+                      )
+                        ? "Read only"
+                        : saving
+                          ? "Saving..."
+                          : "Save request update"
                     }
 
                   </button>
@@ -14033,11 +15037,22 @@ function Schedule() {
     );
 
 
+  const activeDepartmentRows =
+    isSuperAdmin
+      ? departmentRows
+      : departmentRows.filter(
+          row =>
+            !row.assignedCounselorId ||
+            row.assignedCounselorId ===
+              user.id
+        );
+
+
   const rows =
     isSuperAdmin
       ? departmentRows
       : mergeRowsById(
-          departmentRows,
+          activeDepartmentRows,
           transferredAssignedRows
         );
 
@@ -14087,7 +15102,13 @@ function Schedule() {
       {
         state: {
           requestId:
-            appointment.id
+            appointment.id,
+
+          fromSchedule:
+            true,
+
+          requestNavigationKey:
+            `${appointment.id}-schedule`
         }
       }
     );
