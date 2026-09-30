@@ -73,6 +73,87 @@ import {
 
 
 // ======================================================
+// PREFERRED COUNSELORS FOR TEACHING / NON-TEACHING
+// ======================================================
+
+const PREFERRED_COUNSELORS = [
+  {
+    key: "cte",
+    name: "April Santos",
+    department: "College of Education"
+  },
+  {
+    key: "cthm",
+    name: "Christine Joy Agpuon",
+    department: "College of Tourism and Hospitality Management"
+  },
+  {
+    key: "cit",
+    name: "Victoria Ferrer",
+    department: "College of Industrial Technology"
+  },
+  {
+    key: "casl",
+    name: "Sarah Rico",
+    department: "College of Arts, Sciences and Letters"
+  },
+  {
+    key: "ccs",
+    name: "Joanna Mangapot",
+    department: "College of Computing Sciences"
+  },
+  {
+    key: "cbpa",
+    name: "Trisha Decena",
+    department: "College of Business and Public Administration"
+  }
+];
+
+
+function normalizedCounselorDepartment(
+  value
+) {
+
+  const clean =
+    String(
+      value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const aliases = {
+    "coe":
+      "college of education",
+
+    "cte":
+      "college of education",
+
+    "cthm":
+      "college of tourism and hospitality management",
+
+    "cit":
+      "college of industrial technology",
+
+    "casl":
+      "college of arts, sciences and letters",
+
+    "cal":
+      "college of arts, sciences and letters",
+
+    "ccs":
+      "college of computing sciences",
+
+    "cbpa":
+      "college of business and public administration"
+  };
+
+
+  return aliases[clean] || clean;
+}
+
+
+// ======================================================
 // PROTECTED ROUTES
 // ======================================================
 
@@ -756,6 +837,13 @@ function Register() {
     role: "",
     department: "",
     program: "",
+
+    preferredCounselorDepartment: "",
+
+    assignedCounselorId: "",
+    assignedCounselorName: "",
+    assignedCounselorDepartment: "",
+
     userNumber: "",
     phoneNumber: "",
 
@@ -809,6 +897,66 @@ function Register() {
 
   const [loading, setLoading] =
     useState(false);
+
+
+  const counselorDirectoryRows =
+    useRows(
+      "counselorDirectory"
+    );
+
+
+  const availableCounselors =
+    useMemo(
+      () =>
+        PREFERRED_COUNSELORS.map(
+          preferred => {
+
+            const directoryEntry =
+              counselorDirectoryRows.find(
+                counselor =>
+                  counselor.active !== false &&
+                  Boolean(
+                    counselor.id &&
+                    counselor.department
+                  ) &&
+                  normalizedCounselorDepartment(
+                    counselor.department
+                  ) ===
+                  normalizedCounselorDepartment(
+                    preferred.department
+                  )
+              );
+
+
+            return {
+              ...preferred,
+
+              // Keep the exact six requested names/colleges visible
+              // in the registration dropdown. The Firebase UID and
+              // stored counselor name come from the safe directory.
+              id:
+                directoryEntry?.id ||
+                "",
+
+              firebaseName:
+                directoryEntry?.name ||
+                "",
+
+              firebaseDepartment:
+                directoryEntry?.department ||
+                "",
+
+              linked:
+                Boolean(
+                  directoryEntry?.id
+                )
+            };
+          }
+        ),
+      [
+        counselorDirectoryRows
+      ]
+    );
 
 
   useEffect(() => {
@@ -904,10 +1052,12 @@ function Register() {
         return {
           ...current,
           role: nextValue,
-          program:
-            nextValue === "student"
-              ? current.program
-              : ""
+          department: "",
+          program: "",
+          preferredCounselorDepartment: "",
+          assignedCounselorId: "",
+          assignedCounselorName: "",
+          assignedCounselorDepartment: ""
         };
       }
 
@@ -918,6 +1068,52 @@ function Register() {
           ...current,
           department: nextValue,
           program: ""
+        };
+      }
+
+
+      if (
+        name ===
+        "preferredCounselorDepartment"
+      ) {
+
+        const counselor =
+          availableCounselors.find(
+            item =>
+              item.department ===
+              nextValue
+          );
+
+
+        return {
+          ...current,
+
+          preferredCounselorDepartment:
+            nextValue,
+
+          assignedCounselorId:
+            counselor?.id ||
+            "",
+
+          assignedCounselorName:
+            counselor?.firebaseName ||
+            counselor?.name ||
+            "",
+
+          assignedCounselorDepartment:
+            counselor?.firebaseDepartment ||
+            "",
+
+          // Keep the existing department-based counselor access
+          // model compatible. The visible dropdown still shows the
+          // full requested college name even if an older counselor
+          // profile stores an abbreviation such as CCS.
+          department:
+            counselor?.firebaseDepartment ||
+            "",
+
+          program:
+            ""
         };
       }
 
@@ -1324,9 +1520,47 @@ function Register() {
       return;
     }
 
-    if (!form.department) {
+    if (
+      form.role === "student" &&
+      !form.department
+    ) {
       setError(
         "Please select your college or office."
+      );
+      return;
+    }
+
+    if (
+      [
+        "teaching",
+        "non_teaching"
+      ].includes(
+        form.role
+      ) &&
+      !form.preferredCounselorDepartment
+    ) {
+      setError(
+        "Please select your preferred counselor."
+      );
+      return;
+    }
+
+
+    if (
+      [
+        "teaching",
+        "non_teaching"
+      ].includes(
+        form.role
+      ) &&
+      (
+        !form.assignedCounselorId ||
+        !form.assignedCounselorName ||
+        !form.assignedCounselorDepartment
+      )
+    ) {
+      setError(
+        "The selected counselor is not yet linked to the Firebase counselor directory. Please ask the MindTrack administrator to run the six-counselor sync once."
       );
       return;
     }
@@ -1484,6 +1718,16 @@ function Register() {
           form.role === "student"
             ? form.program
             : "",
+
+        assignedCounselorId:
+          form.assignedCounselorId,
+
+        assignedCounselorName:
+          form.assignedCounselorName,
+
+        assignedCounselorDepartment:
+          form.assignedCounselorDepartment,
+
         userNumber: form.userNumber,
         phoneNumber: form.phoneNumber,
         address: fullAddress,
@@ -1745,67 +1989,132 @@ function Register() {
                     Student
                   </option>
 
-                  <option value="faculty">
-                    Faculty
+                  <option value="teaching">
+                    Teaching
                   </option>
 
-                  <option value="personnel">
-                    Personnel
+                  <option value="non_teaching">
+                    Non-teaching
                   </option>
 
                 </select>
               </label>
 
 
-              <label>
-                College / Office
-                <span
-                  className="required-asterisk"
-                  aria-hidden="true"
-                >
-                  *
-                </span>
+              {form.role === "student" && (
 
-                <select
-                  name="department"
-                  value={form.department}
-                  onChange={change}
-                  required
-                >
-
-                  <option
-                    value=""
-                    disabled
+                <label>
+                  College / Office
+                  <span
+                    className="required-asterisk"
+                    aria-hidden="true"
                   >
-                    Select college / office
-                  </option>
+                    *
+                  </span>
 
-                  <option value="College of Education">
-                    College of Education
-                  </option>
+                  <select
+                    name="department"
+                    value={form.department}
+                    onChange={change}
+                    required
+                  >
 
-                  <option value="College of Tourism and Hospitality Management">
-                    College of Tourism and Hospitality Management
-                  </option>
+                    <option
+                      value=""
+                      disabled
+                    >
+                      Select college / office
+                    </option>
 
-                  <option value="College of Industrial Technology">
-                    College of Industrial Technology
-                  </option>
+                    <option value="College of Education">
+                      College of Education
+                    </option>
 
-                  <option value="College of Arts, Sciences and Letters">
-                    College of Arts, Sciences and Letters
-                  </option>
+                    <option value="College of Tourism and Hospitality Management">
+                      College of Tourism and Hospitality Management
+                    </option>
 
-                  <option value="College of Computing Sciences">
-                    College of Computing Sciences
-                  </option>
+                    <option value="College of Industrial Technology">
+                      College of Industrial Technology
+                    </option>
 
-                  <option value="College of Business and Public Administration">
-                    College of Business and Public Administration
-                  </option>
+                    <option value="College of Arts, Sciences and Letters">
+                      College of Arts, Sciences and Letters
+                    </option>
 
-                </select>
-              </label>
+                    <option value="College of Computing Sciences">
+                      College of Computing Sciences
+                    </option>
+
+                    <option value="College of Business and Public Administration">
+                      College of Business and Public Administration
+                    </option>
+
+                  </select>
+                </label>
+
+              )}
+
+
+              {[
+                "teaching",
+                "non_teaching"
+              ].includes(
+                form.role
+              ) && (
+
+                <label>
+                  Preferred Counselor
+                  <span
+                    className="required-asterisk"
+                    aria-hidden="true"
+                  >
+                    *
+                  </span>
+
+                  <select
+                    name="preferredCounselorDepartment"
+                    value={
+                      form.preferredCounselorDepartment
+                    }
+                    onChange={change}
+                    required
+                  >
+
+                    <option
+                      value=""
+                      disabled
+                    >
+                      Select preferred counselor
+                    </option>
+
+                    {availableCounselors.map(
+                      counselor => (
+
+                        <option
+                          key={
+                            counselor.key
+                          }
+                          value={
+                            counselor.department
+                          }
+                        >
+                          {
+                            `${counselor.name} [${counselor.department}]`
+                          }
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                  <small className="optional-text">
+                    Choose one of the six Guidance Counselors. Counselor assignment is linked to Firebase by college/department.
+                  </small>
+                </label>
+
+              )}
 
 
               {form.role === "student" && (
@@ -1865,8 +2174,14 @@ function Register() {
 
                 {form.role === "student"
                   ? "Student Number"
-                  : form.role === "faculty" ||
-                      form.role === "personnel"
+                  : [
+                      "teaching",
+                      "non_teaching",
+                      "faculty",
+                      "personnel"
+                    ].includes(
+                      form.role
+                    )
                     ? "Employee Number"
                     : "Student / Employee Number"}
 
@@ -2393,7 +2708,8 @@ function Register() {
 
 function useRows(
   name,
-  filters = {}
+  filters = {},
+  enabled = true
 ) {
 
   const [rows, setRows] =
@@ -2402,6 +2718,14 @@ function useRows(
 
   useEffect(
     () => {
+
+      if (!enabled) {
+
+        setRows([]);
+
+        return undefined;
+      }
+
 
       const constraints = [];
 
@@ -2612,7 +2936,8 @@ function useRows(
       filters.status,
       filters.assignedCounselorId,
       filters.counselorId,
-      filters.active
+      filters.active,
+      enabled
     ]
   );
 
@@ -2895,7 +3220,7 @@ function appointmentHasStarted(row) {
 
 // ======================================================
 // DASHBOARD ACCESS
-// Student / Faculty / Personnel do not use Dashboard.
+// Student / Teaching / Non-teaching do not use Dashboard.
 // Counselor and Super Admin keep Dashboard access.
 // ======================================================
 
@@ -3089,6 +3414,80 @@ function Dashboard() {
             transferSnap.data();
 
 
+          const oldSlotRef =
+            current.requestedById &&
+            current.date &&
+            current.time
+              ? doc(
+                  db,
+                  "counselingScheduleSlots",
+                  counselingSlotDocumentId(
+                    current.requestedById,
+                    current.date,
+                    current.time
+                  )
+                )
+              : null;
+
+
+          const newSlotRef =
+            current.date &&
+            current.time
+              ? doc(
+                  db,
+                  "counselingScheduleSlots",
+                  counselingSlotDocumentId(
+                    user.id,
+                    current.date,
+                    current.time
+                  )
+                )
+              : null;
+
+
+          let oldSlotSnap =
+            null;
+
+          let newSlotSnap =
+            null;
+
+
+          if (oldSlotRef) {
+
+            oldSlotSnap =
+              await transaction.get(
+                oldSlotRef
+              );
+          }
+
+
+          if (newSlotRef) {
+
+            newSlotSnap =
+              await transaction.get(
+                newSlotRef
+              );
+          }
+
+
+          if (
+            newSlotSnap
+              ?.exists() &&
+            activeCounselingSlotState(
+              newSlotSnap.data()
+                ?.state
+            ) &&
+            newSlotSnap.data()
+              ?.consultationId !==
+              current.consultationId
+          ) {
+
+            throw new Error(
+              "You already have another counseling session at this date and time. The transfer cannot be accepted until the schedule conflict is resolved."
+            );
+          }
+
+
           if (
             current.status !==
             "Pending approval"
@@ -3274,6 +3673,70 @@ function Dashboard() {
                 true
             }
           );
+
+
+          if (
+            oldSlotRef &&
+            oldSlotSnap
+              ?.exists() &&
+            oldSlotSnap.data()
+              ?.consultationId ===
+              current.consultationId &&
+            (
+              !newSlotRef ||
+              oldSlotRef.path !==
+                newSlotRef.path
+            )
+          ) {
+
+            transaction.delete(
+              oldSlotRef
+            );
+          }
+
+
+          if (newSlotRef) {
+
+            transaction.set(
+              newSlotRef,
+              {
+                counselorId:
+                  user.id,
+
+                date:
+                  current.date,
+
+                time:
+                  current.time,
+
+                consultationId:
+                  current.consultationId,
+
+                assignmentSourceConsultationId:
+                  current.consultationId,
+
+                state:
+                  "booked",
+
+                ...(
+                  newSlotSnap
+                    ?.exists()
+                    ? {}
+                    : {
+                        createdAt:
+                          serverTimestamp()
+                      }
+                ),
+
+                updatedAt:
+                  serverTimestamp()
+              },
+              {
+                merge:
+                  true
+              }
+            );
+          }
         }
       );
 
@@ -3667,10 +4130,7 @@ function Dashboard() {
           />
 
 
-          {[
-            "faculty",
-            "personnel"
-          ].includes(
+          {employeeUserRole(
             user.role
           ) && (
 
@@ -3743,6 +4203,30 @@ function Assessment() {
 
   const [saved, setSaved] =
     useState(null);
+
+
+  const answeredAssessmentQuestions =
+    scoredQuestionIds.filter(
+      questionId =>
+        answers[
+          questionId
+        ] !== undefined
+    ).length;
+
+
+  const totalAssessmentQuestions =
+    scoredQuestionIds.length;
+
+
+  const assessmentProgress =
+    totalAssessmentQuestions > 0
+      ? Math.round(
+          (
+            answeredAssessmentQuestions /
+            totalAssessmentQuestions
+          ) * 100
+        )
+      : 0;
 
 
   function answerQuestion(
@@ -4301,6 +4785,60 @@ function Assessment() {
       </div>
 
 
+      <div
+        className="assessment-progress-panel"
+        aria-live="polite"
+      >
+
+        <div className="assessment-progress-header">
+
+          <div>
+
+            <strong>
+              Assessment progress
+            </strong>
+
+            <span>
+              {answeredAssessmentQuestions} of {totalAssessmentQuestions} questions answered
+            </span>
+
+          </div>
+
+
+          <strong className="assessment-progress-percent">
+            {assessmentProgress}%
+          </strong>
+
+        </div>
+
+
+        <div
+          className="assessment-progress-track"
+          role="progressbar"
+          aria-label="Assessment progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={
+            assessmentProgress
+          }
+          aria-valuetext={
+            `${answeredAssessmentQuestions} of ${totalAssessmentQuestions} questions answered`
+          }
+        >
+
+          <div
+            className="assessment-progress-fill"
+            style={{
+              width:
+                `${assessmentProgress}%`
+            }}
+          />
+
+        </div>
+
+      </div>
+
+
       <form
         className="assessment-form standardized-assessment-form"
         onSubmit={submit}
@@ -4685,6 +5223,43 @@ const COUNSELING_TIME_SLOTS = [
   "3:00 PM",
   "4:00 PM"
 ];
+
+
+function counselingSlotDocumentId(
+  counselorId,
+  date,
+  time
+) {
+
+  return [
+    String(
+      counselorId || ""
+    ).trim(),
+
+    String(
+      date || ""
+    ).trim(),
+
+    String(
+      time || ""
+    ).trim()
+  ].join("__");
+}
+
+
+function activeCounselingSlotState(
+  value
+) {
+
+  return [
+    "held",
+    "booked"
+  ].includes(
+    String(
+      value || ""
+    ).trim()
+  );
+}
 
 
 function counselorProgramLabel(
@@ -5283,15 +5858,75 @@ function formatRecordDateTime(
 }
 
 
-function generalUserRole(
+function teachingUserRole(
   role
 ) {
 
   return [
-    "student",
-    "faculty",
+    "teaching",
+    "faculty"
+  ].includes(role);
+}
+
+
+function nonTeachingUserRole(
+  role
+) {
+
+  return [
+    "non_teaching",
     "personnel"
   ].includes(role);
+}
+
+
+function employeeUserRole(
+  role
+) {
+
+  return (
+    teachingUserRole(role) ||
+    nonTeachingUserRole(role)
+  );
+}
+
+
+function generalUserRole(
+  role
+) {
+
+  return (
+    role === "student" ||
+    employeeUserRole(role)
+  );
+}
+
+
+function generalUserRoleLabel(
+  role
+) {
+
+  if (role === "student") {
+    return "Student";
+  }
+
+  if (teachingUserRole(role)) {
+    return "Teaching";
+  }
+
+  if (nonTeachingUserRole(role)) {
+    return "Non-teaching";
+  }
+
+  if (role === "counselor") {
+    return "Guidance Counselor";
+  }
+
+  if (role === "super_admin") {
+    return "Super Admin";
+  }
+
+  return role || "—";
 }
 
 
@@ -5859,6 +6494,115 @@ function Consultations() {
     );
 
 
+  // Use the most recent counseling request that contains an
+  // assigned counselor as the current source. For newly registered
+  // Teaching / Non-teaching accounts, fall back to the counselor
+  // selected during registration until a counseling request exists.
+  // This avoids exposing private counselingProfiles notes to users.
+  const currentCounselorAssignment =
+    rows.find(
+      row =>
+        Boolean(
+          row.assignedCounselorId
+        )
+    ) ||
+    null;
+
+
+  const currentAssignedCounselorId =
+    currentCounselorAssignment
+      ?.assignedCounselorId ||
+    user.assignedCounselorId ||
+    "";
+
+
+  const currentAssignedCounselorName =
+    currentCounselorAssignment
+      ?.assignedCounselorName ||
+    user.assignedCounselorName ||
+    "";
+
+
+  const currentAssignedCounselorDepartment =
+    currentCounselorAssignment
+      ?.assignedCounselorDepartment ||
+    user.assignedCounselorDepartment ||
+    "";
+
+
+  const counselorScheduleSlots =
+    useRows(
+      "counselingScheduleSlots",
+      currentAssignedCounselorId
+        ? {
+            counselorId:
+              currentAssignedCounselorId
+          }
+        : {
+            counselorId:
+              "__NO_ASSIGNED_COUNSELOR__"
+          }
+    );
+
+
+  function counselingTimeUnavailable(
+    date,
+    time,
+    ignoreConsultationId = ""
+  ) {
+
+    if (
+      !currentAssignedCounselorId ||
+      !date ||
+      !time
+    ) {
+
+      return false;
+    }
+
+
+    return counselorScheduleSlots.some(
+      slot =>
+        slot.counselorId ===
+          currentAssignedCounselorId &&
+        slot.date ===
+          date &&
+        slot.time ===
+          time &&
+        activeCounselingSlotState(
+          slot.state
+        ) &&
+        slot.consultationId !==
+          ignoreConsultationId
+    );
+  }
+
+
+  const counselingConcernOptions =
+    employeeUserRole(
+      user.role
+    )
+      ? [
+          "Anxiety or stress",
+          "Family concern",
+          "Workplace concern",
+          "Financial concern",
+          "Other"
+        ]
+      : [
+          "Academic concern",
+          "Anxiety or stress",
+          "Family concern",
+          "Workplace concern",
+          "Financial concern",
+          "Other"
+        ];
+
+
+  const defaultCounselingConcern =
+    counselingConcernOptions[0];
+
+
   const emptyRequest = {
     mode:
       "",
@@ -5870,7 +6614,7 @@ function Consultations() {
       "",
 
     category:
-      "Academic concern",
+      defaultCounselingConcern,
 
     message:
       ""
@@ -6107,6 +6851,21 @@ function Consultations() {
     }
 
 
+    if (
+      counselingTimeUnavailable(
+        form.date,
+        form.time
+      )
+    ) {
+
+      alert(
+        "That counseling time is no longer available for your assigned counselor. Please choose another time."
+      );
+
+      return;
+    }
+
+
     const confirmed =
       window.confirm(
         [
@@ -6127,30 +6886,138 @@ function Consultations() {
 
     try {
 
-      await addRecord(
-        "consultations",
-        {
+      const consultationRef =
+        doc(
+          collection(
+            db,
+            "consultations"
+          )
+        );
 
-          ...form,
 
-          ownerId:
-            user.id,
+      const slotRef =
+        currentAssignedCounselorId
+          ? doc(
+              db,
+              "counselingScheduleSlots",
+              counselingSlotDocumentId(
+                currentAssignedCounselorId,
+                form.date,
+                form.time
+              )
+            )
+          : null;
 
-          ownerName:
-            user.name,
 
-          department:
-            user.department,
+      await runTransaction(
+        db,
 
-          program:
-            user.program || "",
+        async transaction => {
 
-          status:
-            "Pending approval",
+          let slotSnap =
+            null;
 
-          source:
-            "Self-request"
 
+          if (slotRef) {
+
+            slotSnap =
+              await transaction.get(
+                slotRef
+              );
+
+
+            if (
+              slotSnap.exists() &&
+              activeCounselingSlotState(
+                slotSnap.data()
+                  ?.state
+              )
+            ) {
+
+              throw new Error(
+                "That counseling time was just selected by another user. Please choose another time."
+              );
+            }
+          }
+
+
+          transaction.set(
+            consultationRef,
+            {
+
+              ...form,
+
+              ownerId:
+                user.id,
+
+              ownerName:
+                user.name,
+
+              department:
+                user.department,
+
+              program:
+                user.program ||
+                "",
+
+              ...(currentAssignedCounselorId
+                ? {
+                    assignedCounselorId:
+                      currentAssignedCounselorId,
+
+                    assignedCounselorName:
+                      currentAssignedCounselorName,
+
+                    assignedCounselorDepartment:
+                      currentAssignedCounselorDepartment
+                  }
+                : {}),
+
+              status:
+                "Pending approval",
+
+              source:
+                "Self-request",
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+
+          if (slotRef) {
+
+            transaction.set(
+              slotRef,
+              {
+                counselorId:
+                  currentAssignedCounselorId,
+
+                date:
+                  form.date,
+
+                time:
+                  form.time,
+
+                consultationId:
+                  consultationRef.id,
+
+                assignmentSourceConsultationId:
+                  currentCounselorAssignment
+                    ?.id ||
+                  "",
+
+                state:
+                  "held",
+
+                createdAt:
+                  serverTimestamp(),
+
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+          }
         }
       );
 
@@ -6205,8 +7072,11 @@ function Consultations() {
           : "",
 
       category:
-        row.category ||
-        "Academic concern",
+        counselingConcernOptions.includes(
+          row.category
+        )
+          ? row.category
+          : defaultCounselingConcern,
 
       message:
         row.message ||
@@ -6275,6 +7145,37 @@ function Consultations() {
     }
 
 
+    const editCounselorId =
+      row.assignedCounselorId ||
+      currentAssignedCounselorId;
+
+
+    if (
+      editCounselorId &&
+      counselorScheduleSlots.some(
+        slot =>
+          slot.counselorId ===
+            editCounselorId &&
+          slot.date ===
+            editForm.date &&
+          slot.time ===
+            editForm.time &&
+          activeCounselingSlotState(
+            slot.state
+          ) &&
+          slot.consultationId !==
+            row.id
+      )
+    ) {
+
+      alert(
+        "That counseling time is no longer available for the assigned counselor. Please choose another time."
+      );
+
+      return;
+    }
+
+
     const confirmed =
       window.confirm(
         [
@@ -6300,29 +7201,221 @@ function Consultations() {
       setSavingEdit(true);
 
 
-      await updateRecord(
-        "consultations",
-        row.id,
-        {
+      const consultationRef =
+        doc(
+          db,
+          "consultations",
+          row.id
+        );
 
-          mode:
-            editForm.mode,
 
-          date:
-            editForm.date,
+      const editCounselorId =
+        row.assignedCounselorId ||
+        currentAssignedCounselorId;
 
-          time:
-            editForm.time,
 
-          category:
-            editForm.category,
+      const editCounselorName =
+        row.assignedCounselorName ||
+        currentAssignedCounselorName;
 
-          message:
-            editForm.message,
 
-          status:
-            "Pending approval"
+      const editCounselorDepartment =
+        row.assignedCounselorDepartment ||
+        currentAssignedCounselorDepartment;
 
+
+      const assignmentSourceConsultationId =
+        row.assignedCounselorId
+          ? row.id
+          : (
+              currentCounselorAssignment
+                ?.id ||
+              ""
+            );
+
+
+      const oldSlotRef =
+        editCounselorId &&
+        row.date &&
+        row.time
+          ? doc(
+              db,
+              "counselingScheduleSlots",
+              counselingSlotDocumentId(
+                editCounselorId,
+                row.date,
+                row.time
+              )
+            )
+          : null;
+
+
+      const newSlotRef =
+        editCounselorId
+          ? doc(
+              db,
+              "counselingScheduleSlots",
+              counselingSlotDocumentId(
+                editCounselorId,
+                editForm.date,
+                editForm.time
+              )
+            )
+          : null;
+
+
+      await runTransaction(
+        db,
+
+        async transaction => {
+
+          let oldSlotSnap =
+            null;
+
+          let newSlotSnap =
+            null;
+
+
+          if (
+            oldSlotRef &&
+            newSlotRef &&
+            oldSlotRef.path ===
+              newSlotRef.path
+          ) {
+
+            newSlotSnap =
+              await transaction.get(
+                newSlotRef
+              );
+
+            oldSlotSnap =
+              newSlotSnap;
+
+          } else {
+
+            if (oldSlotRef) {
+
+              oldSlotSnap =
+                await transaction.get(
+                  oldSlotRef
+                );
+            }
+
+
+            if (newSlotRef) {
+
+              newSlotSnap =
+                await transaction.get(
+                  newSlotRef
+                );
+            }
+          }
+
+
+          if (
+            newSlotSnap
+              ?.exists() &&
+            activeCounselingSlotState(
+              newSlotSnap.data()
+                ?.state
+            ) &&
+            newSlotSnap.data()
+              ?.consultationId !==
+              row.id
+          ) {
+
+            throw new Error(
+              "That counseling time was just selected by another user. Please choose another time."
+            );
+          }
+
+
+          transaction.update(
+            consultationRef,
+            {
+              mode:
+                editForm.mode,
+
+              date:
+                editForm.date,
+
+              time:
+                editForm.time,
+
+              category:
+                editForm.category,
+
+              message:
+                editForm.message,
+
+              status:
+                "Pending approval",
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          if (
+            oldSlotRef &&
+            newSlotRef &&
+            oldSlotRef.path !==
+              newSlotRef.path &&
+            oldSlotSnap
+              ?.exists() &&
+            oldSlotSnap.data()
+              ?.consultationId ===
+              row.id
+          ) {
+
+            transaction.delete(
+              oldSlotRef
+            );
+          }
+
+
+          if (newSlotRef) {
+
+            transaction.set(
+              newSlotRef,
+              {
+                counselorId:
+                  editCounselorId,
+
+                date:
+                  editForm.date,
+
+                time:
+                  editForm.time,
+
+                consultationId:
+                  row.id,
+
+                assignmentSourceConsultationId,
+
+                state:
+                  "held",
+
+                ...(
+                  newSlotSnap
+                    ?.exists()
+                    ? {}
+                    : {
+                        createdAt:
+                          serverTimestamp()
+                      }
+                ),
+
+                updatedAt:
+                  serverTimestamp()
+              },
+              {
+                merge:
+                  true
+              }
+            );
+          }
         }
       );
 
@@ -6436,7 +7529,10 @@ function Consultations() {
                   setForm({
                     ...form,
                     date:
-                      selectedDate
+                      selectedDate,
+
+                    time:
+                      ""
                   })
               }
 
@@ -6478,8 +7574,25 @@ function Consultations() {
                   <option
                     key={time}
                     value={time}
+                    disabled={
+                      Boolean(
+                        form.date &&
+                        counselingTimeUnavailable(
+                          form.date,
+                          time
+                        )
+                      )
+                    }
                   >
-                    {time}
+                    {
+                      form.date &&
+                      counselingTimeUnavailable(
+                        form.date,
+                        time
+                      )
+                        ? `${time} — Unavailable`
+                        : time
+                    }
                   </option>
 
                 )
@@ -6511,29 +7624,18 @@ function Consultations() {
 
             >
 
-              <option>
-                Academic concern
-              </option>
+              {counselingConcernOptions.map(
+                category => (
 
-              <option>
-                Anxiety or stress
-              </option>
+                  <option
+                    key={category}
+                    value={category}
+                  >
+                    {category}
+                  </option>
 
-              <option>
-                Family concern
-              </option>
-
-              <option>
-                Workplace concern
-              </option>
-
-              <option>
-                Financial concern
-              </option>
-
-              <option>
-                Other
-              </option>
+                )
+              )}
 
             </select>
 
@@ -6590,9 +7692,8 @@ function Consultations() {
               marginTop: 0
             }}
           >
-            You may edit a request after submitting it.
-            Changes are sent back for counselor review.
-            Completed or cancelled requests can no longer be edited.
+            You may edit a request while it is still Pending approval.
+            Once counselor review begins, the request becomes read-only so its schedule cannot be changed unexpectedly.
           </p>
 
 
@@ -6615,12 +7716,8 @@ function Consultations() {
 
 
                   const canEdit =
-                    ![
-                      "Completed",
-                      "Cancelled"
-                    ].includes(
-                      row.status
-                    );
+                    row.status ===
+                    "Pending approval";
 
 
                   return (
@@ -6728,7 +7825,10 @@ function Consultations() {
                                     setEditForm({
                                       ...editForm,
                                       date:
-                                        selectedDate
+                                        selectedDate,
+
+                                      time:
+                                        ""
                                     })
                                 }
 
@@ -6770,8 +7870,51 @@ function Consultations() {
                                     <option
                                       key={time}
                                       value={time}
+                                      disabled={
+                                        Boolean(
+                                          editForm.date &&
+                                          counselorScheduleSlots.some(
+                                            slot =>
+                                              slot.counselorId ===
+                                                (
+                                                  row.assignedCounselorId ||
+                                                  currentAssignedCounselorId
+                                                ) &&
+                                              slot.date ===
+                                                editForm.date &&
+                                              slot.time ===
+                                                time &&
+                                              activeCounselingSlotState(
+                                                slot.state
+                                              ) &&
+                                              slot.consultationId !==
+                                                row.id
+                                          )
+                                        )
+                                      }
                                     >
-                                      {time}
+                                      {
+                                        editForm.date &&
+                                        counselorScheduleSlots.some(
+                                          slot =>
+                                            slot.counselorId ===
+                                              (
+                                                row.assignedCounselorId ||
+                                                currentAssignedCounselorId
+                                              ) &&
+                                            slot.date ===
+                                              editForm.date &&
+                                            slot.time ===
+                                              time &&
+                                            activeCounselingSlotState(
+                                              slot.state
+                                            ) &&
+                                            slot.consultationId !==
+                                              row.id
+                                        )
+                                          ? `${time} — Unavailable`
+                                          : time
+                                      }
                                     </option>
 
                                   )
@@ -6803,29 +7946,18 @@ function Consultations() {
 
                               >
 
-                                <option>
-                                  Academic concern
-                                </option>
+                                {counselingConcernOptions.map(
+                                  category => (
 
-                                <option>
-                                  Anxiety or stress
-                                </option>
+                                    <option
+                                      key={category}
+                                      value={category}
+                                    >
+                                      {category}
+                                    </option>
 
-                                <option>
-                                  Family concern
-                                </option>
-
-                                <option>
-                                  Workplace concern
-                                </option>
-
-                                <option>
-                                  Financial concern
-                                </option>
-
-                                <option>
-                                  Other
-                                </option>
+                                  )
+                                )}
 
                               </select>
 
@@ -6950,19 +8082,38 @@ function Consultations() {
                             )}
 
 
-                            {row.counselorRemarks && (
+                            <div
+                              style={{
+                                marginTop: "12px",
+                                padding: "12px 14px",
+                                borderRadius: "10px",
+                                background: "#f7f9fc",
+                                border: "1px solid #dfe5ef"
+                              }}
+                            >
 
-                              <small>
+                              <strong
+                                style={{
+                                  display: "block",
+                                  marginBottom: "6px",
+                                  color: "#173f8f"
+                                }}
+                              >
+                                Counselor Remarks
+                              </strong>
 
-                                Counselor:
-                                {" "}
+                              <span
+                                style={{
+                                  whiteSpace: "pre-wrap"
+                                }}
+                              >
                                 {
-                                  row.counselorRemarks
+                                  row.counselorRemarks?.trim() ||
+                                  "No counselor remarks yet."
                                 }
+                              </span>
 
-                              </small>
-
-                            )}
+                            </div>
 
 
                             {canEdit && (
@@ -7081,6 +8232,16 @@ function Referrals() {
     e.preventDefault();
 
 
+    if (!/^\d{11}$/.test(form.contact)) {
+
+      alert(
+        "Contact information must contain exactly 11 digits."
+      );
+
+      return;
+    }
+
+
     await addRecord(
       "referrals",
       {
@@ -7147,7 +8308,7 @@ function Referrals() {
 
         title="Referral"
 
-        subtitle="Faculty and personnel may refer someone who may benefit from guidance support."
+        subtitle="Teaching and non-teaching users may refer someone who may benefit from guidance support."
 
       />
 
@@ -7213,11 +8374,11 @@ function Referrals() {
               </option>
 
               <option>
-                Faculty
+                Teaching
               </option>
 
               <option>
-                Personnel
+                Non-teaching
               </option>
 
             </select>
@@ -7229,7 +8390,7 @@ function Referrals() {
 
             College / Office
 
-            <input
+            <select
 
               required
 
@@ -7246,7 +8407,40 @@ function Referrals() {
                   })
               }
 
-            />
+            >
+
+              <option
+                value=""
+                disabled
+              >
+                Select college / office
+              </option>
+
+              <option value="College of Education">
+                College of Education
+              </option>
+
+              <option value="College of Tourism and Hospitality Management">
+                College of Tourism and Hospitality Management
+              </option>
+
+              <option value="College of Industrial Technology">
+                College of Industrial Technology
+              </option>
+
+              <option value="College of Arts, Sciences and Letters">
+                College of Arts, Sciences and Letters
+              </option>
+
+              <option value="College of Computing Sciences">
+                College of Computing Sciences
+              </option>
+
+              <option value="College of Business and Public Administration">
+                College of Business and Public Administration
+              </option>
+
+            </select>
 
           </label>
 
@@ -7256,6 +8450,20 @@ function Referrals() {
             Contact information
 
             <input
+
+              type="tel"
+
+              required
+
+              inputMode="numeric"
+
+              pattern="[0-9]{11}"
+
+              minLength={11}
+
+              maxLength={11}
+
+              placeholder="09XXXXXXXXX"
 
               value={
                 form.contact
@@ -7267,6 +8475,8 @@ function Referrals() {
                     ...form,
                     contact:
                       e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 11)
                   })
               }
 
@@ -7433,7 +8643,7 @@ function Referrals() {
 
 // ======================================================
 // RATINGS & FEEDBACK
-// STUDENT / FACULTY / PERSONNEL
+// STUDENT / TEACHING / NON-TEACHING
 // ======================================================
 
 function Feedback() {
@@ -7444,6 +8654,8 @@ function Feedback() {
 
   const allowedRoles = [
     "student",
+    "teaching",
+    "non_teaching",
     "faculty",
     "personnel"
   ];
@@ -8047,6 +9259,8 @@ function Profile() {
 
   const allowedRoles = [
     "student",
+    "teaching",
+    "non_teaching",
     "faculty",
     "personnel"
   ];
@@ -8327,17 +9541,9 @@ function Profile() {
           <div className="profile-role-badge">
 
             {
-              user.role ===
-              "student"
-
-                ? "Student"
-
-                : user.role ===
-                  "faculty"
-
-                  ? "Faculty"
-
-                  : "Personnel"
+              generalUserRoleLabel(
+                user.role
+              )
             }
 
           </div>
@@ -8385,17 +9591,9 @@ function Profile() {
 
               <input
                 value={
-                  user.role ===
-                  "student"
-
-                    ? "Student"
-
-                    : user.role ===
-                      "faculty"
-
-                      ? "Faculty"
-
-                      : "Personnel"
+                  generalUserRoleLabel(
+                    user.role
+                  )
                 }
                 readOnly
               />
@@ -8403,7 +9601,11 @@ function Profile() {
 
 
             <label>
-              College / Office
+              {
+                user.role === "student"
+                  ? "College / Office"
+                  : "Assigned Counselor College"
+              }
 
               <input
                 value={
@@ -8413,6 +9615,26 @@ function Profile() {
                 readOnly
               />
             </label>
+
+
+            {employeeUserRole(
+              user.role
+            ) && (
+
+              <label className="full-width-field">
+                Assigned Counselor
+
+                <input
+                  value={
+                    user.assignedCounselorName
+                      ? `${user.assignedCounselorName} [${user.assignedCounselorDepartment || user.department || "College not provided"}]`
+                      : "Not assigned"
+                  }
+                  readOnly
+                />
+              </label>
+
+            )}
 
 
             {user.role === "student" && (
@@ -8745,13 +9967,14 @@ function UserProfilesContent({
   );
 
 
-  // Track assignment state for users from the counselor's
-  // home department. This lets the old counselor remove a
-  // successfully transferred user from User Profiles.
+  // Track transfer state without exposing private counseling
+  // profile fields to counselors who are no longer assigned.
+  // Super Admin may audit counselingProfiles; counselors use
+  // transferAccess records for users transferred away from them.
   useEffect(
     () => {
 
-      const profileQuery =
+      const transferStateQuery =
         isSuperAdmin
           ? collection(
               db,
@@ -8760,18 +9983,18 @@ function UserProfilesContent({
           : query(
               collection(
                 db,
-                "counselingProfiles"
+                "transferAccess"
               ),
               where(
-                "department",
+                "previousCounselorId",
                 "==",
-                currentUser.department
+                currentUser.id
               )
             );
 
 
       return onSnapshot(
-        profileQuery,
+        transferStateQuery,
 
         snapshot => {
 
@@ -8781,10 +10004,38 @@ function UserProfilesContent({
           snapshot.docs.forEach(
             item => {
 
-              map[
-                item.id
-              ] =
+              const data =
                 item.data();
+
+
+              if (isSuperAdmin) {
+
+                map[
+                  item.id
+                ] =
+                  data;
+
+                return;
+              }
+
+
+              if (
+                data.ownerId &&
+                data.active ===
+                  true
+              ) {
+
+                map[
+                  data.ownerId
+                ] = {
+                  transferActive:
+                    true,
+
+                  assignedCounselorId:
+                    data.counselorId ||
+                    ""
+                };
+              }
             }
           );
 
@@ -8797,7 +10048,7 @@ function UserProfilesContent({
         error => {
 
           console.error(
-            "Unable to load counseling assignment state:",
+            "Unable to load counseling transfer state:",
             error
           );
 
@@ -8812,7 +10063,7 @@ function UserProfilesContent({
 
     [
       isSuperAdmin,
-      currentUser.department
+      currentUser.id
     ]
   );
 
@@ -8983,11 +10234,9 @@ function UserProfilesContent({
             .trim()
             .toLowerCase();
 
-        return [
-          "student",
-          "faculty",
-          "personnel"
-        ].includes(role);
+        return generalUserRole(
+          role
+        );
       }
     );
 
@@ -9145,10 +10394,9 @@ function UserProfilesContent({
 
 
   function displayRole(role) {
-    if (role === "student") return "Student";
-    if (role === "faculty") return "Faculty";
-    if (role === "personnel") return "Personnel";
-    return role || "—";
+    return generalUserRoleLabel(
+      role
+    );
   }
 
 
@@ -9169,7 +10417,7 @@ function UserProfilesContent({
       <div className="readonly-access-notice">
         <strong>Profile access</strong>
         <span>
-          User profile information is read-only. The assigned counselor may manage Counselor Notes. Approved transferred users remain accessible to the accepting counselor through transfer access.
+          User profile information is read-only. Private case information is managed from Counseling Requests by the assigned counselor or Super Admin. Approved transferred users remain accessible to the accepting counselor through transfer access.
         </span>
       </div>
 
@@ -10855,6 +12103,40 @@ function History() {
 
                   </p>
 
+
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      background: "#f7f9fc",
+                      border: "1px solid #dfe5ef"
+                    }}
+                  >
+
+                    <strong
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        color: "#173f8f"
+                      }}
+                    >
+                      Counselor Remarks
+                    </strong>
+
+                    <span
+                      style={{
+                        whiteSpace: "pre-wrap"
+                      }}
+                    >
+                      {
+                        row.counselorRemarks?.trim() ||
+                        "No counselor remarks yet."
+                      }
+                    </span>
+
+                  </div>
+
                 </article>
 
               )
@@ -10926,9 +12208,9 @@ function Cases() {
     );
 
 
-  const departmentCaseProfiles =
+  const departmentConsultationRows =
     useRows(
-      "counselingProfiles",
+      "consultations",
       isSuperAdmin
         ? {
             ownerId:
@@ -10941,9 +12223,9 @@ function Cases() {
     );
 
 
-  const assignedCaseProfiles =
+  const assignedConsultationRows =
     useRows(
-      "counselingProfiles",
+      "consultations",
       isSuperAdmin
         ? {
             ownerId:
@@ -10956,7 +12238,7 @@ function Cases() {
     );
 
 
-  const caseProfileMap =
+  const counselingAssignmentMap =
     useMemo(
       () => {
 
@@ -10964,22 +12246,62 @@ function Cases() {
 
 
         mergeRowsById(
-          departmentCaseProfiles,
-          assignedCaseProfiles
+          departmentConsultationRows,
+          assignedConsultationRows
         ).forEach(
-          counselingProfile => {
+          consultation => {
 
-            const ownerId =
-              counselingProfile.ownerId ||
-              counselingProfile.id;
+            if (
+              !consultation.ownerId ||
+              !consultation.assignedCounselorId
+            ) {
+
+              return;
+            }
 
 
-            if (ownerId) {
+            const current =
+              map[
+                consultation.ownerId
+              ];
+
+
+            const consultationDate =
+              recordDateObject(
+                consultation.updatedAt ||
+                consultation.transferredAt ||
+                consultation.createdAt
+              );
+
+
+            const currentDate =
+              current
+                ? recordDateObject(
+                    current.updatedAt ||
+                    current.transferredAt ||
+                    current.createdAt
+                  )
+                : null;
+
+
+            if (
+              !current ||
+              (
+                consultationDate
+                  ?.getTime() ||
+                0
+              ) >=
+              (
+                currentDate
+                  ?.getTime() ||
+                0
+              )
+            ) {
 
               map[
-                ownerId
+                consultation.ownerId
               ] =
-                counselingProfile;
+                consultation;
             }
           }
         );
@@ -10989,8 +12311,8 @@ function Cases() {
       },
 
       [
-        departmentCaseProfiles,
-        assignedCaseProfiles
+        departmentConsultationRows,
+        assignedConsultationRows
       ]
     );
 
@@ -11009,16 +12331,16 @@ function Cases() {
     }
 
 
-    const counselingProfile =
-      caseProfileMap[
+    const assignment =
+      counselingAssignmentMap[
         row?.ownerId
       ];
 
 
     return Boolean(
-      counselingProfile
+      assignment
         ?.assignedCounselorId &&
-      counselingProfile
+      assignment
         .assignedCounselorId !==
         user.id
     );
@@ -11338,6 +12660,7 @@ function Cases() {
       row.counselorRemarks ||
       ""
     );
+
   }
 
 
@@ -12907,28 +14230,29 @@ function CounselingRequestsManagement() {
     }
 
 
+    if (
+      row
+        ?.assignedCounselorId
+    ) {
+
+      return (
+        row.assignedCounselorId !==
+        user.id
+      );
+    }
+
+
     const counselingProfile =
       caseProfileMap[
         row?.ownerId
       ];
 
 
-    if (
-      counselingProfile
-        ?.assignedCounselorId
-    ) {
-
-      return (
-        counselingProfile
-          .assignedCounselorId !==
-        user.id
-      );
-    }
-
-
     return Boolean(
-      row?.assignedCounselorId &&
-      row.assignedCounselorId !==
+      counselingProfile
+        ?.assignedCounselorId &&
+      counselingProfile
+        .assignedCounselorId !==
         user.id
     );
   }
@@ -12999,32 +14323,25 @@ function CounselingRequestsManagement() {
   const departmentCaseProfiles =
     useRows(
       "counselingProfiles",
-      !hasAccess ||
-      isSuperAdmin
-        ? {
-            ownerId:
-              "__NO_ACCESS__"
-          }
-        : {
-            department:
-              user.department
-          }
+      {},
+      Boolean(
+        hasAccess &&
+        isSuperAdmin
+      )
     );
 
 
   const assignedCaseProfiles =
     useRows(
       "counselingProfiles",
-      !hasAccess ||
-      isSuperAdmin
-        ? {
-            ownerId:
-              "__NO_ACCESS__"
-          }
-        : {
-            assignedCounselorId:
-              user.id
-          }
+      {
+        assignedCounselorId:
+          user.id
+      },
+      Boolean(
+        hasAccess &&
+        !isSuperAdmin
+      )
     );
 
 
@@ -13342,9 +14659,199 @@ function CounselingRequestsManagement() {
 
 
   const [
+    caseHistoryDraft,
+    setCaseHistoryDraft
+  ] = useState("");
+
+
+  const [
+    sessionSummaryDraft,
+    setSessionSummaryDraft
+  ] = useState("");
+
+
+  const [
+    observationDraft,
+    setObservationDraft
+  ] = useState("");
+
+
+  const [
+    recommendationsDraft,
+    setRecommendationsDraft
+  ] = useState("");
+
+
+  const [
+    selectedAccount,
+    setSelectedAccount
+  ] = useState(null);
+
+
+  const [
+    selectedAccountLoading,
+    setSelectedAccountLoading
+  ] = useState(false);
+
+
+  const [
+    selectedAccountError,
+    setSelectedAccountError
+  ] = useState("");
+
+
+  const [
     saving,
     setSaving
   ] = useState(false);
+
+
+  const selectedCaseProfile =
+    selected
+      ? caseProfileMap[
+          selected.ownerId
+        ] || null
+      : null;
+
+
+  const selectedAssignedCounselorId =
+    selectedCaseProfile
+      ?.assignedCounselorId ||
+    selected
+      ?.assignedCounselorId ||
+    "";
+
+
+  const selectedAssignedCounselorDepartment =
+    selectedCaseProfile
+      ?.assignedCounselorDepartment ||
+    selected
+      ?.assignedCounselorDepartment ||
+    "";
+
+
+  const isCurrentAssignedCounselor =
+    Boolean(
+      selected &&
+      user.role ===
+        "counselor" &&
+      selectedAssignedCounselorId ===
+        user.id
+    );
+
+
+  const canViewPrivateCaseFields =
+    Boolean(
+      selected &&
+      (
+        isSuperAdmin ||
+        isCurrentAssignedCounselor
+      )
+    );
+
+
+  const canCreatePrivateCaseProfile =
+    Boolean(
+      selected &&
+      isCurrentAssignedCounselor &&
+      !selectedCaseProfile &&
+      (
+        !selectedAssignedCounselorDepartment ||
+        selectedAssignedCounselorDepartment ===
+          selected.department
+      )
+    );
+
+
+  const canEditPrivateCaseFields =
+    Boolean(
+      selected &&
+      (
+        (
+          isCurrentAssignedCounselor &&
+          (
+            Boolean(
+              selectedCaseProfile
+            ) ||
+            canCreatePrivateCaseProfile
+          )
+        ) ||
+        (
+          isSuperAdmin &&
+          Boolean(
+            selectedCaseProfile
+          )
+        )
+      )
+    );
+
+
+  const privateDraftOwnerRef =
+    useRef("");
+
+
+  function resetPrivateCaseDrafts() {
+
+    setCaseHistoryDraft("");
+
+    setSessionSummaryDraft("");
+
+    setObservationDraft("");
+
+    setRecommendationsDraft("");
+
+    privateDraftOwnerRef.current =
+      "";
+  }
+
+
+  function initializePrivateCaseDrafts(
+    row
+  ) {
+
+    const profileData =
+      row?.ownerId
+        ? caseProfileMap[
+            row.ownerId
+          ] || null
+        : null;
+
+
+    setCaseHistoryDraft(
+      profileData
+        ?.caseHistory ||
+      profileData
+        ?.notes ||
+      ""
+    );
+
+
+    setSessionSummaryDraft(
+      profileData
+        ?.counselingSessionSummary ||
+      ""
+    );
+
+
+    setObservationDraft(
+      profileData
+        ?.counselorObservation ||
+      ""
+    );
+
+
+    setRecommendationsDraft(
+      profileData
+        ?.recommendations ||
+      ""
+    );
+
+
+    privateDraftOwnerRef.current =
+      profileData
+        ? row.ownerId
+        : "";
+  }
 
 
   // Keep modal navigation metadata in refs rather than state.
@@ -13383,6 +14890,12 @@ function CounselingRequestsManagement() {
     setStatusDraft("");
 
     setRemarksDraft("");
+
+    resetPrivateCaseDrafts();
+
+    setSelectedAccount(null);
+
+    setSelectedAccountError("");
 
 
     if (destination) {
@@ -13457,6 +14970,160 @@ function CounselingRequestsManagement() {
     },
 
     [selected]
+  );
+
+
+  useEffect(
+    () => {
+
+      let active = true;
+
+
+      if (
+        !selected
+          ?.ownerId
+      ) {
+
+        setSelectedAccount(null);
+
+        setSelectedAccountError("");
+
+        setSelectedAccountLoading(false);
+
+        return () => {
+          active = false;
+        };
+      }
+
+
+      setSelectedAccountLoading(true);
+
+      setSelectedAccountError("");
+
+
+      getDoc(
+        doc(
+          db,
+          "users",
+          selected.ownerId
+        )
+      )
+        .then(
+          snapshot => {
+
+            if (!active) {
+              return;
+            }
+
+
+            if (
+              snapshot.exists()
+            ) {
+
+              setSelectedAccount({
+                id:
+                  snapshot.id,
+
+                ...snapshot.data()
+              });
+
+            } else {
+
+              setSelectedAccount(null);
+
+              setSelectedAccountError(
+                "The user's account record could not be found."
+              );
+            }
+          }
+        )
+        .catch(
+          error => {
+
+            if (!active) {
+              return;
+            }
+
+
+            console.error(
+              "Unable to load counseling request account information:",
+              error
+            );
+
+
+            setSelectedAccount(null);
+
+            setSelectedAccountError(
+              error?.message ||
+              "Unable to load account information."
+            );
+          }
+        )
+        .finally(
+          () => {
+
+            if (active) {
+
+              setSelectedAccountLoading(
+                false
+              );
+            }
+          }
+        );
+
+
+      return () => {
+
+        active = false;
+      };
+
+    },
+
+    [
+      selected
+        ?.ownerId
+    ]
+  );
+
+
+  useEffect(
+    () => {
+
+      if (
+        !selected
+          ?.ownerId ||
+        privateDraftOwnerRef
+          .current ===
+          selected.ownerId
+      ) {
+
+        return;
+      }
+
+
+      const profileData =
+        caseProfileMap[
+          selected.ownerId
+        ];
+
+
+      if (!profileData) {
+
+        return;
+      }
+
+
+      initializePrivateCaseDrafts(
+        selected
+      );
+
+    },
+
+    [
+      selected
+        ?.ownerId,
+      caseProfileMap
+    ]
   );
 
 
@@ -13567,6 +15234,12 @@ function CounselingRequestsManagement() {
         ""
       );
 
+      resetPrivateCaseDrafts();
+
+      initializePrivateCaseDrafts(
+        target
+      );
+
     },
 
     [
@@ -13621,6 +15294,12 @@ function CounselingRequestsManagement() {
     setRemarksDraft(
       row.counselorRemarks ||
       ""
+    );
+
+    resetPrivateCaseDrafts();
+
+    initializePrivateCaseDrafts(
+      row
     );
   }
 
@@ -14120,10 +15799,381 @@ function CounselingRequestsManagement() {
       }
 
 
-      await updateRecord(
-        "consultations",
-        selected.id,
-        requestUpdate
+      const effectiveCounselorId =
+        selected.assignedCounselorId ||
+        (
+          user.role ===
+            "counselor"
+            ? user.id
+            : ""
+        );
+
+
+
+      if (
+        statusDraft ===
+          "Schedule for counseling" &&
+        !effectiveCounselorId
+      ) {
+
+        throw new Error(
+          "A Guidance Counselor must be assigned before this request can be scheduled."
+        );
+      }
+
+
+      const willAssignCurrentCounselor =
+        Boolean(
+          user.role ===
+            "counselor" &&
+          statusDraft ===
+            "Schedule for counseling" &&
+          !selected.assignedCounselorId
+        );
+
+
+      const caseProfileRef =
+        selected.ownerId
+          ? doc(
+              db,
+              "counselingProfiles",
+              selected.ownerId
+            )
+          : null;
+
+
+      const needsCaseProfileCreation =
+        Boolean(
+          caseProfileRef &&
+          user.role ===
+            "counselor" &&
+          (
+            willAssignCurrentCounselor ||
+            (
+              canEditPrivateCaseFields &&
+              !selectedCaseProfile
+            )
+          )
+        );
+
+
+      if (
+        needsCaseProfileCreation &&
+        (
+          !selectedAccount
+            ?.name ||
+          !selectedAccount
+            ?.department
+        )
+      ) {
+
+        throw new Error(
+          "Please wait for the user's account information to finish loading, then save the review again."
+        );
+      }
+
+
+      const requestRef =
+        doc(
+          db,
+          "consultations",
+          selected.id
+        );
+
+
+      const slotRef =
+        effectiveCounselorId &&
+        selected.date &&
+        selected.time
+          ? doc(
+              db,
+              "counselingScheduleSlots",
+              counselingSlotDocumentId(
+                effectiveCounselorId,
+                selected.date,
+                selected.time
+              )
+            )
+          : null;
+
+
+      await runTransaction(
+        db,
+
+        async transaction => {
+
+          const requestSnap =
+            await transaction.get(
+              requestRef
+            );
+
+
+          if (!requestSnap.exists()) {
+
+            throw new Error(
+              "This counseling request no longer exists."
+            );
+          }
+
+
+          const slotSnap =
+            slotRef
+              ? await transaction.get(
+                  slotRef
+                )
+              : null;
+
+
+          const slotState =
+            statusDraft ===
+              "Schedule for counseling"
+              ? "booked"
+              : (
+                  statusDraft ===
+                    "For review" &&
+                  Boolean(
+                    selected.assignedCounselorId
+                  )
+                )
+                ? "held"
+                : "";
+
+
+          if (
+            slotState &&
+            slotSnap
+              ?.exists() &&
+            activeCounselingSlotState(
+              slotSnap.data()
+                ?.state
+            ) &&
+            slotSnap.data()
+              ?.consultationId !==
+              selected.id
+          ) {
+
+            throw new Error(
+              "This counselor already has another user assigned to that date and time. Please choose another schedule before approving this request."
+            );
+          }
+
+
+          transaction.update(
+            requestRef,
+            {
+              ...requestUpdate,
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          if (
+            caseProfileRef &&
+            willAssignCurrentCounselor
+          ) {
+
+            transaction.set(
+              caseProfileRef,
+              {
+                ownerId:
+                  selected.ownerId,
+
+                ownerName:
+                  selectedAccount
+                    ?.name ||
+                  selected.ownerName ||
+                  "",
+
+                department:
+                  selectedAccount
+                    ?.department ||
+                  selected.department ||
+                  "",
+
+                assignedCounselorId:
+                  user.id,
+
+                assignedCounselorName:
+                  user.name ||
+                  "Guidance Counselor",
+
+                assignedCounselorDepartment:
+                  user.department ||
+                  "",
+
+                updatedById:
+                  user.id,
+
+                updatedByName:
+                  user.name ||
+                  "Guidance Counselor",
+
+                updatedAt:
+                  serverTimestamp()
+              },
+              {
+                merge:
+                  true
+              }
+            );
+          }
+
+
+          if (
+            caseProfileRef &&
+            canEditPrivateCaseFields
+          ) {
+
+            const privateCaseUpdate = {
+
+              caseHistory:
+                caseHistoryDraft.trim(),
+
+              counselingSessionSummary:
+                sessionSummaryDraft.trim(),
+
+              counselorObservation:
+                observationDraft.trim(),
+
+              recommendations:
+                recommendationsDraft.trim(),
+
+              updatedById:
+                user.id,
+
+              updatedByName:
+                user.name ||
+                user.email ||
+                "Authorized user",
+
+              updatedAt:
+                serverTimestamp()
+
+            };
+
+
+            if (
+              user.role ===
+                "counselor" &&
+              !selectedCaseProfile
+            ) {
+
+              transaction.set(
+                caseProfileRef,
+                {
+                  ownerId:
+                    selected.ownerId,
+
+                  ownerName:
+                    selectedAccount
+                      ?.name ||
+                    selected.ownerName ||
+                    "",
+
+                  department:
+                    selectedAccount
+                      ?.department ||
+                    selected.department ||
+                    "",
+
+                  assignedCounselorId:
+                    selectedAssignedCounselorId ||
+                    user.id,
+
+                  assignedCounselorName:
+                    selected
+                      .assignedCounselorName ||
+                    user.name ||
+                    "Guidance Counselor",
+
+                  assignedCounselorDepartment:
+                    selectedAssignedCounselorDepartment ||
+                    user.department ||
+                    "",
+
+                  ...privateCaseUpdate
+                },
+                {
+                  merge:
+                    true
+                }
+              );
+
+            } else {
+
+              transaction.set(
+                caseProfileRef,
+                privateCaseUpdate,
+                {
+                  merge:
+                    true
+                }
+              );
+            }
+          }
+
+
+          if (
+            slotRef &&
+            slotState
+          ) {
+
+            transaction.set(
+              slotRef,
+              {
+                counselorId:
+                  effectiveCounselorId,
+
+                date:
+                  selected.date,
+
+                time:
+                  selected.time,
+
+                consultationId:
+                  selected.id,
+
+                assignmentSourceConsultationId:
+                  selected.id,
+
+                state:
+                  slotState,
+
+                ...(
+                  slotSnap
+                    ?.exists()
+                    ? {}
+                    : {
+                        createdAt:
+                          serverTimestamp()
+                      }
+                ),
+
+                updatedAt:
+                  serverTimestamp()
+              },
+              {
+                merge:
+                  true
+              }
+            );
+
+          } else if (
+            slotRef &&
+            slotSnap
+              ?.exists() &&
+            slotSnap.data()
+              ?.consultationId ===
+              selected.id
+          ) {
+
+            transaction.delete(
+              slotRef
+            );
+          }
+        }
       );
 
 
@@ -14197,6 +16247,7 @@ function CounselingRequestsManagement() {
 
       setSelected({
         ...selected,
+        ...requestUpdate,
 
         status:
           statusDraft,
@@ -14664,8 +16715,8 @@ function CounselingRequestsManagement() {
                 </div>
 
                 <p className="review-request-modal-subtitle">
-                  Review the request details, update the status,
-                  and add counselor remarks.
+                  Review the user's account information first,
+                  then the counseling request and counselor review.
                 </p>
 
               </div>
@@ -14694,10 +16745,168 @@ function CounselingRequestsManagement() {
 
             <div className="review-request-modal-body">
 
+              <section className="review-request-modal-card review-request-account-card">
+
+                <div className="review-request-account-heading">
+
+                  <div>
+
+                    <h3>
+                      Account Information
+                    </h3>
+
+                    <p>
+                      Verify the user's account information before reviewing the counseling request.
+                    </p>
+
+                  </div>
+
+                </div>
+
+
+                {selectedAccountLoading
+
+                  ? (
+
+                    <div className="user-profile-empty">
+                      Loading account information...
+                    </div>
+
+                  )
+
+                  : (
+
+                    <>
+
+                      {selectedAccountError && (
+
+                        <div className="error-box">
+                          {selectedAccountError}
+                        </div>
+
+                      )}
+
+
+                      <div className="review-request-detail-grid review-request-account-grid">
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            Program
+                          </span>
+
+                          <strong>
+                            {
+                              selectedAccount
+                                ?.program ||
+                              selected.program ||
+                              (
+                                selectedAccount
+                                  ?.role ===
+                                  "student"
+                                  ? "Not provided"
+                                  : "Not applicable"
+                              )
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            {
+                              selectedAccount
+                                ?.role ===
+                                "student"
+                                ? "Student Number"
+                                : (
+                                    employeeUserRole(
+                                      selectedAccount
+                                        ?.role
+                                    )
+                                      ? "Employee Number"
+                                      : "Student / Employee Number"
+                                  )
+                            }
+                          </span>
+
+                          <strong>
+                            {
+                              selectedAccount
+                                ?.userNumber ||
+                              "Not provided"
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            Contact Number
+                          </span>
+
+                          <strong>
+                            {
+                              selectedAccount
+                                ?.phoneNumber ||
+                              "Not provided"
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            Contact Person
+                          </span>
+
+                          <strong>
+                            {
+                              selectedAccount
+                                ?.contactPersonName ||
+                              "Not provided"
+                            }
+                          </strong>
+
+                        </div>
+
+
+                        <div className="review-request-detail-item">
+
+                          <span>
+                            Contact Person Number
+                          </span>
+
+                          <strong>
+                            {
+                              selectedAccount
+                                ?.contactPersonPhone ||
+                              "Not provided"
+                            }
+                          </strong>
+
+                        </div>
+
+                      </div>
+
+                    </>
+
+                  )
+                }
+
+              </section>
+
+
               <section className="review-request-modal-card">
 
                 <h3>
-                  Request Details
+                  Counseling Request Details
                 </h3>
 
 
@@ -14729,23 +16938,6 @@ function CounselingRequestsManagement() {
                       {
                         selected.department ||
                         "Not provided"
-                      }
-                    </strong>
-
-                  </div>
-
-
-                  <div className="review-request-detail-item">
-
-                    <span>
-                      Program
-                    </span>
-
-                    <strong>
-                      {
-                        counselorProgramLabel(
-                          selected.program
-                        )
                       }
                     </strong>
 
@@ -14899,6 +17091,10 @@ function CounselingRequestsManagement() {
 
                   Counselor remarks
 
+                  <small className="review-field-visibility-note">
+                    Visible to the user in Counseling Requests and History.
+                  </small>
+
                   <textarea
 
                     rows="9"
@@ -14925,6 +17121,160 @@ function CounselingRequestsManagement() {
                   />
 
                 </label>
+
+
+                {canViewPrivateCaseFields
+
+                  ? (
+
+                    <div className="review-private-case-section">
+
+                      <div className="review-private-case-heading">
+
+                        <h4>
+                          Private Case Information
+                        </h4>
+
+                        <p>
+                          Only the assigned counselor and Super Admin can view these fields. They are never shown to Student, Teaching, or Non-teaching users.
+                        </p>
+
+                      </div>
+
+
+                      {!canEditPrivateCaseFields && (
+
+                        <div className="notice">
+                          This private case record is read-only here. A counselor must be assigned before a new private case profile can be created.
+                        </div>
+
+                      )}
+
+
+                      <div className="counselor-notes-grid">
+
+                        <label className="counselor-note-field">
+
+                          <span>
+                            Case History
+                          </span>
+
+                          <textarea
+                            rows="5"
+                            value={caseHistoryDraft}
+                            readOnly={
+                              !canEditPrivateCaseFields ||
+                              requestIsReadOnly(
+                                selected
+                              )
+                            }
+                            onChange={
+                              event =>
+                                setCaseHistoryDraft(
+                                  event.target.value
+                                )
+                            }
+                            placeholder="Record relevant case background, previous concerns, and important case developments."
+                          />
+
+                        </label>
+
+
+                        <label className="counselor-note-field">
+
+                          <span>
+                            Summary of Counseling Sessions
+                          </span>
+
+                          <textarea
+                            rows="5"
+                            value={sessionSummaryDraft}
+                            readOnly={
+                              !canEditPrivateCaseFields ||
+                              requestIsReadOnly(
+                                selected
+                              )
+                            }
+                            onChange={
+                              event =>
+                                setSessionSummaryDraft(
+                                  event.target.value
+                                )
+                            }
+                            placeholder="Summarize the important topics, concerns, and outcomes discussed during counseling."
+                          />
+
+                        </label>
+
+
+                        <label className="counselor-note-field">
+
+                          <span>
+                            Counselor's Observations
+                          </span>
+
+                          <textarea
+                            rows="5"
+                            value={observationDraft}
+                            readOnly={
+                              !canEditPrivateCaseFields ||
+                              requestIsReadOnly(
+                                selected
+                              )
+                            }
+                            onChange={
+                              event =>
+                                setObservationDraft(
+                                  event.target.value
+                                )
+                            }
+                            placeholder="Record relevant professional observations from the counseling interaction."
+                          />
+
+                        </label>
+
+
+                        <label className="counselor-note-field">
+
+                          <span>
+                            Recommendations
+                          </span>
+
+                          <textarea
+                            rows="5"
+                            value={recommendationsDraft}
+                            readOnly={
+                              !canEditPrivateCaseFields ||
+                              requestIsReadOnly(
+                                selected
+                              )
+                            }
+                            onChange={
+                              event =>
+                                setRecommendationsDraft(
+                                  event.target.value
+                                )
+                            }
+                            placeholder="Record follow-up steps, support recommendations, or other counselor guidance."
+                          />
+
+                        </label>
+
+                      </div>
+
+                    </div>
+
+                  )
+
+                  : user.role ===
+                      "counselor" && (
+
+                    <div className="review-private-case-restricted">
+                      Private case information is available only to the counselor currently assigned to this user and to Super Admin.
+                    </div>
+
+                  )
+                }
 
 
                 <div className="review-request-modal-actions">
@@ -14970,7 +17320,7 @@ function CounselingRequestsManagement() {
                         ? "Read only"
                         : saving
                           ? "Saving..."
-                          : "Save request update"
+                          : "Save counselor review"
                     }
 
                   </button>
@@ -15267,7 +17617,7 @@ function Accounts() {
 
         title="Account Management"
 
-        subtitle="Super Admin overview of students, faculty, personnel, counselors, and administrators."
+        subtitle="Super Admin overview of students, teaching, non-teaching, counselors, and administrators."
 
       />
 
@@ -15329,7 +17679,9 @@ function Accounts() {
 
                     <td>
                       {
-                        account.role
+                        generalUserRoleLabel(
+                          account.role
+                        )
                       }
                     </td>
 
@@ -15528,7 +17880,7 @@ function FeedbackAnalytics() {
           </h2>
 
           <p>
-            Summary of feedback submitted by Student, Faculty, and Personnel users.
+            Summary of feedback submitted by Student, Teaching, and Non-teaching users.
           </p>
 
         </div>
@@ -15781,8 +18133,9 @@ function FeedbackAnalytics() {
 
                                   <td className="capitalize-text">
                                     {
-                                      item.role ||
-                                      "—"
+                                      generalUserRoleLabel(
+                                        item.role
+                                      )
                                     }
                                   </td>
 

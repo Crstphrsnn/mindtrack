@@ -165,8 +165,8 @@ textarea {
 }
 
 .secondary-button {
-  background: #e8eefb;
-  color: #173f8f;
+  background: #0B4A6F;
+  color: #FFFFFF;
 }
 
 .auth-card .primary-button {
@@ -260,7 +260,7 @@ textarea {
 
 .sidebar {
   width: 245px;
-  background: #D7E3F0;
+  background: #191970;
   border-right: none;
   padding: 18px;
   position: fixed;
@@ -282,13 +282,13 @@ textarea {
   display: block;
   font-size: 20px;
   line-height: 1.1;
-  color: #173f8f;
+  color: #FFFFFF;
 }
 
 .brand small,
 .top-user small {
   display: block;
-  color: #788093;
+  color: #C7DCE8;
   text-transform: capitalize;
 }
 
@@ -309,7 +309,7 @@ nav {
   padding: 12px 14px;
   border-radius: 11px;
   border: 2px solid transparent;
-  color: #465064;
+  color: #E8F2F7;
   transition:
     background 0.2s,
     color 0.2s,
@@ -357,7 +357,7 @@ nav {
 
 .topbar {
   height: 66px;
-  background: #173f8f;
+  background: #000080;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -1956,9 +1956,6 @@ th {
   color: #173f8f;
 }
 
-.counseling-notes-card {
-  grid-column: 1 / -1;
-}
 
 .profile-schedule-list,
 .profile-history-list {
@@ -2028,29 +2025,8 @@ th {
   background: #fafcff;
 }
 
-.counseling-notes-card textarea[readonly] {
-  background: #f3f5f8;
-  color: #5f6879;
-  cursor: not-allowed;
-}
 
-.counseling-notes-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px 18px;
-  margin-top: 10px;
-  color: #6a7283;
-  font-size: 12px;
-}
 
-.counseling-notes-save {
-  margin-top: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
 
 /* The old side detail panel is no longer needed once the
    full-screen profile viewer is enabled. */
@@ -2076,10 +2052,6 @@ th {
   .user-profile-modal-body {
     grid-template-columns: 1fr;
     padding: 14px;
-  }
-
-  .counseling-notes-card {
-    grid-column: auto;
   }
 }
 
@@ -2276,6 +2248,70 @@ th {
   font-size: 20px;
 }
 
+.review-request-account-card {
+  grid-column: 1 / -1;
+}
+
+.review-request-account-heading p {
+  margin: -10px 0 18px;
+  color: #687084;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.review-request-account-grid {
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+}
+
+.review-field-visibility-note {
+  display: block;
+  margin: 6px 0 8px;
+  color: #48627f;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.review-private-case-section {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid #dfe6ef;
+}
+
+.review-private-case-heading {
+  margin-bottom: 12px;
+}
+
+.review-private-case-heading h4 {
+  margin: 0;
+  color: #172033;
+  font-size: 17px;
+}
+
+.review-private-case-heading p {
+  margin: 6px 0 0;
+  color: #687084;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.review-private-case-restricted {
+  margin-top: 18px;
+  padding: 13px 14px;
+  border: 1px solid #d8e2ef;
+  border-radius: 11px;
+  background: #f5f8fc;
+  color: #5f6879;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.review-private-case-section
+.counselor-notes-grid {
+  margin-top: 14px;
+}
+
 .review-request-detail-grid {
   display: grid;
   grid-template-columns:
@@ -2350,6 +2386,15 @@ th {
     grid-template-columns: 1fr;
     padding: 14px;
   }
+
+  .review-request-account-card {
+    grid-column: auto;
+  }
+
+  .review-request-account-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
@@ -2369,7 +2414,8 @@ th {
     font-size: 22px;
   }
 
-  .review-request-detail-grid {
+  .review-request-detail-grid,
+  .review-request-account-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2384,6 +2430,93 @@ th {
   .review-request-modal-actions .primary-button,
   .review-request-modal-actions .secondary-button {
     width: 100%;
+  }
+}
+
+
+/* =====================================================
+   ASSESSMENT PROGRESS BAR
+   Student / Faculty / Personnel
+===================================================== */
+
+.assessment-progress-panel {
+  position: sticky;
+  top: 78px;
+  z-index: 3;
+  max-width: 950px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 14px 16px 16px;
+  border: 1px solid #b9ccec;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(23, 63, 143, 0.10);
+}
+
+.assessment-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.assessment-progress-header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.assessment-progress-header > div > strong {
+  color: #173f8f;
+  font-size: 14px;
+}
+
+.assessment-progress-header > div > span {
+  color: #657084;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.assessment-progress-percent {
+  flex-shrink: 0;
+  color: #1B3F8B;
+  font-size: 18px;
+}
+
+.assessment-progress-track {
+  width: 100%;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce8fa;
+  box-shadow: inset 0 0 0 1px rgba(23, 63, 143, 0.08);
+}
+
+.assessment-progress-fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: #1B3F8B;
+  transition: width 0.25s ease;
+}
+
+@media (max-width: 560px) {
+  .assessment-progress-panel {
+    top: 74px;
+    padding: 12px 13px 14px;
+  }
+
+  .assessment-progress-header {
+    align-items: flex-start;
+  }
+
+  .assessment-progress-percent {
+    font-size: 16px;
+  }
+
+  .assessment-progress-track {
+    height: 12px;
   }
 }
 
@@ -3663,7 +3796,7 @@ th {
 }
 
 /* =====================================================
-   STRUCTURED COUNSELOR NOTES
+   PRIVATE CASE FIELDS - COUNSELING REVIEW
 ===================================================== */
 
 .counselor-notes-grid {

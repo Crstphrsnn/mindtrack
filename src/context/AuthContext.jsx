@@ -20,6 +20,7 @@ import {
 import {
   doc,
   getDoc,
+  serverTimestamp,
   setDoc,
   updateDoc
 } from "firebase/firestore";
@@ -50,6 +51,8 @@ const INSTITUTIONAL_EMAIL_DOMAINS = [
 
 const GENERAL_USER_ROLES = [
   "student",
+  "teaching",
+  "non_teaching",
   "faculty",
   "personnel"
 ];
@@ -147,6 +150,73 @@ async function loadFirebaseProfile(
         contactPersonPhone:
           ""
       };
+}
+
+
+
+
+
+async function syncCounselorDirectoryEntry(
+  profile
+) {
+
+  if (
+    !profile ||
+    profile.role !== "counselor" ||
+    !profile.id ||
+    !String(
+      profile.name || ""
+    ).trim() ||
+    !String(
+      profile.department || ""
+    ).trim()
+  ) {
+    return;
+  }
+
+
+  try {
+
+    await setDoc(
+      doc(
+        db,
+        "counselorDirectory",
+        profile.id
+      ),
+      {
+        id:
+          profile.id,
+
+        name:
+          String(
+            profile.name
+          ).trim(),
+
+        department:
+          String(
+            profile.department
+          ).trim(),
+
+        active:
+          true,
+
+        updatedAt:
+          serverTimestamp()
+      },
+      {
+        merge:
+          true
+      }
+    );
+
+  } catch (error) {
+
+    // Directory synchronization must never prevent counselor login.
+    console.error(
+      "Unable to synchronize counselor directory entry:",
+      error
+    );
+  }
 }
 
 
@@ -284,6 +354,11 @@ export function AuthProvider({ children }) {
             }
 
 
+            await syncCounselorDirectoryEntry(
+              profile
+            );
+
+
             setUser(profile);
 
 
@@ -331,6 +406,11 @@ export function AuthProvider({ children }) {
     role,
     department,
     program = "",
+
+    assignedCounselorId = "",
+    assignedCounselorName = "",
+    assignedCounselorDepartment = "",
+
     userNumber,
     phoneNumber,
     address,
@@ -349,8 +429,8 @@ export function AuthProvider({ children }) {
 
     const allowedRoles = [
       "student",
-      "faculty",
-      "personnel"
+      "teaching",
+      "non_teaching"
     ];
 
 
@@ -370,10 +450,56 @@ export function AuthProvider({ children }) {
     }
 
 
-    if (!department?.trim()) {
+    if (
+      role === "student" &&
+      !department?.trim()
+    ) {
 
       throw new Error(
-        "College or office is required."
+        "College or office is required for student accounts."
+      );
+    }
+
+
+    if (
+      [
+        "teaching",
+        "non_teaching"
+      ].includes(role) &&
+      (
+        !String(
+          assignedCounselorId || ""
+        ).trim() ||
+        !String(
+          assignedCounselorName || ""
+        ).trim() ||
+        !String(
+          assignedCounselorDepartment || ""
+        ).trim()
+      )
+    ) {
+
+      throw new Error(
+        "A preferred counselor is required for Teaching and Non-teaching accounts."
+      );
+    }
+
+
+    if (
+      [
+        "teaching",
+        "non_teaching"
+      ].includes(role) &&
+      String(
+        department || ""
+      ).trim() !==
+      String(
+        assignedCounselorDepartment || ""
+      ).trim()
+    ) {
+
+      throw new Error(
+        "The assigned counselor college does not match the registration assignment."
       );
     }
 
@@ -524,6 +650,30 @@ export function AuthProvider({ children }) {
               ).trim()
             : "",
 
+        ...(
+          [
+            "teaching",
+            "non_teaching"
+          ].includes(role)
+            ? {
+                assignedCounselorId:
+                  String(
+                    assignedCounselorId || ""
+                  ).trim(),
+
+                assignedCounselorName:
+                  String(
+                    assignedCounselorName || ""
+                  ).trim(),
+
+                assignedCounselorDepartment:
+                  String(
+                    assignedCounselorDepartment || ""
+                  ).trim()
+              }
+            : {}
+        ),
+
         userNumber:
           userNumber.trim(),
 
@@ -615,6 +765,8 @@ export function AuthProvider({ children }) {
 
     const allowedRoles = [
       "student",
+      "teaching",
+      "non_teaching",
       "faculty",
       "personnel"
     ];
@@ -627,7 +779,7 @@ export function AuthProvider({ children }) {
     ) {
 
       throw new Error(
-        "Profile editing is only available to Student, Faculty, and Personnel accounts."
+        "Profile editing is only available to Student, Teaching, and Non-teaching accounts."
       );
     }
 
@@ -820,6 +972,11 @@ export function AuthProvider({ children }) {
           "Verify your institutional email before logging in."
         );
       }
+
+
+      await syncCounselorDirectoryEntry(
+        profile
+      );
 
 
       setUser(profile);

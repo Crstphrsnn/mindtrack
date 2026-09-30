@@ -21,6 +21,16 @@ import {
 } from "../services/dataService";
 import psuLogo from "../assets/psu-logo.jpg";
 
+function accountRoleLabel(role) {
+  if (role === "student") return "Student";
+  if (role === "teaching" || role === "faculty") return "Teaching";
+  if (role === "non_teaching" || role === "personnel") return "Non-teaching";
+  if (role === "counselor") return "Guidance Counselor";
+  if (role === "super_admin") return "Super Admin";
+  return role || "User";
+}
+
+
 const menu = {
   student: [
     ["/dashboard", "Home", Home],
@@ -33,6 +43,32 @@ const menu = {
     ["/profile", "Profile", User],
   ],
 
+  teaching: [
+    ["/dashboard", "Home", Home],
+    ["/assessment", "Assessment", ClipboardList],
+    ["/monitoring", "Monitoring", Activity],
+    ["/consultations", "Counseling", Calendar],
+    ["/notifications", "Notifications", Bell],
+    ["/referrals", "Referrals", Users],
+    ["/history", "History", FileText],
+    ["/feedback", "Ratings & Feedback", Star],
+    ["/profile", "Profile", User],
+  ],
+
+  non_teaching: [
+    ["/dashboard", "Home", Home],
+    ["/assessment", "Assessment", ClipboardList],
+    ["/monitoring", "Monitoring", Activity],
+    ["/consultations", "Counseling", Calendar],
+    ["/notifications", "Notifications", Bell],
+    ["/referrals", "Referrals", Users],
+    ["/history", "History", FileText],
+    ["/feedback", "Ratings & Feedback", Star],
+    ["/profile", "Profile", User],
+  ],
+
+  // Legacy role values remain supported so existing accounts continue
+  // working without a risky Firestore migration.
   faculty: [
     ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
@@ -59,7 +95,6 @@ const menu = {
 
   counselor: [
     ["/dashboard", "Dashboard", Home],
-    ["/notifications", "Notifications", Bell],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
     ["/user-profiles", "User Profiles", Users],
@@ -95,12 +130,13 @@ export default function Layout({ children }) {
   useEffect(
     () => {
 
-      const supportsNotifications =
+      const isGeneralUser =
         [
           "student",
+          "teaching",
+          "non_teaching",
           "faculty",
-          "personnel",
-          "counselor"
+          "personnel"
         ].includes(
           user?.role
         );
@@ -108,7 +144,7 @@ export default function Layout({ children }) {
 
       if (
         !user?.id ||
-        !supportsNotifications
+        !isGeneralUser
       ) {
 
         setUnreadNotifications(0);
@@ -123,36 +159,12 @@ export default function Layout({ children }) {
 
           setUnreadNotifications(
             rows.filter(
-              row => {
-
-                if (row.read) {
-                  return false;
-                }
-
-
-                if (
-                  user?.role ===
-                  "counselor"
-                ) {
-
-                  return [
-                    "transfer_request",
-                    "transfer_status"
-                  ].includes(
-                    row.notificationType
-                  );
-                }
-
-
-                return [
-                  "counselor_update",
-                  "counselor_transfer_update"
-                ].includes(
-                  row.notificationType
-                ) &&
+              row =>
+                !row.read &&
+                row.notificationType ===
+                  "counselor_update" &&
                 row.senderRole ===
-                  "counselor";
-              }
+                  "counselor"
             ).length
           );
         },
@@ -221,9 +233,11 @@ export default function Layout({ children }) {
             <strong>MindTrack</strong>
 
             <small>
-              {user?.role
-                ? user.role.replace("_", " ")
-                : "user"}
+              {
+                accountRoleLabel(
+                  user?.role
+                )
+              }
             </small>
           </div>
 
