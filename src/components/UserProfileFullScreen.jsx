@@ -1089,39 +1089,61 @@ export default function UserProfileFullScreen({
   const assignedCounselorId =
     assignmentRecord
       ?.assignedCounselorId ||
+    profile.assignedCounselorId ||
     "";
 
 
   const assignedCounselorName =
     assignmentRecord
       ?.assignedCounselorName ||
+    profile.assignedCounselorName ||
     "";
 
 
   const assignedCounselorDepartment =
     assignmentRecord
       ?.assignedCounselorDepartment ||
+    profile.assignedCounselorDepartment ||
     "";
+
+
+  const transferWasApproved =
+    Boolean(
+      profile.currentTransferRequestId ||
+      assignmentRecord
+        ?.transferStatus ===
+        "Approved" ||
+      assignmentRecord
+        ?.transferredAt ||
+      consultations.some(
+        row =>
+          row.transferStatus ===
+            "Approved" ||
+          Boolean(
+            row.transferredAt
+          )
+      )
+    );
 
 
   const isFormerAssignedCounselor =
     Boolean(
       currentUser.role ===
         "counselor" &&
-      assignmentRecord
-        ?.transferredFromCounselorId ===
-        currentUser.id &&
       assignedCounselorId &&
       assignedCounselorId !==
-        currentUser.id
+        currentUser.id &&
+      consultations.some(
+        row =>
+          row.transferredFromCounselorId ===
+            currentUser.id
+      )
     );
 
 
   const isCrossCollegeTransferred =
     Boolean(
-      assignmentRecord
-        ?.transferStatus ===
-        "Approved" &&
+      transferWasApproved &&
       assignedCounselorDepartment &&
       profile.department &&
       normalizedProfileDepartment(

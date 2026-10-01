@@ -3879,6 +3879,17 @@ function Dashboard() {
         );
 
 
+      const previousAccessRef =
+        doc(
+          db,
+          "transferAccess",
+          transferAccessDocumentId(
+            transfer.ownerId,
+            transfer.requestedById
+          )
+        );
+
+
       await runTransaction(
         db,
         async transaction => {
@@ -3900,34 +3911,44 @@ function Dashboard() {
             transferSnap.data();
 
 
-          // Do NOT read the private consultation before approval.
-          // A counselor from another college is intentionally not
-          // allowed to read that full counseling request yet.
-          //
-          // transferRequests contains only the safe fields needed
-          // to approve the transfer. Full consultation/profile
-          // access is granted only after the transaction succeeds.
-          if (
-            current.consultationId !==
-              transfer.consultationId ||
-            current.ownerId !==
-              transfer.ownerId
-          ) {
+          const consultationSnap =
+            await transaction.get(
+              consultationRef
+            );
+
+
+          if (!consultationSnap.exists()) {
 
             throw new Error(
-              "The transfer request no longer matches the selected user or counseling request."
+              "The counseling request connected to this transfer no longer exists."
             );
           }
 
 
+          const currentConsultation =
+            consultationSnap.data();
+
+
           if (
-            transferRequestHasStarted(
-              current
+            appointmentHasStarted(
+              currentConsultation
             )
           ) {
 
             throw new Error(
               "This transfer can no longer be approved because the scheduled counseling start time has already passed."
+            );
+          }
+
+
+          if (
+            currentConsultation
+              .ownerId !==
+            current.ownerId
+          ) {
+
+            throw new Error(
+              "The transfer request no longer matches the counseling record."
             );
           }
 
@@ -3938,17 +3959,21 @@ function Dashboard() {
               "For review",
               "Schedule for counseling"
             ].includes(
-              current.requestStatus ||
-              ""
+              currentConsultation
+                .status
             );
 
 
           const slotDate =
+            currentConsultation
+              .date ||
             current.date ||
             "";
 
 
           const slotTime =
+            currentConsultation
+              .time ||
             current.time ||
             "";
 
@@ -3990,6 +4015,18 @@ function Dashboard() {
 
           let newSlotSnap =
             null;
+
+
+          const currentAccessSnap =
+            await transaction.get(
+              accessRef
+            );
+
+
+          const previousAccessSnap =
+            await transaction.get(
+              previousAccessRef
+            );
 
 
           if (oldSlotRef) {
@@ -4112,11 +4149,96 @@ function Dashboard() {
               consultationId:
                 current.consultationId,
 
+              accessRole:
+                "assigned",
+
+              currentAssignment:
+                true,
+
               active:
                 true,
 
-              createdAt:
+              ...(
+                currentAccessSnap.exists()
+                  ? {}
+                  : {
+                      createdAt:
+                        serverTimestamp()
+                    }
+              ),
+
+              updatedAt:
                 serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          );
+
+
+          transaction.set(
+            previousAccessRef,
+            {
+              ownerId:
+                current.ownerId,
+
+              ownerName:
+                current.ownerName ||
+                "",
+
+              ownerDepartment:
+                current.ownerDepartment ||
+                "",
+
+              counselorId:
+                current.requestedById,
+
+              counselorName:
+                current.requestedByName ||
+                "Guidance Counselor",
+
+              counselorDepartment:
+                current.requestedByDepartment ||
+                "",
+
+              previousCounselorId:
+                current.requestedById,
+
+              previousCounselorName:
+                current.requestedByName ||
+                "",
+
+              transferRequestId:
+                transfer.id,
+
+              consultationId:
+                current.consultationId,
+
+              accessRole:
+                "documentation",
+
+              currentAssignment:
+                false,
+
+              active:
+                true,
+
+              ...(
+                previousAccessSnap.exists()
+                  ? {}
+                  : {
+                      createdAt:
+                        serverTimestamp()
+                    }
+              ),
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
             }
           );
 
@@ -4282,7 +4404,7 @@ function Dashboard() {
                   current.consultationId,
 
                 state:
-                  current.requestStatus ===
+                  currentConsultation.status ===
                     "Schedule for counseling"
                     ? "booked"
                     : "held",
@@ -4363,7 +4485,7 @@ function Dashboard() {
               "Counselor transfer accepted",
 
             message:
-              `${user.name || "Another counselor"} accepted the transfer for ${transfer.ownerName || "the user"}. You retain read-only access to the user's previous counseling and assessment records for documentation.`,
+              `${user.name || "Another counselor"} accepted the transfer for ${transfer.ownerName || "the user"}. You keep read-only documentation access to the user's profile, counseling-request history, and assessment-case history. Only the currently assigned counselor can edit the case.`,
 
             notificationType:
               "transfer_status",
@@ -7743,6 +7865,26 @@ function Consultations() {
                 user.program ||
                 "",
 
+              // Counselor-facing account snapshot. Keeping these
+              // immutable fields on the counseling request means
+              // Account Information does not depend entirely on a
+              // second users/{uid} read.
+              userNumber:
+                user.userNumber ||
+                "",
+
+              phoneNumber:
+                user.phoneNumber ||
+                "",
+
+              contactPersonName:
+                user.contactPersonName ||
+                "",
+
+              contactPersonPhone:
+                user.contactPersonPhone ||
+                "",
+
               ...(currentAssignedCounselorId
                 ? {
                     assignedCounselorId:
@@ -10949,9 +11091,12 @@ function UserProfilesContent({
 
 
   // Track transfer state without exposing private counseling
-  // profile fields to counselors who are no longer assigned.
-  // Super Admin may audit counselingProfiles; counselors use
-  // transferAccess records for users transferred away from them.
+  // profile fields. Super Admin may audit counselingProfiles.
+  // Counselors must query only their own deterministic transferAccess
+  // records because Firestore authorizes transferAccess reads by
+  // counselorId == request.auth.uid. Querying previousCounselorId
+  // can include another counselor's access record and makes Firestore
+  // reject the entire query.
   useEffect(
     () => {
 
@@ -10967,9 +11112,14 @@ function UserProfilesContent({
                 "transferAccess"
               ),
               where(
-                "previousCounselorId",
+                "counselorId",
                 "==",
                 currentUser.id
+              ),
+              where(
+                "active",
+                "==",
+                true
               )
             );
 
@@ -11012,9 +11162,27 @@ function UserProfilesContent({
                   transferActive:
                     true,
 
+                  accessRole:
+                    data.accessRole ||
+                    (
+                      data.currentAssignment ===
+                        false
+                        ? "documentation"
+                        : "assigned"
+                    ),
+
+                  currentAssignment:
+                    data.currentAssignment !==
+                    false,
+
                   assignedCounselorId:
-                    data.counselorId ||
-                    ""
+                    data.currentAssignment ===
+                      false
+                      ? ""
+                      : (
+                          data.counselorId ||
+                          ""
+                        )
                 };
               }
             }
@@ -15683,6 +15851,55 @@ function CounselingRequestsManagement() {
   ] = useState(null);
 
 
+  function counselingAccountSnapshot(
+    row
+  ) {
+
+    if (!row) {
+      return null;
+    }
+
+
+    return {
+      id:
+        row.ownerId ||
+        "",
+
+      role:
+        row.role ||
+        "",
+
+      department:
+        row.department ||
+        "",
+
+      program:
+        row.program ||
+        "",
+
+      gender:
+        row.gender ||
+        "",
+
+      userNumber:
+        row.userNumber ||
+        "",
+
+      phoneNumber:
+        row.phoneNumber ||
+        "",
+
+      contactPersonName:
+        row.contactPersonName ||
+        "",
+
+      contactPersonPhone:
+        row.contactPersonPhone ||
+        ""
+    };
+  }
+
+
   const [
     selectedAccountLoading,
     setSelectedAccountLoading
@@ -15752,12 +15969,8 @@ function CounselingRequestsManagement() {
       !selectedCaseProfile &&
       (
         !selectedAssignedCounselorDepartment ||
-        normalizedCounselorDepartment(
-          selectedAssignedCounselorDepartment
-        ) ===
-          normalizedCounselorDepartment(
-            selected.department
-          )
+        selectedAssignedCounselorDepartment ===
+          selected.department
       )
     );
 
@@ -15995,11 +16208,26 @@ function CounselingRequestsManagement() {
       }
 
 
+      const requestSnapshot =
+        counselingAccountSnapshot(
+          selected
+        );
+
+
+      // Show the information already authorized through the
+      // counseling request immediately.
+      setSelectedAccount(
+        requestSnapshot
+      );
+
       setSelectedAccountLoading(true);
 
       setSelectedAccountError("");
 
 
+      // A current users/{uid} read is useful when allowed, but
+      // it is only an enrichment step now. Legacy permission
+      // mismatches no longer break the Account Information UI.
       getDoc(
         doc(
           db,
@@ -16020,19 +16248,13 @@ function CounselingRequestsManagement() {
             ) {
 
               setSelectedAccount({
+                ...requestSnapshot,
+
                 id:
                   snapshot.id,
 
                 ...snapshot.data()
               });
-
-            } else {
-
-              setSelectedAccount(null);
-
-              setSelectedAccountError(
-                "The user's account record could not be found."
-              );
             }
           }
         )
@@ -16044,17 +16266,57 @@ function CounselingRequestsManagement() {
             }
 
 
+            const errorCode =
+              String(
+                error?.code ||
+                ""
+              )
+                .toLowerCase();
+
+
+            const errorMessage =
+              String(
+                error?.message ||
+                ""
+              )
+                .toLowerCase();
+
+
+            if (
+              errorCode.includes(
+                "permission-denied"
+              ) ||
+              errorMessage.includes(
+                "missing or insufficient permissions"
+              )
+            ) {
+
+              console.warn(
+                "Using the counseling-request account snapshot because this legacy users/{uid} document is not directly readable by the current counselor."
+              );
+
+              setSelectedAccount(
+                requestSnapshot
+              );
+
+              setSelectedAccountError("");
+
+              return;
+            }
+
+
             console.error(
-              "Unable to load counseling request account information:",
+              "Unable to enrich counseling request account information:",
               error
             );
 
 
-            setSelectedAccount(null);
+            setSelectedAccount(
+              requestSnapshot
+            );
 
             setSelectedAccountError(
-              error?.message ||
-              "Unable to load account information."
+              "Some current account information could not be refreshed. Showing the information stored with this counseling request."
             );
           }
         )
@@ -16080,7 +16342,21 @@ function CounselingRequestsManagement() {
 
     [
       selected
-        ?.ownerId
+        ?.ownerId,
+      selected
+        ?.id,
+      selected
+        ?.program,
+      selected
+        ?.gender,
+      selected
+        ?.userNumber,
+      selected
+        ?.phoneNumber,
+      selected
+        ?.contactPersonName,
+      selected
+        ?.contactPersonPhone
     ]
   );
 
@@ -16929,43 +17205,6 @@ function CounselingRequestsManagement() {
           );
 
 
-      const privateCaseChanged =
-        Boolean(
-          canEditPrivateCaseFields &&
-          (
-            String(
-              selectedCaseProfile
-                ?.caseHistory ||
-              selectedCaseProfile
-                ?.notes ||
-              ""
-            ).trim() !==
-              caseHistoryDraft.trim()
-            ||
-            String(
-              selectedCaseProfile
-                ?.counselingSessionSummary ||
-              ""
-            ).trim() !==
-              sessionSummaryDraft.trim()
-            ||
-            String(
-              selectedCaseProfile
-                ?.counselorObservation ||
-              ""
-            ).trim() !==
-              observationDraft.trim()
-            ||
-            String(
-              selectedCaseProfile
-                ?.recommendations ||
-              ""
-            ).trim() !==
-              recommendationsDraft.trim()
-          )
-        );
-
-
       const requestUpdate = {
 
         status:
@@ -17065,8 +17304,7 @@ function CounselingRequestsManagement() {
             willAssignCurrentCounselor ||
             (
               canEditPrivateCaseFields &&
-              !selectedCaseProfile &&
-              privateCaseChanged
+              !selectedCaseProfile
             )
           )
         );
@@ -17344,8 +17582,7 @@ function CounselingRequestsManagement() {
 
           if (
             caseProfileRef &&
-            canEditPrivateCaseFields &&
-            privateCaseChanged
+            canEditPrivateCaseFields
           ) {
 
             const privateCaseUpdate = {
@@ -18671,7 +18908,58 @@ function CounselingRequestsManagement() {
                 }
 
 
-                <div className="counseling-review-action-area">
+                <div className="review-request-modal-actions">
+
+                  <button
+
+                    type="button"
+
+                    className="secondary-button"
+
+                    onClick={
+                      closeRequestReview
+                    }
+
+                  >
+                    Close
+                  </button>
+
+
+                  {transferActionState(
+                    selected
+                  ).visible && (
+
+                    <button
+
+                      type="button"
+
+                      className="transfer-user-button"
+
+                      disabled={
+                        transferActionState(
+                          selected
+                        ).disabled
+                      }
+
+                      title={
+                        transferActionState(
+                          selected
+                        ).reason
+                      }
+
+                      onClick={
+                        () =>
+                          requestCounselorTransfer(
+                            selected
+                          )
+                      }
+
+                    >
+                      Transfer user to another counselor
+                    </button>
+
+                  )}
+
 
                   {
                     transferActionState(
@@ -18684,103 +18972,44 @@ function CounselingRequestsManagement() {
                       selected
                     ).pending && (
 
-                      <div className="counseling-review-action-note">
-
-                        <span className="transfer-deadline-label">
-                          Transfer closed: counseling already started
-                        </span>
-
-                      </div>
+                      <span className="transfer-deadline-label">
+                        Transfer closed: counseling already started
+                      </span>
 
                     )
                   }
 
 
-                  <div className="review-request-modal-actions counseling-review-actions">
+                  <button
 
-                    <button
+                    type="button"
 
-                      type="button"
+                    className="primary-button"
 
-                      className="secondary-button"
+                    disabled={
+                      saving ||
+                      requestIsReadOnly(
+                        selected
+                      )
+                    }
 
-                      onClick={
-                        closeRequestReview
-                      }
+                    onClick={
+                      saveRequestUpdate
+                    }
 
-                    >
-                      Close
-                    </button>
+                  >
 
+                    {
+                      requestIsReadOnly(
+                        selected
+                      )
+                        ? "Read only"
+                        : saving
+                          ? "Saving..."
+                          : "Save counselor review"
+                    }
 
-                    {transferActionState(
-                      selected
-                    ).visible && (
-
-                      <button
-
-                        type="button"
-
-                        className="transfer-user-button"
-
-                        disabled={
-                          transferActionState(
-                            selected
-                          ).disabled
-                        }
-
-                        title={
-                          transferActionState(
-                            selected
-                          ).reason
-                        }
-
-                        onClick={
-                          () =>
-                            requestCounselorTransfer(
-                              selected
-                            )
-                        }
-
-                      >
-                        Transfer user to another counselor
-                      </button>
-
-                    )}
-
-
-                    <button
-
-                      type="button"
-
-                      className="primary-button"
-
-                      disabled={
-                        saving ||
-                        requestIsReadOnly(
-                          selected
-                        )
-                      }
-
-                      onClick={
-                        saveRequestUpdate
-                      }
-
-                    >
-
-                      {
-                        requestIsReadOnly(
-                          selected
-                        )
-                          ? "Read only"
-                          : saving
-                            ? "Saving..."
-                            : "Save counselor review"
-                      }
-
-                    </button>
-
-                  </div>
+                  </button>
 
                 </div>
 
