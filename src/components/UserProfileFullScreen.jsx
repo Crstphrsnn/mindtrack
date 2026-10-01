@@ -51,6 +51,71 @@ import { db } from "../services/firebase";
 
 
 
+function normalizedProfileDepartment(
+  value
+) {
+
+  const clean =
+    String(
+      value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const aliases = {
+    "ccs":
+      "college of computing sciences",
+
+    "college of computing sciences":
+      "college of computing sciences",
+
+    "college of computing sciences":
+      "college of computing sciences",
+
+    "coe":
+      "college of education",
+
+    "cte":
+      "college of education",
+
+    "college of education":
+      "college of education",
+
+    "cthm":
+      "college of tourism and hospitality management",
+
+    "college of tourism and hospitality management":
+      "college of tourism and hospitality management",
+
+    "cit":
+      "college of industrial technology",
+
+    "college of industrial technology":
+      "college of industrial technology",
+
+    "casl":
+      "college of arts, sciences and letters",
+
+    "cal":
+      "college of arts, sciences and letters",
+
+    "college of arts, sciences and letters":
+      "college of arts, sciences and letters",
+
+    "cbpa":
+      "college of business and public administration",
+
+    "college of business and public administration":
+      "college of business and public administration"
+  };
+
+
+  return aliases[clean] || clean;
+}
+
+
+
 function useProfileRows(
 
   collectionName,
@@ -1059,8 +1124,12 @@ export default function UserProfileFullScreen({
         "Approved" &&
       assignedCounselorDepartment &&
       profile.department &&
-      assignedCounselorDepartment !==
-        profile.department
+      normalizedProfileDepartment(
+        assignedCounselorDepartment
+      ) !==
+        normalizedProfileDepartment(
+          profile.department
+        )
     );
 
 
@@ -1994,6 +2063,62 @@ export default function UserProfileFullScreen({
 
 
                       profile.role
+
+
+
+                    )
+
+
+
+                  }
+
+
+
+                </strong>
+
+
+
+              </div>
+
+
+
+
+
+
+
+
+
+
+
+              <div className="readonly-profile-item">
+
+
+
+                <span>
+
+
+
+                  Gender
+
+
+
+                </span>
+
+
+
+                <strong>
+
+
+
+                  {
+
+
+
+                    displayFieldValue(
+
+
+
+                      profile.gender
 
 
 

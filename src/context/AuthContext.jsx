@@ -109,6 +109,7 @@ async function loadFirebaseProfile(
           firebaseUser.email,
 
         program: "",
+        gender: "",
 
         ...snap.data()
       }
@@ -130,6 +131,9 @@ async function loadFirebaseProfile(
           "",
 
         program:
+          "",
+
+        gender:
           "",
 
         userNumber:
@@ -406,6 +410,7 @@ export function AuthProvider({ children }) {
     role,
     department,
     program = "",
+    gender = "",
 
     assignedCounselorId = "",
     assignedCounselorName = "",
@@ -511,6 +516,23 @@ export function AuthProvider({ children }) {
 
       throw new Error(
         "Program is required for student accounts."
+      );
+    }
+
+
+    if (
+      ![
+        "Male",
+        "Female"
+      ].includes(
+        String(
+          gender || ""
+        ).trim()
+      )
+    ) {
+
+      throw new Error(
+        "Gender must be Male or Female."
       );
     }
 
@@ -677,6 +699,11 @@ export function AuthProvider({ children }) {
         userNumber:
           userNumber.trim(),
 
+        gender:
+          String(
+            gender || ""
+          ).trim(),
+
         phoneNumber:
           phoneNumber.trim(),
 
@@ -785,6 +812,11 @@ export function AuthProvider({ children }) {
 
 
     const safeChanges = {
+      gender:
+        String(
+          changes.gender || ""
+        ).trim(),
+
       phoneNumber:
         String(
           changes.phoneNumber || ""
@@ -810,6 +842,21 @@ export function AuthProvider({ children }) {
           changes.contactPersonPhone || ""
         ).trim()
     };
+
+
+    if (
+      ![
+        "Male",
+        "Female"
+      ].includes(
+        safeChanges.gender
+      )
+    ) {
+
+      throw new Error(
+        "Gender must be Male or Female."
+      );
+    }
 
 
     if (
@@ -1010,6 +1057,7 @@ export function AuthProvider({ children }) {
 
     const normalizedDemoUser = {
       program: "",
+      gender: "",
       phoneNumber: "",
       address: "",
       facebookAccount: "",
