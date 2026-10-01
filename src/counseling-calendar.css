@@ -126,15 +126,50 @@
   cursor: not-allowed;
 }
 
-.counseling-calendar-day.weekend {
-  border-color: #e2e6ec;
-  background: #f5f6f8;
-  color: #9aa3af;
-  cursor: not-allowed;
-}
-
 .counseling-calendar-day:disabled {
   opacity: 1;
+}
+
+.counseling-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin-top: 14px;
+  color: #60738e;
+  font-size: 12px;
+}
+
+.counseling-calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-legend-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+  border: 1px solid transparent;
+}
+
+.calendar-legend-dot.available {
+  border-color: #8eb5e7;
+  background: #ffffff;
+}
+
+.calendar-legend-dot.selected {
+  background: #173f8f;
+}
+
+.calendar-legend-dot.holiday {
+  border-color: #efb3b3;
+  background: #fff0f0;
+}
+
+.calendar-legend-dot.past {
+  border-color: #dfe3e8;
+  background: #f0f1f3;
 }
 
 .selected-counseling-date {
@@ -170,6 +205,12 @@
   font-size: 12px;
 }
 
+.counseling-calendar-note {
+  margin: 12px 0 0;
+  color: #71839b;
+  font-size: 12px;
+  line-height: 1.45;
+}
 
 @media (max-width: 650px) {
   .counseling-date-picker {
@@ -189,4 +230,30 @@
   .calendar-day-marker {
     font-size: 7px;
   }
+}
+
+/* =====================================================
+   EDIT COUNSELING REQUEST CALENDAR SIZE
+   Keep the edit calendar the same full-width size as the
+   New request calendar. Older .record-card select styles
+   float form controls to the right; clearing that float
+   prevents the calendar from wrapping into a narrow column.
+===================================================== */
+
+.record-card form .counseling-date-field {
+  clear: both;
+  width: 100%;
+  min-width: 0;
+}
+
+.record-card form .counseling-date-picker {
+  width: 100%;
+  max-width: none;
+}
+
+/* The edit calendar uses the same day/header sizing as New request. */
+.record-card form .counseling-calendar-grid,
+.record-card form .counseling-calendar-weekdays,
+.record-card form .counseling-calendar-header {
+  width: 100%;
 }

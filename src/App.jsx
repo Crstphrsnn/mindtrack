@@ -3783,7 +3783,11 @@ function Dashboard() {
       {
         status:
           "Pending approval"
-      }
+      },
+      Boolean(
+        isCounselor ||
+        isSuperAdmin
+      )
     );
 
 
@@ -3927,6 +3931,18 @@ function Dashboard() {
 
           const currentConsultation =
             consultationSnap.data();
+
+
+          if (
+            currentConsultation
+              .status ===
+            "Concluded"
+          ) {
+
+            throw new Error(
+              "This transfer can no longer be approved because the counseling request has already been concluded."
+            );
+          }
 
 
           if (
@@ -9271,6 +9287,12 @@ function Referrals() {
     );
 
 
+  const counselorDirectoryRows =
+    useRows(
+      "counselorDirectory"
+    );
+
+
   const [form, setForm] =
     useState({
 
@@ -9286,13 +9308,43 @@ function Referrals() {
       reason:
         "",
 
-      urgency:
-        "Routine",
-
       contact:
         ""
 
     });
+
+
+  const selectedReferralCounselor =
+    useMemo(
+      () => {
+
+        if (!form.department) {
+          return null;
+        }
+
+
+        return (
+          counselorDirectoryRows.find(
+            counselor =>
+              counselor.active !==
+                false &&
+              counselor.id &&
+              normalizedCounselorDepartment(
+                counselor.department
+              ) ===
+                normalizedCounselorDepartment(
+                  form.department
+                )
+          ) ||
+          null
+        );
+
+      },
+      [
+        counselorDirectoryRows,
+        form.department
+      ]
+    );
 
 
   async function submit(e) {
@@ -9304,6 +9356,19 @@ function Referrals() {
 
       alert(
         "Contact information must contain exactly 11 digits."
+      );
+
+      return;
+    }
+
+
+    if (
+      !selectedReferralCounselor
+        ?.id
+    ) {
+
+      alert(
+        "No active counselor is linked to the selected college. Please contact the administrator before submitting this referral."
       );
 
       return;
@@ -9328,6 +9393,17 @@ function Referrals() {
         referrerRole:
           user.role,
 
+        assignedCounselorId:
+          selectedReferralCounselor.id,
+
+        assignedCounselorName:
+          selectedReferralCounselor.name ||
+          "Guidance Counselor",
+
+        assignedCounselorDepartment:
+          selectedReferralCounselor.department ||
+          form.department,
+
         status:
           "Received"
 
@@ -9348,9 +9424,6 @@ function Referrals() {
 
       reason:
         "",
-
-      urgency:
-        "Routine",
 
       contact:
         ""
@@ -9484,33 +9557,53 @@ function Referrals() {
                 Select college / office
               </option>
 
-              <option value="College of Education">
-                College of Education
-              </option>
+              {
+                PREFERRED_COUNSELORS.map(
+                  counselor => (
 
-              <option value="College of Tourism and Hospitality Management">
-                College of Tourism and Hospitality Management
-              </option>
+                    <option
+                      key={
+                        counselor.key
+                      }
+                      value={
+                        counselor.department
+                      }
+                    >
+                      {
+                        counselor.department
+                      }
+                    </option>
 
-              <option value="College of Industrial Technology">
-                College of Industrial Technology
-              </option>
-
-              <option value="College of Arts, Sciences and Letters">
-                College of Arts, Sciences and Letters
-              </option>
-
-              <option value="College of Computing Sciences">
-                College of Computing Sciences
-              </option>
-
-              <option value="College of Business and Public Administration">
-                College of Business and Public Administration
-              </option>
+                  )
+                )
+              }
 
             </select>
 
           </label>
+
+
+          {form.department && (
+
+            <div className="notice">
+
+              <strong>
+                Assigned counselor
+              </strong>
+
+              <span>
+
+                {
+                  selectedReferralCounselor
+                    ? `${selectedReferralCounselor.name || "Guidance Counselor"} [${selectedReferralCounselor.department || form.department}]`
+                    : `No active counselor is currently linked to ${form.department}.`
+                }
+
+              </span>
+
+            </div>
+
+          )}
 
 
           <label>
@@ -9555,40 +9648,6 @@ function Referrals() {
 
           <label>
 
-            Urgency
-
-            <select
-
-              value={
-                form.urgency
-              }
-
-              onChange={
-                e =>
-                  setForm({
-                    ...form,
-                    urgency:
-                      e.target.value
-                  })
-              }
-
-            >
-
-              <option>
-                Routine
-              </option>
-
-              <option>
-                Urgent
-              </option>
-
-            </select>
-
-          </label>
-
-
-          <label>
-
             Reason
 
             <textarea
@@ -9615,7 +9674,15 @@ function Referrals() {
           </label>
 
 
-          <button className="primary-button">
+          <button
+            className="primary-button"
+            disabled={
+              Boolean(
+                form.department
+              ) &&
+              !selectedReferralCounselor
+            }
+          >
 
             Submit referral
 
@@ -9677,13 +9744,19 @@ function Referrals() {
                         row.department
                       }
 
-                      {" · "}
+                    </p>
 
+
+                    <small>
+
+                      Assigned counselor:
+                      {" "}
                       {
-                        row.urgency
+                        row.assignedCounselorName ||
+                        "Not recorded"
                       }
 
-                    </p>
+                    </small>
 
 
                     <small>
@@ -9709,10 +9782,627 @@ function Referrals() {
 
 
 
+const REFERRAL_MANAGEMENT_STATUSES = [
+  "Received",
+  "In review",
+  "Contacted",
+  "Closed"
+];
+
+
+function ReferralManagement() {
+
+  const { user } =
+    useAuth();
+
+
+  const isSuperAdmin =
+    user.role ===
+    "super_admin";
+
+
+  const isCounselor =
+    user.role ===
+    "counselor";
+
+
+  const referrals =
+    useRows(
+      "referrals",
+      isCounselor
+        ? {
+            assignedCounselorId:
+              user.id
+          }
+        : {},
+      isCounselor ||
+      isSuperAdmin
+    );
+
+
+  const [
+    collegeFilter,
+    setCollegeFilter
+  ] = useState("");
+
+
+  const [
+    statusFilter,
+    setStatusFilter
+  ] = useState("");
+
+
+  const [
+    savingReferralId,
+    setSavingReferralId
+  ] = useState("");
+
+
+  const visibleReferrals =
+    useMemo(
+      () =>
+        referrals.filter(
+          row => {
+
+            const collegeMatches =
+              !collegeFilter ||
+              normalizedCounselorDepartment(
+                row.department
+              ) ===
+                normalizedCounselorDepartment(
+                  collegeFilter
+                );
+
+
+            const statusMatches =
+              !statusFilter ||
+              row.status ===
+                statusFilter;
+
+
+            return (
+              collegeMatches &&
+              statusMatches
+            );
+          }
+        ),
+      [
+        referrals,
+        collegeFilter,
+        statusFilter
+      ]
+    );
+
+
+  async function updateReferralStatus(
+    row,
+    nextStatus
+  ) {
+
+    if (
+      !REFERRAL_MANAGEMENT_STATUSES.includes(
+        nextStatus
+      )
+    ) {
+      return;
+    }
+
+
+    try {
+
+      setSavingReferralId(
+        row.id
+      );
+
+
+      await updateRecord(
+        "referrals",
+        row.id,
+        {
+          status:
+            nextStatus
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to update referral status:",
+        error
+      );
+
+
+      alert(
+        error?.message ||
+        "Unable to update the referral status."
+      );
+
+    } finally {
+
+      setSavingReferralId("");
+    }
+  }
+
+
+  if (
+    !isCounselor &&
+    !isSuperAdmin
+  ) {
+
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+  }
+
+
+  return (
+
+    <>
+
+      <PageTitle
+
+        title="Referrals"
+
+        subtitle={
+          isSuperAdmin
+            ? "Review Teaching and Non-teaching referrals across all colleges and offices."
+            : `Review referrals assigned to you for ${canonicalCollegeName(user.department)}.`
+        }
+
+      />
+
+
+      <section className="panel">
+
+        <div className="filter-grid">
+
+          {isSuperAdmin && (
+
+            <label>
+
+              College / Office
+
+              <select
+                value={
+                  collegeFilter
+                }
+                onChange={
+                  event =>
+                    setCollegeFilter(
+                      event.target.value
+                    )
+                }
+              >
+
+                <option value="">
+                  All colleges
+                </option>
+
+                {
+                  PREFERRED_COUNSELORS.map(
+                    counselor => (
+
+                      <option
+                        key={
+                          counselor.key
+                        }
+                        value={
+                          counselor.department
+                        }
+                      >
+                        {
+                          counselor.department
+                        }
+                      </option>
+
+                    )
+                  )
+                }
+
+              </select>
+
+            </label>
+
+          )}
+
+
+          <label>
+
+            Status
+
+            <select
+              value={
+                statusFilter
+              }
+              onChange={
+                event =>
+                  setStatusFilter(
+                    event.target.value
+                  )
+              }
+            >
+
+              <option value="">
+                All statuses
+              </option>
+
+              {
+                REFERRAL_MANAGEMENT_STATUSES.map(
+                  status => (
+
+                    <option
+                      key={
+                        status
+                      }
+                      value={
+                        status
+                      }
+                    >
+                      {
+                        status
+                      }
+                    </option>
+
+                  )
+                )
+              }
+
+            </select>
+
+          </label>
+
+        </div>
+
+
+        <div className="filter-summary">
+
+          <span>
+            {
+              visibleReferrals.length
+            }
+            {" "}
+            referral
+            {
+              visibleReferrals.length ===
+                1
+                ? ""
+                : "s"
+            }
+          </span>
+
+          {!isSuperAdmin && (
+
+            <span>
+              Assigned counselor:
+              {" "}
+              <strong>
+                {
+                  user.name ||
+                  "Guidance Counselor"
+                }
+              </strong>
+            </span>
+
+          )}
+
+        </div>
+
+      </section>
+
+
+      <section className="panel">
+
+        <h2>
+          Referral List
+        </h2>
+
+
+        {visibleReferrals.length === 0
+
+          ? (
+
+            <Empty
+              text={
+                isSuperAdmin
+                  ? "No referrals match the selected filters."
+                  : "No referrals are currently assigned to you."
+              }
+            />
+
+          )
+
+          : (
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+
+                    <th>
+                      Referred Person
+                    </th>
+
+                    <th>
+                      Type
+                    </th>
+
+                    <th>
+                      College / Office
+                    </th>
+
+                    <th>
+                      Contact
+                    </th>
+
+                    <th>
+                      Referred By
+                    </th>
+
+                    {isSuperAdmin && (
+
+                      <th>
+                        Assigned Counselor
+                      </th>
+
+                    )}
+
+                    <th>
+                      Reason
+                    </th>
+
+                    <th>
+                      Submitted
+                    </th>
+
+                    <th>
+                      Status
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                  {
+                    visibleReferrals.map(
+                      row => (
+
+                        <tr
+                          key={
+                            row.id
+                          }
+                        >
+
+                          <td>
+                            <strong>
+                              {
+                                row.personName ||
+                                "Not recorded"
+                              }
+                            </strong>
+                          </td>
+
+
+                          <td>
+                            {
+                              row.personType ||
+                              "Not recorded"
+                            }
+                          </td>
+
+
+                          <td>
+                            {
+                              canonicalCollegeName(
+                                row.department
+                              )
+                            }
+                          </td>
+
+
+                          <td>
+                            {
+                              row.contact ||
+                              "Not provided"
+                            }
+                          </td>
+
+
+                          <td>
+
+                            {
+                              row.referrerName ||
+                              "Not recorded"
+                            }
+
+                            <br />
+
+                            <small>
+
+                              {
+                                generalUserRoleLabel(
+                                  row.referrerRole
+                                )
+                              }
+
+                            </small>
+
+                          </td>
+
+
+                          {isSuperAdmin && (
+
+                            <td>
+
+                              {
+                                row.assignedCounselorName ||
+                                "Not assigned"
+                              }
+
+                              <br />
+
+                              <small>
+
+                                {
+                                  row.assignedCounselorDepartment ||
+                                  row.department ||
+                                  "Not recorded"
+                                }
+
+                              </small>
+
+                            </td>
+
+                          )}
+
+
+                          <td>
+                            {
+                              row.reason ||
+                              "No reason provided"
+                            }
+                          </td>
+
+
+                          <td>
+                            {
+                              formatRecordDateTime(
+                                row.createdAt
+                              )
+                            }
+                          </td>
+
+
+                          <td>
+
+                            <select
+
+                              value={
+                                REFERRAL_MANAGEMENT_STATUSES.includes(
+                                  row.status
+                                )
+                                  ? row.status
+                                  : "Received"
+                              }
+
+                              disabled={
+                                savingReferralId ===
+                                  row.id
+                              }
+
+                              onChange={
+                                event =>
+                                  updateReferralStatus(
+                                    row,
+                                    event.target.value
+                                  )
+                              }
+
+                            >
+
+                              {
+                                REFERRAL_MANAGEMENT_STATUSES.map(
+                                  status => (
+
+                                    <option
+                                      key={
+                                        status
+                                      }
+                                      value={
+                                        status
+                                      }
+                                    >
+                                      {
+                                        status
+                                      }
+                                    </option>
+
+                                  )
+                                )
+                              }
+
+                            </select>
+
+                          </td>
+
+                        </tr>
+
+                      )
+                    )
+                  }
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )
+        }
+
+      </section>
+
+    </>
+
+  );
+}
+
+
+
+function ReferralRoute() {
+
+  const { user } =
+    useAuth();
+
+
+  if (
+    user.role ===
+      "counselor" ||
+    user.role ===
+      "super_admin"
+  ) {
+
+    return (
+      <ReferralManagement />
+    );
+  }
+
+
+  if (
+    employeeUserRole(
+      user.role
+    )
+  ) {
+
+    return (
+      <Referrals />
+    );
+  }
+
+
+  return (
+    <Navigate
+      to="/dashboard"
+      replace
+    />
+  );
+}
+
+
+
 // ======================================================
 // RATINGS & FEEDBACK
 // STUDENT / TEACHING / NON-TEACHING
 // ======================================================
+
 
 function Feedback() {
 
@@ -16654,8 +17344,38 @@ function CounselingRequestsManagement() {
         deadlinePassed:
           false,
 
+        concluded:
+          false,
+
         reason:
           "Only the currently assigned counselor can transfer this user."
+      };
+    }
+
+
+    if (
+      row?.status ===
+        "Concluded"
+    ) {
+
+      return {
+        visible:
+          true,
+
+        disabled:
+          true,
+
+        pending:
+          false,
+
+        deadlinePassed:
+          false,
+
+        concluded:
+          true,
+
+        reason:
+          "This counseling request has been concluded and can no longer be transferred."
       };
     }
 
@@ -16683,6 +17403,9 @@ function CounselingRequestsManagement() {
             pendingTransfer
           ),
 
+        concluded:
+          false,
+
         reason:
           "A counselor transfer for this user is already waiting for approval."
       };
@@ -16708,6 +17431,9 @@ function CounselingRequestsManagement() {
         deadlinePassed:
           true,
 
+        concluded:
+          false,
+
         reason:
           "Transfers must be requested before the counseling start time."
       };
@@ -16725,6 +17451,9 @@ function CounselingRequestsManagement() {
         false,
 
       deadlinePassed:
+        false,
+
+      concluded:
         false,
 
       reason:
@@ -16753,6 +17482,19 @@ function CounselingRequestsManagement() {
   async function requestCounselorTransfer(
     row
   ) {
+
+    if (
+      row?.status ===
+        "Concluded"
+    ) {
+
+      alert(
+        "This counseling request has already been concluded and can no longer be transferred."
+      );
+
+      return;
+    }
+
 
     if (!canRequestTransfer(row)) {
 
@@ -19041,6 +19783,12 @@ function Schedule() {
     useNavigate();
 
 
+  const [
+    scheduleStatusFilter,
+    setScheduleStatusFilter
+  ] = useState("all");
+
+
   const isSuperAdmin =
     user.role ===
     "super_admin";
@@ -19129,6 +19877,64 @@ function Schedule() {
       );
 
 
+  const concludedAppointments =
+    appointments.filter(
+      row =>
+        row.status ===
+        "Concluded"
+    );
+
+
+  const currentAppointments =
+    appointments.filter(
+      row =>
+        row.status !==
+        "Concluded"
+    );
+
+
+  const scheduleStatusOptions =
+    Array.from(
+      new Set([
+        "Pending approval",
+        ...COUNSELING_REVIEW_STATUSES
+          .filter(
+            status =>
+              status !==
+              "Concluded"
+          ),
+        ...currentAppointments
+          .map(
+            row =>
+              row.status ||
+              "For review"
+          )
+          .filter(
+            status =>
+              Boolean(
+                status
+              ) &&
+              status !==
+                "Concluded"
+          )
+      ])
+    );
+
+
+  const filteredCurrentAppointments =
+    scheduleStatusFilter ===
+      "all"
+      ? currentAppointments
+      : currentAppointments.filter(
+          row =>
+            (
+              row.status ||
+              "For review"
+            ) ===
+              scheduleStatusFilter
+        );
+
+
   function openAppointment(
     appointment
   ) {
@@ -19159,27 +19965,161 @@ function Schedule() {
 
         title="Counselor Schedule"
 
-        subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
+        subtitle="Current appointments are shown first and can be filtered by counseling-request status. Concluded sessions are kept in a separate section below."
 
       />
 
 
+      <section className="panel counselor-filter-panel">
+
+        <div className="counselor-filter-heading">
+
+          <div>
+
+            <h2>
+              Filter Schedule
+            </h2>
+
+            <p>
+              Filter the current schedule by counseling-request status. Concluded sessions are always shown separately below.
+            </p>
+
+          </div>
+
+
+          <span className="counselor-filter-count">
+
+            {
+              filteredCurrentAppointments.length
+            }
+
+            {" "}
+
+            of
+
+            {" "}
+
+            {
+              currentAppointments.length
+            }
+
+          </span>
+
+        </div>
+
+
+        <div className="counselor-filter-grid">
+
+          <label>
+
+            Counseling Request Status
+
+            <select
+
+              value={
+                scheduleStatusFilter
+              }
+
+              onChange={
+                event =>
+                  setScheduleStatusFilter(
+                    event.target.value
+                  )
+              }
+
+            >
+
+              <option value="all">
+                All current statuses
+              </option>
+
+              {
+                scheduleStatusOptions.map(
+                  status => (
+
+                    <option
+                      key={
+                        status
+                      }
+                      value={
+                        status
+                      }
+                    >
+                      {
+                        status
+                      }
+                    </option>
+
+                  )
+                )
+              }
+
+            </select>
+
+          </label>
+
+        </div>
+
+      </section>
+
+
       <section className="panel">
+
+        <div className="counselor-filter-heading">
+
+          <div>
+
+            <h2>
+              Current Schedule
+            </h2>
+
+            <p>
+              Active and ongoing counseling requests with a scheduled date and time.
+            </p>
+
+          </div>
+
+
+          <span className="counselor-filter-count">
+
+            {
+              filteredCurrentAppointments.length
+            }
+
+            {" "}
+
+            of
+
+            {" "}
+
+            {
+              currentAppointments.length
+            }
+
+          </span>
+
+        </div>
+
 
         <div className="schedule-grid">
 
 
-          {appointments.length === 0
+          {filteredCurrentAppointments.length === 0
 
             ? (
 
               <Empty
-                text="No appointments yet."
+                text={
+                  currentAppointments.length ===
+                    0
+                    ? "No current appointments yet."
+                    : `No current appointments with status "${scheduleStatusFilter}".`
+                }
               />
 
             )
 
-            : appointments.map(
+            : filteredCurrentAppointments.map(
                 row => (
 
                   <button
@@ -19261,6 +20201,141 @@ function Schedule() {
 
                         <span className="schedule-open-hint">
                           Open request
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                  </button>
+
+                )
+              )
+          }
+
+        </div>
+
+      </section>
+
+
+      <section className="panel">
+
+        <div className="counselor-filter-heading">
+
+          <div>
+
+            <h2>
+              Concluded Sessions
+            </h2>
+
+            <p>
+              Completed counseling sessions are separated from the current schedule for easier review.
+            </p>
+
+          </div>
+
+
+          <span className="counselor-filter-count">
+
+            {
+              concludedAppointments.length
+            }
+
+          </span>
+
+        </div>
+
+
+        <div className="schedule-grid">
+
+
+          {concludedAppointments.length === 0
+
+            ? (
+
+              <Empty
+                text="No concluded sessions yet."
+              />
+
+            )
+
+            : concludedAppointments.map(
+                row => (
+
+                  <button
+
+                    type="button"
+
+                    className="schedule-card schedule-card-button"
+
+                    key={
+                      row.id
+                    }
+
+                    onClick={
+                      () =>
+                        openAppointment(
+                          row
+                        )
+                    }
+
+                    title="Open concluded counseling request"
+
+                  >
+
+                    <Calendar />
+
+
+                    <div>
+
+                      <strong>
+
+                        {
+                          row.date
+                        }
+
+                        {" — "}
+
+                        {
+                          row.time
+                        }
+
+                      </strong>
+
+
+                      <p>
+
+                        {
+                          row.ownerName ||
+                          "User"
+                        }
+
+                        {row.program && (
+                          <>
+                            {" · "}
+                            {row.program}
+                          </>
+                        )}
+
+                        {row.mode && (
+                          <>
+                            {" · "}
+                            {row.mode}
+                          </>
+                        )}
+
+                      </p>
+
+
+                      <div className="schedule-card-footer">
+
+                        <span className="status">
+                          Concluded
+                        </span>
+
+
+                        <span className="schedule-open-hint">
+                          Open record
                         </span>
 
                       </div>
@@ -21450,7 +22525,7 @@ export default function App() {
                   path="/referrals"
 
                   element={
-                    <Referrals />
+                    <ReferralRoute />
                   }
 
                 />

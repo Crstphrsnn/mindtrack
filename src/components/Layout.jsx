@@ -97,6 +97,7 @@ const menu = {
     ["/dashboard", "Dashboard", Home],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
+    ["/referrals", "Referrals", Users],
     ["/user-profiles", "User Profiles", Users],
     ["/schedule", "Schedule", Calendar],
     ["/reports", "Reports", BarChart3],
@@ -108,6 +109,7 @@ const menu = {
     ["/user-profiles", "User Profiles", Users],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
+    ["/referrals", "Referrals", Users],
     ["/reports", "Reports", BarChart3],
   ],
 };
