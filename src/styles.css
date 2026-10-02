@@ -735,7 +735,8 @@ td {
 }
 
 th {
-  background: #f1f3f7;
+  background: #DECA57;
+  color: #111827;
 }
 
 .text-button {
@@ -4354,23 +4355,22 @@ th {
 }
 
 .transfer-user-button {
-  border: 1px solid #173f8f;
+  border: 0;
   border-radius: 11px;
   padding: 13px 20px;
-  background: #eef4ff;
-  color: #173f8f;
+  background: #0B4A6F;
+  color: #FFFFFF;
   font: inherit;
   font-weight: 700;
   line-height: normal;
   cursor: pointer;
   transition:
     transform 0.15s,
-    opacity 0.15s,
-    background 0.15s;
+    opacity 0.15s;
 }
 
 .transfer-user-button:hover:not(:disabled) {
-  background: #e2ecff;
+  opacity: 0.94;
 }
 
 .transfer-user-button:active:not(:disabled) {
@@ -4378,7 +4378,7 @@ th {
 }
 
 .transfer-user-button:disabled {
-  border-color: #cbd5e1;
+  border: 0;
   background: #f3f5f8;
   color: #7b8495;
   cursor: not-allowed;
@@ -4552,4 +4552,108 @@ th {
 
 .counseling-new-request-fieldset:disabled .primary-button {
   cursor: not-allowed;
+}
+
+
+/* =====================================================
+   LATEST UI COMPATIBILITY PATCH
+   Keeps the full MindTrack stylesheet and adds only the
+   newer Referral / registration / filter UI classes.
+===================================================== */
+
+/* Generic filter grids used by newer management pages. */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.filter-grid > label {
+  margin-top: 0;
+}
+
+/* Referral status card: keep counselor and privacy note separated. */
+.referral-status-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e9f0;
+}
+
+.referral-status-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: #49566a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.referral-status-detail-row strong {
+  color: #24324a;
+}
+
+.referral-status-privacy-note {
+  display: block;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #f6f8fb;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Referral-management status control must remain readable in a table cell. */
+.referral-management-status-select {
+  width: 150px;
+  min-width: 150px;
+  max-width: 100%;
+  padding: 8px 30px 8px 10px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* Registration helper text used by the latest registration flow. */
+.registration-section-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f3f7fd;
+  color: #53627a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Email verification resend action, aligned with current secondary actions. */
+.auth-resend-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 13px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-resend-button:hover:not(:disabled) {
+  background: #dbe6f8;
+}
+
+.auth-resend-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .referral-management-status-select {
+    width: 160px;
+    min-width: 160px;
+  }
 }

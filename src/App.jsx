@@ -1305,6 +1305,42 @@ function Register() {
     );
 
 
+  const studentAssignedCounselor =
+    useMemo(
+      () => {
+
+        if (
+          form.role !==
+            "student" ||
+          !form.department
+        ) {
+          return null;
+        }
+
+
+        return (
+          availableCounselors.find(
+            counselor =>
+              counselor.linked &&
+              normalizedCounselorDepartment(
+                counselor.department
+              ) ===
+                normalizedCounselorDepartment(
+                  form.department
+                )
+          ) ||
+          null
+        );
+
+      },
+      [
+        availableCounselors,
+        form.role,
+        form.department
+      ]
+    );
+
+
   useEffect(() => {
 
     let active = true;
@@ -1410,10 +1446,56 @@ function Register() {
 
       if (name === "department") {
 
+        if (
+          current.role ===
+          "student"
+        ) {
+
+          const counselor =
+            availableCounselors.find(
+              item =>
+                item.linked &&
+                normalizedCounselorDepartment(
+                  item.department
+                ) ===
+                  normalizedCounselorDepartment(
+                    nextValue
+                  )
+            );
+
+
+          return {
+            ...current,
+
+            department:
+              nextValue,
+
+            program:
+              "",
+
+            assignedCounselorId:
+              counselor?.id ||
+              "",
+
+            assignedCounselorName:
+              counselor?.firebaseName ||
+              counselor?.name ||
+              "",
+
+            assignedCounselorDepartment:
+              counselor?.firebaseDepartment ||
+              counselor?.department ||
+              ""
+          };
+        }
+
+
         return {
           ...current,
-          department: nextValue,
-          program: ""
+          department:
+            nextValue,
+          program:
+            ""
         };
       }
 
@@ -1872,6 +1954,21 @@ function Register() {
     ) {
       setError(
         "Please select your college or office."
+      );
+      return;
+    }
+
+    if (
+      form.role ===
+        "student" &&
+      (
+        !form.assignedCounselorId ||
+        !form.assignedCounselorName ||
+        !form.assignedCounselorDepartment
+      )
+    ) {
+      setError(
+        "No active Guidance Counselor is linked to the selected college. Please ask the MindTrack administrator to update the counselor directory before registering this student account."
       );
       return;
     }
@@ -2409,6 +2506,21 @@ function Register() {
                     </option>
 
                   </select>
+
+                  {form.department && (
+
+                    <small className="optional-text">
+
+                      {
+                        studentAssignedCounselor
+                          ? `Assigned counselor: ${studentAssignedCounselor.firebaseName || studentAssignedCounselor.name} [${studentAssignedCounselor.firebaseDepartment || studentAssignedCounselor.department}]`
+                          : "No active Guidance Counselor is currently linked to this college."
+                      }
+
+                    </small>
+
+                  )}
+
                 </label>
 
               )}
@@ -9747,23 +9859,31 @@ function Referrals() {
                     </p>
 
 
-                    <small>
+                    <div className="referral-status-details">
 
-                      Assigned counselor:
-                      {" "}
-                      {
-                        row.assignedCounselorName ||
-                        "Not recorded"
-                      }
+                      <div className="referral-status-detail-row">
 
-                    </small>
+                        <strong>
+                          Assigned counselor:
+                        </strong>
+
+                        <span>
+                          {
+                            row.assignedCounselorName ||
+                            "Not recorded"
+                          }
+                        </span>
+
+                      </div>
 
 
-                    <small>
+                      <div className="referral-status-privacy-note">
 
-                      Private assessment and counseling notes are not shown to the referrer.
+                        Private assessment and counseling notes are not shown to the referrer.
 
-                    </small>
+                      </div>
+
+                    </div>
 
                   </article>
 
@@ -10057,39 +10177,6 @@ function ReferralManagement() {
         </div>
 
 
-        <div className="filter-summary">
-
-          <span>
-            {
-              visibleReferrals.length
-            }
-            {" "}
-            referral
-            {
-              visibleReferrals.length ===
-                1
-                ? ""
-                : "s"
-            }
-          </span>
-
-          {!isSuperAdmin && (
-
-            <span>
-              Assigned counselor:
-              {" "}
-              <strong>
-                {
-                  user.name ||
-                  "Guidance Counselor"
-                }
-              </strong>
-            </span>
-
-          )}
-
-        </div>
-
       </section>
 
 
@@ -10284,6 +10371,8 @@ function ReferralManagement() {
                           <td>
 
                             <select
+
+                              className="referral-management-status-select"
 
                               value={
                                 REFERRAL_MANAGEMENT_STATUSES.includes(
