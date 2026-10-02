@@ -5151,6 +5151,46 @@ function Assessment() {
     useAuth();
 
 
+  const navigate =
+    useNavigate();
+
+
+  const assessmentRows =
+    useRows(
+      "assessments",
+      {
+        ownerId:
+          user.id
+      }
+    );
+
+
+  const blockingAssessment =
+    assessmentRows.find(
+      row =>
+        !assessmentAllowsAnother(
+          row.status
+        )
+    ) ||
+    null;
+
+
+  const assignedAssessmentCounselorId =
+    user.assignedCounselorId ||
+    "";
+
+
+  const assignedAssessmentCounselorName =
+    user.assignedCounselorName ||
+    "Guidance Counselor";
+
+
+  const assignedAssessmentCounselorDepartment =
+    user.assignedCounselorDepartment ||
+    user.department ||
+    "";
+
+
   const [answers, setAnswers] =
     useState({});
 
@@ -5359,6 +5399,30 @@ function Assessment() {
 
 
     if (
+      blockingAssessment
+    ) {
+
+      alert(
+        `You already have an assessment case with status "${assessmentCaseStatusLabel(blockingAssessment.status)}". You may take another assessment only after your assigned counselor marks the current assessment case Approved.`
+      );
+
+      return;
+    }
+
+
+    if (
+      !assignedAssessmentCounselorId
+    ) {
+
+      alert(
+        "No assigned Guidance Counselor is linked to your account. Please contact the MindTrack administrator before submitting an assessment."
+      );
+
+      return;
+    }
+
+
+    if (
       !GENDER_OPTIONS.includes(
         user.gender
       )
@@ -5449,6 +5513,15 @@ function Assessment() {
       program:
         user.program || "",
 
+      assignedCounselorId:
+        assignedAssessmentCounselorId,
+
+      assignedCounselorName:
+        assignedAssessmentCounselorName,
+
+      assignedCounselorDepartment:
+        assignedAssessmentCounselorDepartment,
+
       assessmentVersion:
         "WHO5-PHQ9-GAD7-DASS21-SUBSCALES-2026-09",
 
@@ -5475,15 +5548,173 @@ function Assessment() {
     };
 
 
-    await addRecord(
-      "assessments",
-      record
-    );
+    const assessmentRef =
+      doc(
+        collection(
+          db,
+          "assessments"
+        )
+      );
 
 
-    setSaved(
-      result
-    );
+    const assessmentGuardRef =
+      doc(
+        db,
+        "assessmentSubmissionGuards",
+        user.id
+      );
+
+
+    const counselorNotificationRef =
+      doc(
+        collection(
+          db,
+          "notifications"
+        )
+      );
+
+
+    try {
+
+      await runTransaction(
+        db,
+
+        async transaction => {
+
+          const guardSnap =
+            await transaction.get(
+              assessmentGuardRef
+            );
+
+
+          const activeAssessmentIds =
+            guardSnap.exists() &&
+            Array.isArray(
+              guardSnap.data()
+                ?.activeAssessmentIds
+            )
+              ? guardSnap.data()
+                  .activeAssessmentIds
+                  .filter(Boolean)
+              : [];
+
+
+          if (
+            activeAssessmentIds.length >
+            0
+          ) {
+
+            throw new Error(
+              "You already have an assessment case waiting for counselor approval. You may take another assessment only after the current case is marked Approved."
+            );
+          }
+
+
+          transaction.set(
+            assessmentRef,
+            {
+              ...record,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.set(
+            assessmentGuardRef,
+            {
+              ownerId:
+                user.id,
+
+              activeAssessmentIds: [
+                assessmentRef.id
+              ],
+
+              activeAssessmentCount:
+                1,
+
+              latestAssessmentId:
+                assessmentRef.id,
+
+              latestStatus:
+                "For review",
+
+              updatedById:
+                user.id,
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          );
+
+
+          transaction.set(
+            counselorNotificationRef,
+            {
+              ownerId:
+                assignedAssessmentCounselorId,
+
+              title:
+                "New psychological assessment submitted",
+
+              message:
+                `${user.name || "A user"} submitted a psychological assessment. Open Assessment Cases to review the new case.`,
+
+              notificationType:
+                "assessment_submitted",
+
+              senderRole:
+                user.role,
+
+              senderId:
+                user.id,
+
+              senderName:
+                user.name ||
+                "MindTrack user",
+
+              targetPath:
+                "/cases",
+
+              sourceType:
+                "assessment",
+
+              sourceId:
+                assessmentRef.id,
+
+              read:
+                false,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+        }
+      );
+
+
+      setSaved(
+        result
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Assessment submission error:",
+        error
+      );
+
+
+      alert(
+        error?.message ||
+        "Unable to submit the psychological assessment."
+      );
+    }
 
   }
 
@@ -5738,6 +5969,84 @@ function Assessment() {
 
     );
 
+  }
+
+
+  if (
+    blockingAssessment
+  ) {
+
+    return (
+
+      <>
+
+        <PageTitle
+
+          title="Psychological Assessment"
+
+          subtitle="Complete all four screening tools when a new assessment is available."
+
+        />
+
+
+        <section className="panel assessment-limit-panel">
+
+          <h2>
+            Assessment currently unavailable
+          </h2>
+
+
+          <div className="notice assessment-limit-notice">
+
+            <strong>
+              You already have an assessment case awaiting completion of counselor review.
+            </strong>
+
+            <span>
+              Current status:
+              {" "}
+              <b>
+                {
+                  assessmentCaseStatusLabel(
+                    blockingAssessment.status
+                  )
+                }
+              </b>
+              .
+              {" "}
+              You may take another psychological assessment only after your assigned counselor marks this assessment case
+              {" "}
+              <b>
+                Approved
+              </b>
+              .
+            </span>
+
+          </div>
+
+
+          <button
+
+            type="button"
+
+            className="secondary-button"
+
+            onClick={
+              () =>
+                navigate(
+                  "/monitoring"
+                )
+            }
+
+          >
+            View assessment status
+          </button>
+
+        </section>
+
+      </>
+
+    );
   }
 
 
@@ -6271,6 +6580,19 @@ function assessmentCaseStatusLabel(
 
   return status ||
     "For review";
+}
+
+
+function assessmentAllowsAnother(
+  status
+) {
+
+  return (
+    assessmentCaseStatusLabel(
+      status
+    ) ===
+    "Approved"
+  );
 }
 
 
@@ -7785,6 +8107,18 @@ function Consultations() {
 
 
     if (
+      !currentAssignedCounselorId
+    ) {
+
+      alert(
+        "No assigned Guidance Counselor is linked to your account. Please contact the MindTrack administrator before submitting a counseling request."
+      );
+
+      return;
+    }
+
+
+    if (
       !GENDER_OPTIONS.includes(
         user.gender
       )
@@ -7901,6 +8235,15 @@ function Consultations() {
               )
             )
           : null;
+
+
+      const counselorNotificationRef =
+        doc(
+          collection(
+            db,
+            "notifications"
+          )
+        );
 
 
       await runTransaction(
@@ -8066,6 +8409,49 @@ function Consultations() {
             {
               merge:
                 true
+            }
+          );
+
+
+          transaction.set(
+            counselorNotificationRef,
+            {
+              ownerId:
+                currentAssignedCounselorId,
+
+              title:
+                "New counseling request submitted",
+
+              message:
+                `${user.name || "A user"} submitted a counseling request for ${form.category}. Requested schedule: ${form.date} · ${form.time}.`,
+
+              notificationType:
+                "counseling_request_submitted",
+
+              senderRole:
+                user.role,
+
+              senderId:
+                user.id,
+
+              senderName:
+                user.name ||
+                "MindTrack user",
+
+              targetPath:
+                "/counseling-requests",
+
+              sourceType:
+                "consultation",
+
+              sourceId:
+                consultationRef.id,
+
+              read:
+                false,
+
+              createdAt:
+                serverTimestamp()
             }
           );
 
@@ -9487,40 +9873,128 @@ function Referrals() {
     }
 
 
-    await addRecord(
-      "referrals",
-      {
+    const referralRef =
+      doc(
+        collection(
+          db,
+          "referrals"
+        )
+      );
 
-        ...form,
 
-        ownerId:
-          user.id,
+    const counselorNotificationRef =
+      doc(
+        collection(
+          db,
+          "notifications"
+        )
+      );
 
-        referrerId:
-          user.id,
 
-        referrerName:
-          user.name,
+    try {
 
-        referrerRole:
-          user.role,
+      await runTransaction(
+        db,
 
-        assignedCounselorId:
-          selectedReferralCounselor.id,
+        async transaction => {
 
-        assignedCounselorName:
-          selectedReferralCounselor.name ||
-          "Guidance Counselor",
+          transaction.set(
+            referralRef,
+            {
 
-        assignedCounselorDepartment:
-          selectedReferralCounselor.department ||
-          form.department,
+              ...form,
 
-        status:
-          "Received"
+              ownerId:
+                user.id,
 
-      }
-    );
+              referrerId:
+                user.id,
+
+              referrerName:
+                user.name,
+
+              referrerRole:
+                user.role,
+
+              assignedCounselorId:
+                selectedReferralCounselor.id,
+
+              assignedCounselorName:
+                selectedReferralCounselor.name ||
+                "Guidance Counselor",
+
+              assignedCounselorDepartment:
+                selectedReferralCounselor.department ||
+                form.department,
+
+              status:
+                "Received",
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.set(
+            counselorNotificationRef,
+            {
+              ownerId:
+                selectedReferralCounselor.id,
+
+              title:
+                "New referral submitted",
+
+              message:
+                `${user.name || "A Teaching/Non-teaching user"} submitted a referral for ${form.personName}. College / Office: ${form.department}.`,
+
+              notificationType:
+                "referral_submitted",
+
+              senderRole:
+                user.role,
+
+              senderId:
+                user.id,
+
+              senderName:
+                user.name ||
+                "MindTrack user",
+
+              targetPath:
+                "/referrals",
+
+              sourceType:
+                "referral",
+
+              sourceId:
+                referralRef.id,
+
+              read:
+                false,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to submit referral:",
+        error
+      );
+
+
+      alert(
+        error?.message ||
+        "Unable to submit the referral."
+      );
+
+      return;
+    }
 
 
     setForm({
@@ -12568,6 +13042,9 @@ function UserNotificationsContent({
         ) {
 
           return [
+            "assessment_submitted",
+            "counseling_request_submitted",
+            "referral_submitted",
             "transfer_request",
             "transfer_status"
           ].includes(
@@ -12628,18 +13105,39 @@ function UserNotificationsContent({
       row.sourceId
     ) {
 
-      navigate(
-        "/consultations",
-        {
-          state: {
-            requestId:
-              row.sourceId,
+      if (
+        user.role ===
+        "counselor"
+      ) {
 
-            fromNotification:
-              true
+        navigate(
+          "/counseling-requests",
+          {
+            state: {
+              requestId:
+                row.sourceId,
+
+              fromNotification:
+                true
+            }
           }
-        }
-      );
+        );
+
+      } else {
+
+        navigate(
+          "/consultations",
+          {
+            state: {
+              requestId:
+                row.sourceId,
+
+              fromNotification:
+                true
+            }
+          }
+        );
+      }
 
       return;
     }
@@ -12651,17 +13149,42 @@ function UserNotificationsContent({
       row.sourceId
     ) {
 
-      navigate(
-        "/monitoring",
-        {
-          state: {
-            assessmentId:
-              row.sourceId,
+      if (
+        user.role ===
+        "counselor"
+      ) {
 
-            fromNotification:
-              true
+        navigate(
+          "/cases"
+        );
+
+      } else {
+
+        navigate(
+          "/monitoring",
+          {
+            state: {
+              assessmentId:
+                row.sourceId,
+
+              fromNotification:
+                true
+            }
           }
-        }
+        );
+      }
+
+      return;
+    }
+
+
+    if (
+      row.sourceType ===
+        "referral"
+    ) {
+
+      navigate(
+        "/referrals"
       );
 
       return;
@@ -12746,7 +13269,7 @@ function UserNotificationsContent({
 
         subtitle={
           user.role === "counselor"
-            ? "Transfer requests and transfer status updates for Guidance Counselors."
+            ? "New assessment submissions, counseling requests, referrals, and counselor-transfer updates."
             : "Counselor updates about your psychological assessment cases, counseling requests, and counselor transfers."
         }
 
@@ -14729,10 +15252,102 @@ function Cases() {
       }
 
 
-      await updateRecord(
-        "assessments",
-        selected.id,
-        assessmentUpdate
+      const assessmentRef =
+        doc(
+          db,
+          "assessments",
+          selected.id
+        );
+
+
+      const assessmentGuardRef =
+        doc(
+          db,
+          "assessmentSubmissionGuards",
+          selected.ownerId
+        );
+
+
+      await runTransaction(
+        db,
+
+        async transaction => {
+
+          const guardSnap =
+            await transaction.get(
+              assessmentGuardRef
+            );
+
+
+          const currentActiveIds =
+            guardSnap.exists() &&
+            Array.isArray(
+              guardSnap.data()
+                ?.activeAssessmentIds
+            )
+              ? guardSnap.data()
+                  .activeAssessmentIds
+                  .filter(Boolean)
+              : [];
+
+
+          const nextActiveIds =
+            statusDraft ===
+              "Approved"
+              ? currentActiveIds.filter(
+                  assessmentId =>
+                    assessmentId !==
+                    selected.id
+                )
+              : Array.from(
+                  new Set([
+                    ...currentActiveIds,
+                    selected.id
+                  ])
+                );
+
+
+          transaction.update(
+            assessmentRef,
+            {
+              ...assessmentUpdate,
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.set(
+            assessmentGuardRef,
+            {
+              ownerId:
+                selected.ownerId,
+
+              activeAssessmentIds:
+                nextActiveIds,
+
+              activeAssessmentCount:
+                nextActiveIds.length,
+
+              latestAssessmentId:
+                selected.id,
+
+              latestStatus:
+                statusDraft,
+
+              updatedById:
+                user.id,
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          );
+        }
       );
 
 

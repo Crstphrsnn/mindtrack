@@ -129,10 +129,10 @@ export default function Layout({ children }) {
   ] = useState(0);
 
 
-  useEffect(
-    () => {
-
-      const isGeneralUser =
+  const notificationAccess =
+    Boolean(
+      user?.id &&
+      (
         [
           "student",
           "teaching",
@@ -141,12 +141,19 @@ export default function Layout({ children }) {
           "personnel"
         ].includes(
           user?.role
-        );
+        )
+        ||
+        user?.role ===
+          "counselor"
+      )
+    );
 
+
+  useEffect(
+    () => {
 
       if (
-        !user?.id ||
-        !isGeneralUser
+        !notificationAccess
       ) {
 
         setUnreadNotifications(0);
@@ -159,15 +166,46 @@ export default function Layout({ children }) {
         "notifications",
         rows => {
 
-          setUnreadNotifications(
+          const visibleUnread =
             rows.filter(
-              row =>
-                !row.read &&
-                row.notificationType ===
-                  "counselor_update" &&
-                row.senderRole ===
+              row => {
+
+                if (row.read) {
+                  return false;
+                }
+
+
+                if (
+                  user?.role ===
                   "counselor"
-            ).length
+                ) {
+
+                  return [
+                    "assessment_submitted",
+                    "counseling_request_submitted",
+                    "referral_submitted",
+                    "transfer_request",
+                    "transfer_status"
+                  ].includes(
+                    row.notificationType
+                  );
+                }
+
+
+                return [
+                  "counselor_update",
+                  "counselor_transfer_update"
+                ].includes(
+                  row.notificationType
+                ) &&
+                row.senderRole ===
+                  "counselor";
+              }
+            );
+
+
+          setUnreadNotifications(
+            visibleUnread.length
           );
         },
         {
@@ -179,6 +217,7 @@ export default function Layout({ children }) {
     },
 
     [
+      notificationAccess,
       user?.id,
       user?.role
     ]
@@ -309,15 +348,68 @@ export default function Layout({ children }) {
 
           </div>
 
-          <div className="top-user">
+          <div className="top-user-area">
 
-            <strong>
-              {user?.name || "User"}
-            </strong>
+            {notificationAccess && (
 
-            <small>
-              {user?.department || ""}
-            </small>
+              <button
+
+                type="button"
+
+                className="topbar-notification-button"
+
+                onClick={
+                  () =>
+                    navigate(
+                      "/notifications"
+                    )
+                }
+
+                aria-label={
+                  unreadNotifications > 0
+                    ? `${unreadNotifications} unread notifications`
+                    : "Open notifications"
+                }
+
+                title="Notifications"
+
+              >
+
+                <Bell
+                  size={20}
+                />
+
+
+                {unreadNotifications > 0 && (
+
+                  <span className="topbar-notification-badge">
+
+                    {
+                      unreadNotifications > 99
+                        ? "99+"
+                        : unreadNotifications
+                    }
+
+                  </span>
+
+                )}
+
+              </button>
+
+            )}
+
+
+            <div className="top-user">
+
+              <strong>
+                {user?.name || "User"}
+              </strong>
+
+              <small>
+                {user?.department || ""}
+              </small>
+
+            </div>
 
           </div>
 
