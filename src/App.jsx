@@ -130,9 +130,24 @@ function normalizedCounselorDepartment(
       "college of education",
 
     "cthm":
-      "college of tourism and hospitality management",
+      "college of hospitality and tourism management",
+
+    "chtm":
+      "college of hospitality and tourism management",
+
+    "college of tourism and hospitality management":
+      "college of hospitality and tourism management",
+
+    "college of hospitality and tourism management":
+      "college of hospitality and tourism management",
 
     "cit":
+      "college of industrial technology",
+
+    "college of technology":
+      "college of industrial technology",
+
+    "college of industrial technology":
       "college of industrial technology",
 
     "casl":
@@ -1124,10 +1139,27 @@ const PROGRAMS_BY_COLLEGE = {
 
 function collegePrograms(college) {
 
-  return (
-    PROGRAMS_BY_COLLEGE[
+  const normalized =
+    normalizedCounselorDepartment(
       college
-    ] || []
+    );
+
+
+  const matchedEntry =
+    Object.entries(
+      PROGRAMS_BY_COLLEGE
+    ).find(
+      ([collegeName]) =>
+        normalizedCounselorDepartment(
+          collegeName
+        ) ===
+        normalized
+    );
+
+
+  return (
+    matchedEntry?.[1] ||
+    []
   );
 }
 
