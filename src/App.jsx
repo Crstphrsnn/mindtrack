@@ -787,6 +787,7 @@ function Register() {
     department: "",
     program: "",
     userNumber: "",
+    gender: "",
     phoneNumber: "",
 
     regionCode: "",
@@ -1380,6 +1381,20 @@ function Register() {
       return;
     }
 
+    if (
+      ![
+        "Male",
+        "Female"
+      ].includes(
+        form.gender
+      )
+    ) {
+      setError(
+        "Please select your sex."
+      );
+      return;
+    }
+
     if (!form.phoneNumber.trim()) {
       setError(
         "Please enter your phone number."
@@ -1515,6 +1530,7 @@ function Register() {
             ? form.program
             : "",
         userNumber: form.userNumber,
+        gender: form.gender,
         phoneNumber: form.phoneNumber,
         address: fullAddress,
         facebookAccount:
@@ -1917,6 +1933,39 @@ function Register() {
 
 
             <div className="registration-grid">
+
+              <label>
+                Sex
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
+
+                <select
+                  name="gender"
+                  value={form.gender}
+                  onChange={change}
+                  required
+                >
+                  <option
+                    value=""
+                    disabled
+                  >
+                    Select sex
+                  </option>
+
+                  <option value="Male">
+                    Male
+                  </option>
+
+                  <option value="Female">
+                    Female
+                  </option>
+                </select>
+              </label>
+
 
               <label>
                 Phone Number
