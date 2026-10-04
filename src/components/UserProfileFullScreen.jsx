@@ -74,21 +74,33 @@ function normalizedProfileDepartment(
       "college of computing sciences",
 
     "coe":
-      "college of education",
+      "college of teacher education",
 
     "cte":
-      "college of education",
+      "college of teacher education",
 
     "college of education":
-      "college of education",
+      "college of teacher education",
+
+    "college of teacher education":
+      "college of teacher education",
 
     "cthm":
-      "college of tourism and hospitality management",
+      "college of hospitality and tourism management",
+
+    "chtm":
+      "college of hospitality and tourism management",
 
     "college of tourism and hospitality management":
-      "college of tourism and hospitality management",
+      "college of hospitality and tourism management",
+
+    "college of hospitality and tourism management":
+      "college of hospitality and tourism management",
 
     "cit":
+      "college of industrial technology",
+
+    "college of technology":
       "college of industrial technology",
 
     "college of industrial technology":
@@ -2120,7 +2132,7 @@ export default function UserProfileFullScreen({
 
 
 
-                  Gender
+                  Sex
 
 
 

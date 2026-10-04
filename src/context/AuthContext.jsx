@@ -500,7 +500,7 @@ export function AuthProvider({ children }) {
       )
     ) {
       throw new Error(
-        "Please select a valid gender."
+        "Please select a valid sex."
       );
     }
 

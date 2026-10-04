@@ -78,9 +78,9 @@ import {
 
 const PREFERRED_COUNSELORS = [
   {
-    key: "coe",
+    key: "cte",
     name: "April Santos",
-    department: "College of Education"
+    department: "College of Teacher Education"
   },
   {
     key: "cthm",
@@ -124,10 +124,16 @@ function normalizedCounselorDepartment(
 
   const aliases = {
     "coe":
-      "college of education",
+      "college of teacher education",
 
     "cte":
-      "college of education",
+      "college of teacher education",
+
+    "college of education":
+      "college of teacher education",
+
+    "college of teacher education":
+      "college of teacher education",
 
     "cthm":
       "college of hospitality and tourism management",
@@ -1114,19 +1120,22 @@ const PROGRAMS_BY_COLLEGE = {
   ],
 
   "College of Tourism and Hospitality Management": [
-    "Bachelor of Science in Hospitality Management"
+    "Bachelor of Science in Hospitality Management",
+    "Bachelor of Science in Tourism Management"
   ],
 
-  "College of Education": [
-    "Bachelor of Secondary Education",
-    "Bachelor of Technical-Vocational Teacher Education",
-    "Bachelor of Technology and Livelihood Education"
+  "College of Teacher Education": [
+    "Bachelor of Secondary Education - Major in English",
+    "Bachelor of Secondary Education - Major in Filipino",
+    "Bachelor of Secondary Education - Major in Social Studies",
+    "Bachelor of Secondary Education - Major in Science",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Garments Fashion and Design",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Food Service Management",
+    "Bachelor of Technology and Livelihood Education - Major in Home Economics"
   ],
 
   "College of Industrial Technology": [
     "Bachelor of Industrial Technology - Major in Automotive Technology",
-    "Bachelor of Industrial Technology - Major in Ceramics Technology",
-    "Bachelor of Industrial Technology - Major in Civil Technology",
     "Bachelor of Industrial Technology - Major in Drafting Technology",
     "Bachelor of Industrial Technology - Major in Electrical Technology",
     "Bachelor of Industrial Technology - Major in Electronics Technology",
@@ -2137,7 +2146,7 @@ function Register() {
 
     if (!form.streetName.trim()) {
       setError(
-        "Please enter your street name, house number, or purok."
+        "Please enter your house number, street name, or purok."
       );
       return;
     }
@@ -2513,8 +2522,8 @@ function Register() {
                       Select college / office
                     </option>
 
-                    <option value="College of Education">
-                      College of Education
+                    <option value="College of Teacher Education">
+                      College of Teacher Education
                     </option>
 
                     <option value="College of Tourism and Hospitality Management">
@@ -2719,7 +2728,7 @@ function Register() {
             <div className="registration-grid">
 
               <label>
-                Gender
+                Sex
                 <span
                   className="required-asterisk"
                   aria-hidden="true"
@@ -2738,7 +2747,7 @@ function Register() {
                     value=""
                     disabled
                   >
-                    Select gender
+                    Select sex
                   </option>
 
                   <option value="Male">
@@ -3020,7 +3029,7 @@ function Register() {
 
 
               <label className="full-width-field">
-                Street Name / House No. / Purok
+                House Number / Street Name / Purok
                 <span
                   className="required-asterisk"
                   aria-hidden="true"
@@ -3033,7 +3042,7 @@ function Register() {
                   name="streetName"
                   value={form.streetName}
                   onChange={change}
-                  placeholder="Example: 123 Rizal Street, Purok 2"
+                  placeholder="Example: 123, Rizal Street, Purok 2"
                   required
                 />
               </label>
@@ -12071,7 +12080,7 @@ function Profile() {
             <div className="profile-grid">
 
               <label>
-                Gender
+                Sex
 
                 <select
                   name="gender"
@@ -12086,7 +12095,7 @@ function Profile() {
                     value=""
                     disabled
                   >
-                    Select gender
+                    Select sex
                   </option>
 
                   <option value="Male">
@@ -19933,7 +19942,7 @@ function CounselingRequestsManagement() {
                         <div className="review-request-detail-item">
 
                           <span>
-                            Gender
+                            Sex
                           </span>
 
                           <strong>
@@ -22268,7 +22277,7 @@ function Reports() {
 
         subtitle={
           isSuperAdmin
-            ? "Institution-wide assessment priority and counseling analytics by college, program, and gender."
+            ? "Institution-wide assessment priority and counseling analytics by college, program, and sex."
             : `Assessment priority and counseling analytics for ${reportDepartment}.`
         }
 
@@ -22373,7 +22382,7 @@ function Reports() {
               : "s"
           }
           {" "}
-          do not yet have gender recorded. They appear under
+          do not yet have sex recorded. They appear under
           {" "}
           <strong>
             Not recorded
@@ -22427,8 +22436,8 @@ function Reports() {
 
 
       <OperationalAnalyticsBarChart
-        title="Analytics by gender"
-        description="Male and Female totals use the gender stored on the account and copied into each assessment and counseling record."
+        title="Analytics by sex"
+        description="Male and Female totals use the sex recorded on the account and copied into each assessment and counseling record."
         rows={byGender}
       />
 
