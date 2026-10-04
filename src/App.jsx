@@ -7857,13 +7857,23 @@ function Referrals() {
     useAuth();
 
 
+  const isCounselor =
+    user.role ===
+    "counselor";
+
+
   const rows =
     useRows(
       "referrals",
-      {
-        ownerId:
-          user.id
-      }
+      isCounselor
+        ? {
+            assignedCounselorId:
+              user.id
+          }
+        : {
+            ownerId:
+              user.id
+          }
     );
 
 
@@ -7900,9 +7910,33 @@ function Referrals() {
     });
 
 
+  const referralsLoading =
+    isCounselor
+      ? rows.loading
+      : rowsAreLoading(
+          rows,
+          counselorDirectory
+        );
+
+
+  const referralsError =
+    isCounselor
+      ? rows.error
+      : firstRowsError(
+          rows,
+          counselorDirectory
+        );
+
+
   async function submit(e) {
 
     e.preventDefault();
+
+
+    if (isCounselor) {
+      return;
+    }
+
 
     if (
       !COLLEGE_OPTIONS.includes(
@@ -8018,35 +8052,21 @@ function Referrals() {
   }
 
 
-  const own =
-    rows.filter(
-      row =>
-        row.referrerId ===
-        user.id
-    );
-
-
-  const referralsLoading =
-    rowsAreLoading(
-      rows,
-      counselorDirectory
-    );
-
-
-  const referralsError =
-    firstRowsError(
-      rows,
-      counselorDirectory
-    );
-
-
   if (referralsLoading) {
 
     return (
       <>
         <PageTitle
-          title="Referral"
-          subtitle="Faculty and personnel may refer someone who may benefit from guidance support."
+          title={
+            isCounselor
+              ? "Assigned Referrals"
+              : "Referral"
+          }
+          subtitle={
+            isCounselor
+              ? "Referrals specifically assigned to you."
+              : "Faculty and personnel may refer someone who may benefit from guidance support."
+          }
         />
 
         <section className="panel">
@@ -8064,18 +8084,159 @@ function Referrals() {
     return (
       <>
         <PageTitle
-          title="Referral"
-          subtitle="Faculty and personnel may refer someone who may benefit from guidance support."
+          title={
+            isCounselor
+              ? "Assigned Referrals"
+              : "Referral"
+          }
+          subtitle={
+            isCounselor
+              ? "Referrals specifically assigned to you."
+              : "Faculty and personnel may refer someone who may benefit from guidance support."
+          }
         />
 
         <div className="error-box">
           {referralsError}
-          <br />
-          Referrals cannot be submitted or displayed until the data loads successfully.
         </div>
       </>
     );
   }
+
+
+  if (isCounselor) {
+
+    return (
+      <>
+
+        <PageTitle
+          title="Assigned Referrals"
+          subtitle="View referrals that were routed to you through your counselor assignment."
+        />
+
+
+        <section className="panel">
+
+          <h2>
+            Referrals assigned to me
+          </h2>
+
+
+          {rows.length === 0
+
+            ? (
+
+              <Empty
+                text="No referrals are currently assigned to you."
+              />
+
+            )
+
+            : (
+
+              <div className="record-list">
+
+                {rows.map(
+                  row => (
+
+                    <article
+                      className="record-card"
+                      key={row.id}
+                    >
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: "12px",
+                          alignItems: "flex-start",
+                          flexWrap: "wrap"
+                        }}
+                      >
+
+                        <div>
+
+                          <strong>
+                            {row.personName || "Referred user"}
+                          </strong>
+
+                          <p>
+                            {row.personType || "User"}
+                            {" · "}
+                            {row.department || "No college / office"}
+                            {" · "}
+                            {row.urgency || "Routine"}
+                          </p>
+
+                        </div>
+
+
+                        <span className="status">
+                          {row.status || "Received"}
+                        </span>
+
+                      </div>
+
+
+                      {row.reason && (
+
+                        <p
+                          style={{
+                            whiteSpace: "pre-wrap"
+                          }}
+                        >
+                          <strong>
+                            Reason:
+                          </strong>
+                          {" "}
+                          {row.reason}
+                        </p>
+
+                      )}
+
+
+                      {row.contact && (
+
+                        <p>
+                          <strong>
+                            Contact:
+                          </strong>
+                          {" "}
+                          {row.contact}
+                        </p>
+
+                      )}
+
+
+                      <small>
+                        Referred by:
+                        {" "}
+                        {row.referrerName || "Faculty / Personnel"}
+                      </small>
+
+                    </article>
+
+                  )
+                )}
+
+              </div>
+
+            )
+          }
+
+        </section>
+
+      </>
+    );
+  }
+
+
+  const own =
+    rows.filter(
+      row =>
+        row.referrerId ===
+        user.id
+    );
 
 
   return (
@@ -8390,7 +8551,6 @@ function Referrals() {
 
   );
 }
-
 
 
 // ======================================================
@@ -18083,7 +18243,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={["faculty", "personnel"]}
+                      allowedRoles={["faculty", "personnel", "counselor"]}
                     >
                       <Referrals />
                     </RoleProtected>
