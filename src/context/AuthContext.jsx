@@ -39,10 +39,14 @@ import {
 
 
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
+  where,
   writeBatch
 } from "firebase/firestore";
 
@@ -671,15 +675,8 @@ export function AuthProvider({ children }) {
 
 
 
-    const allowedRoles = [
-
-      "student",
-
-      "teaching",
-
-      "non_teaching"
-
-    ];
+    const allowedRoles =
+      GENERAL_USER_ROLES;
 
 
 
@@ -1033,32 +1030,6 @@ export function AuthProvider({ children }) {
 
 
 
-    if (
-
-      !cleanAssignedCounselorId ||
-
-      !cleanAssignedCounselorName ||
-
-      !cleanAssignedCounselorDepartment
-
-    ) {
-
-      throw new Error(
-
-        role === "student"
-
-          ? "No active Guidance Counselor is linked to the selected college."
-
-          : "Please select a valid preferred Guidance Counselor."
-
-      );
-
-    }
-
-
-
-
-
     authUtilityFlow.current =
 
       true;
@@ -1098,6 +1069,108 @@ export function AuthProvider({ children }) {
         credential.user;
 
 
+      // Resolve the counselor only after Firebase Authentication creates
+      // the temporary signed-in user. Firestore rules allow counselorDirectory
+      // reads for signed-in users, so registration does not need to expose
+      // counselor assignment fields in App.jsx.
+      let resolvedAssignedCounselorId = "";
+      let resolvedAssignedCounselorName = "";
+      let resolvedAssignedCounselorDepartment = "";
+
+      try {
+
+        const directorySnapshot =
+          await getDocs(
+            query(
+              collection(
+                db,
+                "counselorDirectory"
+              ),
+              where(
+                "department",
+                "==",
+                cleanDepartment
+              )
+            )
+          );
+
+        const activeCounselors =
+          directorySnapshot.docs
+            .map(item => ({
+              id: item.id,
+              ...item.data()
+            }))
+            .filter(counselor =>
+              counselor.active === true &&
+              String(
+                counselor.counselorId ||
+                counselor.id ||
+                ""
+              ).trim() &&
+              String(
+                counselor.name || ""
+              ).trim() &&
+              String(
+                counselor.department || ""
+              ).trim() ===
+                cleanDepartment
+            );
+
+        if (
+          activeCounselors.length === 0
+        ) {
+          throw new Error(
+            `No active Guidance Counselor is configured for ${cleanDepartment}. Ask the Super Admin to activate the counselor in counselorDirectory first.`
+          );
+        }
+
+        if (
+          activeCounselors.length > 1
+        ) {
+          throw new Error(
+            `More than one active Guidance Counselor is configured for ${cleanDepartment}. Keep only one active counselor for that college/office before registering users.`
+          );
+        }
+
+        const assignedCounselor =
+          activeCounselors[0];
+
+        resolvedAssignedCounselorId =
+          String(
+            assignedCounselor.counselorId ||
+            assignedCounselor.id
+          ).trim();
+
+        resolvedAssignedCounselorName =
+          String(
+            assignedCounselor.name
+          ).trim();
+
+        resolvedAssignedCounselorDepartment =
+          String(
+            assignedCounselor.department
+          ).trim();
+
+      } catch (directoryError) {
+
+        // Do not leave an orphaned Firebase Authentication account when
+        // counselor assignment cannot be completed.
+        try {
+          await deleteUser(
+            firebaseUser
+          );
+          firebaseUser = null;
+        } catch (cleanupError) {
+          console.error(
+            "Unable to roll back Authentication user after counselor assignment failure:",
+            cleanupError
+          );
+        }
+
+        throw directoryError;
+      }
+
+
 
 
 
@@ -1109,11 +1182,11 @@ export function AuthProvider({ children }) {
         department: cleanDepartment,
         program: cleanProgram,
         assignedCounselorId:
-          cleanAssignedCounselorId,
+          resolvedAssignedCounselorId,
         assignedCounselorName:
-          cleanAssignedCounselorName,
+          resolvedAssignedCounselorName,
         assignedCounselorDepartment:
-          cleanAssignedCounselorDepartment,
+          resolvedAssignedCounselorDepartment,
         userNumber: cleanUserNumber,
         gender: cleanGender
       };
