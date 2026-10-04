@@ -4741,3 +4741,484 @@ th {
     flex-basis: 36px;
   }
 }
+
+/* =====================================================
+   FINAL USER PROFILE / TRANSFER / PRIVATE NOTES FIX
+   Added to resolve profile-header alignment, transfer
+   documentation layout, and private counseling-note UI.
+===================================================== */
+
+/* Let the modal header grow naturally without breaking the
+   scrollable body height when counselor/transfer metadata wraps. */
+.user-profile-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-profile-modal-header {
+  min-height: 0;
+  flex: 0 0 auto;
+  align-items: flex-start;
+}
+
+.user-profile-modal-body {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: start;
+}
+
+/* Keep identity content aligned and allow long college names
+   to wrap without pushing the close button or priority badge. */
+.user-profile-modal-identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.user-profile-modal-name {
+  width: 100%;
+  min-width: 0;
+}
+
+.user-profile-name-row {
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.user-profile-name-row .priority {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* Split status badges and counselor information into separate rows. */
+.user-profile-header-badges {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.user-profile-status-badges,
+.user-profile-counselor-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.user-profile-counselor-meta {
+  width: 100%;
+}
+
+.assigned-counselor-badge,
+.assigned-counselor-department-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.assigned-counselor-badge {
+  background: #f0f4f9;
+  color: #536174;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.assigned-counselor-department-badge {
+  background: #f2f5f9;
+  color: #5e687a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.assigned-counselor-badge strong,
+.assigned-counselor-department-badge strong {
+  color: #344158;
+  font-weight: 800;
+}
+
+/* Keep transferred badge consistent with the existing theme. */
+.transferred-badge,
+.transferred-table-badge,
+.transferred-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.transferred-profile-badge {
+  border: 1px solid #d8c2ef;
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+/* Documentation access now occupies one complete grid row and
+   lines up with Account Information / Counseling Schedule. */
+.transfer-documentation-notice {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 14px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #d7e3f0;
+  border-radius: 12px;
+  background: #f7faff;
+  color: #526078;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.transfer-documentation-notice-title {
+  color: #173f8f;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.transfer-documentation-notice-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-modal-card {
+  align-self: start;
+}
+
+/* =====================================================
+   PRIVATE COUNSELING NOTES
+===================================================== */
+
+.private-counseling-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.private-counseling-note-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: #273246;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.private-counseling-note-field textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  font-weight: 400;
+}
+
+.private-counseling-note-field textarea[readonly] {
+  background: #f3f5f8;
+  color: #5f6879;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+   RESPONSIVE PROFILE FIXES
+===================================================== */
+
+@media (max-width: 900px) {
+  .transfer-documentation-notice {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 800px) {
+  .private-counseling-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .user-profile-modal-header {
+    gap: 12px;
+  }
+
+  .user-profile-modal-identity {
+    gap: 12px;
+  }
+
+  .user-profile-status-badges,
+  .user-profile-counselor-meta {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .assigned-counselor-badge,
+  .assigned-counselor-department-badge {
+    width: 100%;
+    border-radius: 10px;
+  }
+
+  .transfer-documentation-notice {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .transfer-documentation-notice-title {
+    white-space: normal;
+  }
+}
+
+/* =====================================================
+   FINAL COUNSELING REQUEST MODAL ALIGNMENT FIX
+   Keeps Request Details and Counselor Review as the top
+   two columns, Private Counseling Notes full-width below,
+   and all workflow buttons in one clean footer row.
+===================================================== */
+
+.review-request-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-request-modal-header {
+  flex: 0 0 auto;
+}
+
+.review-request-modal-body {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-content: start;
+  align-items: start;
+}
+
+/* The two top cards stay independent and aligned. */
+.review-request-modal-body > .review-request-modal-card {
+  min-width: 0;
+  align-self: start;
+}
+
+.review-request-update-card {
+  height: auto;
+}
+
+/* Private notes should never be trapped inside the right column. */
+.private-counseling-notes-card {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.private-counseling-notes-card > h3 {
+  margin-bottom: 8px;
+}
+
+.private-counseling-notes-card .notice {
+  max-width: none;
+}
+
+/* Keep the four internal note fields balanced and readable. */
+.private-counseling-notes-grid {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.private-counseling-note-field textarea {
+  min-height: 145px;
+}
+
+/* One footer row for transfer + Close/Save. */
+.review-request-workflow-footer {
+  grid-column: 1 / -1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 2px 0 4px;
+}
+
+.review-request-workflow-footer .transfer-user-button {
+  margin: 0;
+  min-height: 44px;
+}
+
+.review-request-workflow-footer .review-request-modal-actions {
+  margin: 0 0 0 auto;
+}
+
+.review-request-workflow-footer
+.review-request-modal-actions
+.primary-button,
+.review-request-workflow-footer
+.review-request-modal-actions
+.secondary-button {
+  min-width: 150px;
+}
+
+/* Prevent very long helper text from forcing odd widths. */
+.review-field-visibility-note {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Tablet: stack all major cards cleanly. */
+@media (max-width: 1000px) {
+  .review-request-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .private-counseling-notes-card,
+  .review-request-workflow-footer {
+    grid-column: auto;
+  }
+}
+
+/* Mobile: notes and footer buttons become one column. */
+@media (max-width: 700px) {
+  .private-counseling-notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-request-workflow-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .review-request-workflow-footer .transfer-user-button {
+    width: 100%;
+  }
+
+  .review-request-workflow-footer .review-request-modal-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .review-request-workflow-footer
+  .review-request-modal-actions
+  .primary-button,
+  .review-request-workflow-footer
+  .review-request-modal-actions
+  .secondary-button {
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   SUPER ADMIN SAFE TEST-DATA CLEANUP
+===================================================== */
+
+.superadmin-cleanup-zone {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fff7f7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.superadmin-cleanup-zone-full {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 0;
+}
+
+.superadmin-cleanup-zone strong {
+  color: #991b1b;
+}
+
+.superadmin-cleanup-zone p {
+  max-width: 760px;
+  margin: 5px 0 0;
+  color: #7f1d1d;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.superadmin-cleanup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.danger-button {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #b91c1c;
+  border-radius: 10px;
+  background: #b91c1c;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #991b1b;
+}
+
+.danger-button-outline {
+  background: #fff;
+  color: #b91c1c;
+}
+
+.danger-button-outline:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cleanup-protected-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .superadmin-cleanup-zone,
+  .superadmin-cleanup-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .superadmin-cleanup-actions,
+  .superadmin-cleanup-actions .danger-button {
+    width: 100%;
+  }
+}
+

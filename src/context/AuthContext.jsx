@@ -268,10 +268,22 @@ async function loadFirebaseProfile(
       : {};
 
   return {
-    id: firebaseUser.uid,
-    email: firebaseUser.email,
-    program: "",
+    program:
+      "",
+
     ...publicProfile,
+
+    // Firebase Authentication is the source of truth for the current UID.
+    // Keep this AFTER ...publicProfile so an old/mismatched users/{uid}.id
+    // field can never overwrite the authenticated UID used by queries.
+    id:
+      firebaseUser.uid,
+
+    email:
+      firebaseUser.email ||
+      publicProfile.email ||
+      "",
+
     phoneNumber:
       String(privateProfile.phoneNumber || ""),
     address:
@@ -1412,6 +1424,31 @@ export function AuthProvider({ children }) {
 
             earlyReassessmentAllowed:
               false,
+
+            updatedAt:
+              serverTimestamp()
+          }
+        );
+
+
+        batch.set(
+          doc(
+            db,
+            "counselingRequestLocks",
+            firebaseUser.uid
+          ),
+          {
+            ownerId:
+              firebaseUser.uid,
+
+            department:
+              cleanDepartment,
+
+            latestConsultationId:
+              "",
+
+            status:
+              "Eligible",
 
             updatedAt:
               serverTimestamp()
