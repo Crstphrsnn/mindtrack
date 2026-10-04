@@ -73,453 +73,6 @@ import {
 
 
 // ======================================================
-// PREFERRED COUNSELORS FOR TEACHING / NON-TEACHING
-// ======================================================
-
-const PREFERRED_COUNSELORS = [
-  {
-    key: "cte",
-    name: "April Santos",
-    department: "College of Teacher Education"
-  },
-  {
-    key: "cthm",
-    name: "Christine Joy Agpuon",
-    department: "College of Tourism and Hospitality Management"
-  },
-  {
-    key: "cit",
-    name: "Victoria Ferrer",
-    department: "College of Industrial Technology"
-  },
-  {
-    key: "casl",
-    name: "Soral Rico",
-    department: "College of Arts, Sciences and Letters"
-  },
-  {
-    key: "ccs",
-    name: "Joanna Mangapat",
-    department: "College of Computing Sciences"
-  },
-  {
-    key: "cbpa",
-    name: "Trisha Becena",
-    department: "College of Business and Public Administration"
-  }
-];
-
-
-function normalizedCounselorDepartment(
-  value
-) {
-
-  const clean =
-    String(
-      value || ""
-    )
-      .trim()
-      .toLowerCase();
-
-
-  const aliases = {
-    "coe":
-      "college of teacher education",
-
-    "cte":
-      "college of teacher education",
-
-    "college of education":
-      "college of teacher education",
-
-    "college of teacher education":
-      "college of teacher education",
-
-    "cthm":
-      "college of hospitality and tourism management",
-
-    "chtm":
-      "college of hospitality and tourism management",
-
-    "college of tourism and hospitality management":
-      "college of hospitality and tourism management",
-
-    "college of hospitality and tourism management":
-      "college of hospitality and tourism management",
-
-    "cit":
-      "college of industrial technology",
-
-    "college of technology":
-      "college of industrial technology",
-
-    "college of industrial technology":
-      "college of industrial technology",
-
-    "casl":
-      "college of arts, sciences and letters",
-
-    "cal":
-      "college of arts, sciences and letters",
-
-    "ccs":
-      "college of computing sciences",
-
-    "cbpa":
-      "college of business and public administration"
-  };
-
-
-  return aliases[clean] || clean;
-}
-
-
-const GENDER_OPTIONS = [
-  "Male",
-  "Female"
-];
-
-
-const ANALYTICS_PRIORITIES = [
-  "Low",
-  "Moderate",
-  "High",
-  "Critical"
-];
-
-
-function normalizedGender(
-  value
-) {
-
-  const clean =
-    String(
-      value || ""
-    )
-      .trim()
-      .toLowerCase();
-
-
-  if (clean === "male") {
-    return "Male";
-  }
-
-
-  if (clean === "female") {
-    return "Female";
-  }
-
-
-  return "Not recorded";
-}
-
-
-function canonicalCollegeName(
-  value
-) {
-
-  const normalized =
-    normalizedCounselorDepartment(
-      value
-    );
-
-
-  const matched =
-    PREFERRED_COUNSELORS.find(
-      counselor =>
-        normalizedCounselorDepartment(
-          counselor.department
-        ) ===
-        normalized
-    );
-
-
-  return (
-    matched?.department ||
-    String(
-      value || ""
-    ).trim() ||
-    "Not recorded"
-  );
-}
-
-
-function analyticsProgramName(
-  record
-) {
-
-  const program =
-    String(
-      record?.program || ""
-    ).trim();
-
-
-  if (program) {
-    return program;
-  }
-
-
-  if (
-    employeeUserRole(
-      record?.role
-    )
-  ) {
-    return "Not applicable";
-  }
-
-
-  return "Not recorded";
-}
-
-
-function analyticsDimensionValue(
-  record,
-  dimension
-) {
-
-  if (dimension === "college") {
-
-    return canonicalCollegeName(
-      record?.department
-    );
-  }
-
-
-  if (dimension === "program") {
-
-    return analyticsProgramName(
-      record
-    );
-  }
-
-
-  if (dimension === "gender") {
-
-    return normalizedGender(
-      record?.gender
-    );
-  }
-
-
-  return "Not recorded";
-}
-
-
-function operationalAnalyticsRows(
-  assessments,
-  consultations,
-  dimension
-) {
-
-  const grouped =
-    new Map();
-
-
-  function ensureRow(label) {
-
-    if (!grouped.has(label)) {
-
-      grouped.set(
-        label,
-        {
-          label,
-          Low: 0,
-          Moderate: 0,
-          High: 0,
-          Critical: 0,
-          assessmentCases: 0,
-          counselingRequests: 0,
-          counselingSessions: 0
-        }
-      );
-    }
-
-
-    return grouped.get(label);
-  }
-
-
-  assessments.forEach(
-    assessment => {
-
-      const label =
-        analyticsDimensionValue(
-          assessment,
-          dimension
-        );
-
-
-      const row =
-        ensureRow(label);
-
-
-      row.assessmentCases += 1;
-
-
-      if (
-        ANALYTICS_PRIORITIES.includes(
-          assessment.priority
-        )
-      ) {
-
-        row[
-          assessment.priority
-        ] += 1;
-      }
-    }
-  );
-
-
-  consultations.forEach(
-    consultation => {
-
-      const label =
-        analyticsDimensionValue(
-          consultation,
-          dimension
-        );
-
-
-      const row =
-        ensureRow(label);
-
-
-      row.counselingRequests += 1;
-
-
-      if (
-        consultation.status ===
-        "Schedule for counseling"
-      ) {
-
-        row.counselingSessions += 1;
-      }
-    }
-  );
-
-
-  const rows =
-    Array.from(
-      grouped.values()
-    );
-
-
-  if (dimension === "gender") {
-
-    const order = {
-      Male: 0,
-      Female: 1,
-      "Not recorded": 2
-    };
-
-
-    return rows.sort(
-      (a, b) =>
-        (
-          order[a.label] ?? 99
-        ) -
-        (
-          order[b.label] ?? 99
-        )
-    );
-  }
-
-
-  if (dimension === "college") {
-
-    const collegeOrder =
-      PREFERRED_COUNSELORS.map(
-        counselor =>
-          counselor.department
-      );
-
-
-    return rows.sort(
-      (a, b) => {
-
-        const aIndex =
-          collegeOrder.indexOf(
-            a.label
-          );
-
-        const bIndex =
-          collegeOrder.indexOf(
-            b.label
-          );
-
-
-        if (
-          aIndex !== -1 ||
-          bIndex !== -1
-        ) {
-
-          return (
-            (
-              aIndex === -1
-                ? 999
-                : aIndex
-            ) -
-            (
-              bIndex === -1
-                ? 999
-                : bIndex
-            )
-          );
-        }
-
-
-        return a.label.localeCompare(
-          b.label
-        );
-      }
-    );
-  }
-
-
-  return rows.sort(
-    (a, b) => {
-
-      if (
-        a.label ===
-        "Not applicable"
-      ) {
-        return 1;
-      }
-
-
-      if (
-        b.label ===
-        "Not applicable"
-      ) {
-        return -1;
-      }
-
-
-      if (
-        a.label ===
-        "Not recorded"
-      ) {
-        return 1;
-      }
-
-
-      if (
-        b.label ===
-        "Not recorded"
-      ) {
-        return -1;
-      }
-
-
-      return a.label.localeCompare(
-        b.label
-      );
-    }
-  );
-}
-
-
-// ======================================================
 // PROTECTED ROUTES
 // ======================================================
 
@@ -537,6 +90,30 @@ function Protected({ children }) {
   return user
     ? children
     : <Navigate to="/" replace />;
+}
+
+
+function RoleProtected({
+  children,
+  allowedRoles = []
+}) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="center-screen">
+        Loading MindTrack…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return allowedRoles.includes(user.role)
+    ? children
+    : <Navigate to="/dashboard" replace />;
 }
 
 
@@ -1120,22 +697,19 @@ const PROGRAMS_BY_COLLEGE = {
   ],
 
   "College of Tourism and Hospitality Management": [
-    "Bachelor of Science in Hospitality Management",
-    "Bachelor of Science in Tourism Management"
+    "Bachelor of Science in Hospitality Management"
   ],
 
-  "College of Teacher Education": [
-    "Bachelor of Secondary Education - Major in English",
-    "Bachelor of Secondary Education - Major in Filipino",
-    "Bachelor of Secondary Education - Major in Social Studies",
-    "Bachelor of Secondary Education - Major in Science",
-    "Bachelor of Technical-Vocational Teacher Education - Major in Garments Fashion and Design",
-    "Bachelor of Technical-Vocational Teacher Education - Major in Food Service Management",
-    "Bachelor of Technology and Livelihood Education - Major in Home Economics"
+  "College of Education": [
+    "Bachelor of Secondary Education",
+    "Bachelor of Technical-Vocational Teacher Education",
+    "Bachelor of Technology and Livelihood Education"
   ],
 
   "College of Industrial Technology": [
     "Bachelor of Industrial Technology - Major in Automotive Technology",
+    "Bachelor of Industrial Technology - Major in Ceramics Technology",
+    "Bachelor of Industrial Technology - Major in Civil Technology",
     "Bachelor of Industrial Technology - Major in Drafting Technology",
     "Bachelor of Industrial Technology - Major in Electrical Technology",
     "Bachelor of Industrial Technology - Major in Electronics Technology",
@@ -1146,29 +720,18 @@ const PROGRAMS_BY_COLLEGE = {
 };
 
 
+const COLLEGE_OPTIONS =
+  Object.keys(
+    PROGRAMS_BY_COLLEGE
+  );
+
+
 function collegePrograms(college) {
 
-  const normalized =
-    normalizedCounselorDepartment(
-      college
-    );
-
-
-  const matchedEntry =
-    Object.entries(
-      PROGRAMS_BY_COLLEGE
-    ).find(
-      ([collegeName]) =>
-        normalizedCounselorDepartment(
-          collegeName
-        ) ===
-        normalized
-    );
-
-
   return (
-    matchedEntry?.[1] ||
-    []
+    PROGRAMS_BY_COLLEGE[
+      college
+    ] || []
   );
 }
 
@@ -1223,15 +786,7 @@ function Register() {
     role: "",
     department: "",
     program: "",
-
-    preferredCounselorDepartment: "",
-
-    assignedCounselorId: "",
-    assignedCounselorName: "",
-    assignedCounselorDepartment: "",
-
     userNumber: "",
-    gender: "",
     phoneNumber: "",
 
     regionCode: "",
@@ -1284,102 +839,6 @@ function Register() {
 
   const [loading, setLoading] =
     useState(false);
-
-
-  const counselorDirectoryRows =
-    useRows(
-      "counselorDirectory"
-    );
-
-
-  const availableCounselors =
-    useMemo(
-      () =>
-        PREFERRED_COUNSELORS.map(
-          preferred => {
-
-            const directoryEntry =
-              counselorDirectoryRows.find(
-                counselor =>
-                  counselor.active !== false &&
-                  Boolean(
-                    counselor.id &&
-                    counselor.department
-                  ) &&
-                  normalizedCounselorDepartment(
-                    counselor.department
-                  ) ===
-                  normalizedCounselorDepartment(
-                    preferred.department
-                  )
-              );
-
-
-            return {
-              ...preferred,
-
-              // Keep the exact six requested names/colleges visible
-              // in the registration dropdown. The Firebase UID and
-              // stored counselor name come from the safe directory.
-              id:
-                directoryEntry?.id ||
-                "",
-
-              firebaseName:
-                directoryEntry?.name ||
-                "",
-
-              firebaseDepartment:
-                directoryEntry?.department ||
-                "",
-
-              linked:
-                Boolean(
-                  directoryEntry?.id
-                )
-            };
-          }
-        ),
-      [
-        counselorDirectoryRows
-      ]
-    );
-
-
-  const studentAssignedCounselor =
-    useMemo(
-      () => {
-
-        if (
-          form.role !==
-            "student" ||
-          !form.department
-        ) {
-          return null;
-        }
-
-
-        return (
-          availableCounselors.find(
-            counselor =>
-              counselor.linked &&
-              normalizedCounselorDepartment(
-                counselor.department
-              ) ===
-                normalizedCounselorDepartment(
-                  form.department
-                )
-          ) ||
-          null
-        );
-
-      },
-      [
-        availableCounselors,
-        form.role,
-        form.department
-      ]
-    );
 
 
   useEffect(() => {
@@ -1475,114 +934,20 @@ function Register() {
         return {
           ...current,
           role: nextValue,
-          department: "",
-          program: "",
-          preferredCounselorDepartment: "",
-          assignedCounselorId: "",
-          assignedCounselorName: "",
-          assignedCounselorDepartment: ""
+          program:
+            nextValue === "student"
+              ? current.program
+              : ""
         };
       }
 
 
       if (name === "department") {
 
-        if (
-          current.role ===
-          "student"
-        ) {
-
-          const counselor =
-            availableCounselors.find(
-              item =>
-                item.linked &&
-                normalizedCounselorDepartment(
-                  item.department
-                ) ===
-                  normalizedCounselorDepartment(
-                    nextValue
-                  )
-            );
-
-
-          return {
-            ...current,
-
-            department:
-              nextValue,
-
-            program:
-              "",
-
-            assignedCounselorId:
-              counselor?.id ||
-              "",
-
-            assignedCounselorName:
-              counselor?.firebaseName ||
-              counselor?.name ||
-              "",
-
-            assignedCounselorDepartment:
-              counselor?.firebaseDepartment ||
-              counselor?.department ||
-              ""
-          };
-        }
-
-
         return {
           ...current,
-          department:
-            nextValue,
-          program:
-            ""
-        };
-      }
-
-
-      if (
-        name ===
-        "preferredCounselorDepartment"
-      ) {
-
-        const counselor =
-          availableCounselors.find(
-            item =>
-              item.department ===
-              nextValue
-          );
-
-
-        return {
-          ...current,
-
-          preferredCounselorDepartment:
-            nextValue,
-
-          assignedCounselorId:
-            counselor?.id ||
-            "",
-
-          assignedCounselorName:
-            counselor?.firebaseName ||
-            counselor?.name ||
-            "",
-
-          assignedCounselorDepartment:
-            counselor?.firebaseDepartment ||
-            "",
-
-          // Keep the existing department-based counselor access
-          // model compatible. The visible dropdown still shows the
-          // full requested college name even if an older counselor
-          // profile stores an abbreviation such as CCS.
-          department:
-            counselor?.firebaseDepartment ||
-            "",
-
-          program:
-            ""
+          department: nextValue,
+          program: ""
         };
       }
 
@@ -1989,62 +1354,9 @@ function Register() {
       return;
     }
 
-    if (
-      form.role === "student" &&
-      !form.department
-    ) {
+    if (!form.department) {
       setError(
         "Please select your college or office."
-      );
-      return;
-    }
-
-    if (
-      form.role ===
-        "student" &&
-      (
-        !form.assignedCounselorId ||
-        !form.assignedCounselorName ||
-        !form.assignedCounselorDepartment
-      )
-    ) {
-      setError(
-        "No active Guidance Counselor is linked to the selected college. Please ask the MindTrack administrator to update the counselor directory before registering this student account."
-      );
-      return;
-    }
-
-    if (
-      [
-        "teaching",
-        "non_teaching"
-      ].includes(
-        form.role
-      ) &&
-      !form.preferredCounselorDepartment
-    ) {
-      setError(
-        "Please select your preferred counselor."
-      );
-      return;
-    }
-
-
-    if (
-      [
-        "teaching",
-        "non_teaching"
-      ].includes(
-        form.role
-      ) &&
-      (
-        !form.assignedCounselorId ||
-        !form.assignedCounselorName ||
-        !form.assignedCounselorDepartment
-      )
-    ) {
-      setError(
-        "The selected counselor is not yet linked to the Firebase counselor directory. Please ask the MindTrack administrator to run the six-counselor sync once."
       );
       return;
     }
@@ -2064,17 +1376,6 @@ function Register() {
         form.role === "student"
           ? "Please enter your student number."
           : "Please enter your employee number."
-      );
-      return;
-    }
-
-    if (
-      !GENDER_OPTIONS.includes(
-        form.gender
-      )
-    ) {
-      setError(
-        "Please select Male or Female."
       );
       return;
     }
@@ -2146,7 +1447,7 @@ function Register() {
 
     if (!form.streetName.trim()) {
       setError(
-        "Please enter your house number, street name, or purok."
+        "Please enter your street name, house number, or purok."
       );
       return;
     }
@@ -2213,18 +1514,7 @@ function Register() {
           form.role === "student"
             ? form.program
             : "",
-
-        assignedCounselorId:
-          form.assignedCounselorId,
-
-        assignedCounselorName:
-          form.assignedCounselorName,
-
-        assignedCounselorDepartment:
-          form.assignedCounselorDepartment,
-
         userNumber: form.userNumber,
-        gender: form.gender,
         phoneNumber: form.phoneNumber,
         address: fullAddress,
         facebookAccount:
@@ -2485,147 +1775,54 @@ function Register() {
                     Student
                   </option>
 
-                  <option value="teaching">
-                    Teaching
+                  <option value="faculty">
+                    Faculty
                   </option>
 
-                  <option value="non_teaching">
-                    Non-teaching
+                  <option value="personnel">
+                    Personnel
                   </option>
 
                 </select>
               </label>
 
 
-              {form.role === "student" && (
+              <label>
+                College / Office
+                <span
+                  className="required-asterisk"
+                  aria-hidden="true"
+                >
+                  *
+                </span>
 
-                <label>
-                  College / Office
-                  <span
-                    className="required-asterisk"
-                    aria-hidden="true"
+                <select
+                  name="department"
+                  value={form.department}
+                  onChange={change}
+                  required
+                >
+
+                  <option
+                    value=""
+                    disabled
                   >
-                    *
-                  </span>
+                    Select college / office
+                  </option>
 
-                  <select
-                    name="department"
-                    value={form.department}
-                    onChange={change}
-                    required
-                  >
-
-                    <option
-                      value=""
-                      disabled
-                    >
-                      Select college / office
-                    </option>
-
-                    <option value="College of Teacher Education">
-                      College of Teacher Education
-                    </option>
-
-                    <option value="College of Tourism and Hospitality Management">
-                      College of Tourism and Hospitality Management
-                    </option>
-
-                    <option value="College of Industrial Technology">
-                      College of Industrial Technology
-                    </option>
-
-                    <option value="College of Arts, Sciences and Letters">
-                      College of Arts, Sciences and Letters
-                    </option>
-
-                    <option value="College of Computing Sciences">
-                      College of Computing Sciences
-                    </option>
-
-                    <option value="College of Business and Public Administration">
-                      College of Business and Public Administration
-                    </option>
-
-                  </select>
-
-                  {form.department && (
-
-                    <small className="optional-text">
-
-                      {
-                        studentAssignedCounselor
-                          ? `Assigned counselor: ${studentAssignedCounselor.firebaseName || studentAssignedCounselor.name} [${studentAssignedCounselor.firebaseDepartment || studentAssignedCounselor.department}]`
-                          : "No active Guidance Counselor is currently linked to this college."
-                      }
-
-                    </small>
-
+                  {COLLEGE_OPTIONS.map(
+                    college => (
+                      <option
+                        key={college}
+                        value={college}
+                      >
+                        {college}
+                      </option>
+                    )
                   )}
 
-                </label>
-
-              )}
-
-
-              {[
-                "teaching",
-                "non_teaching"
-              ].includes(
-                form.role
-              ) && (
-
-                <label>
-                  Preferred Counselor
-                  <span
-                    className="required-asterisk"
-                    aria-hidden="true"
-                  >
-                    *
-                  </span>
-
-                  <select
-                    name="preferredCounselorDepartment"
-                    value={
-                      form.preferredCounselorDepartment
-                    }
-                    onChange={change}
-                    required
-                  >
-
-                    <option
-                      value=""
-                      disabled
-                    >
-                      Select preferred counselor
-                    </option>
-
-                    {availableCounselors.map(
-                      counselor => (
-
-                        <option
-                          key={
-                            counselor.key
-                          }
-                          value={
-                            counselor.department
-                          }
-                        >
-                          {
-                            `${counselor.name} [${counselor.department}]`
-                          }
-                        </option>
-
-                      )
-                    )}
-
-                  </select>
-
-                  <small className="optional-text">
-                    Choose one of the six Guidance Counselors. Counselor assignment is linked to Firebase by college/department.
-                  </small>
-                </label>
-
-              )}
+                </select>
+              </label>
 
 
               {form.role === "student" && (
@@ -2685,14 +1882,8 @@ function Register() {
 
                 {form.role === "student"
                   ? "Student Number"
-                  : [
-                      "teaching",
-                      "non_teaching",
-                      "faculty",
-                      "personnel"
-                    ].includes(
-                      form.role
-                    )
+                  : form.role === "faculty" ||
+                      form.role === "personnel"
                     ? "Employee Number"
                     : "Student / Employee Number"}
 
@@ -2726,41 +1917,6 @@ function Register() {
 
 
             <div className="registration-grid">
-
-              <label>
-                Sex
-                <span
-                  className="required-asterisk"
-                  aria-hidden="true"
-                >
-                  *
-                </span>
-
-                <select
-                  name="gender"
-                  value={form.gender}
-                  onChange={change}
-                  required
-                >
-
-                  <option
-                    value=""
-                    disabled
-                  >
-                    Select sex
-                  </option>
-
-                  <option value="Male">
-                    Male
-                  </option>
-
-                  <option value="Female">
-                    Female
-                  </option>
-
-                </select>
-              </label>
-
 
               <label>
                 Phone Number
@@ -3029,7 +2185,7 @@ function Register() {
 
 
               <label className="full-width-field">
-                House Number / Street Name / Purok
+                Street Name / House No. / Purok
                 <span
                   className="required-asterisk"
                   aria-hidden="true"
@@ -3042,7 +2198,7 @@ function Register() {
                   name="streetName"
                   value={form.streetName}
                   onChange={change}
-                  placeholder="Example: 123, Rizal Street, Purok 2"
+                  placeholder="Example: 123 Rizal Street, Purok 2"
                   required
                 />
               </label>
@@ -3254,8 +2410,7 @@ function Register() {
 
 function useRows(
   name,
-  filters = {},
-  enabled = true
+  filters = {}
 ) {
 
   const [rows, setRows] =
@@ -3264,14 +2419,6 @@ function useRows(
 
   useEffect(
     () => {
-
-      if (!enabled) {
-
-        setRows([]);
-
-        return undefined;
-      }
-
 
       const constraints = [];
 
@@ -3482,207 +2629,7 @@ function useRows(
       filters.status,
       filters.assignedCounselorId,
       filters.counselorId,
-      filters.active,
-      enabled
-    ]
-  );
-
-
-  return rows;
-}
-
-
-// ======================================================
-// TRANSFERRED OWNER ROWS
-// Loads records for users formally transferred to the
-// currently assigned counselor.
-// ======================================================
-
-function useTransferredOwnerRows(
-  collectionName,
-  counselorId
-) {
-
-  const [rows, setRows] =
-    useState([]);
-
-
-  useEffect(
-    () => {
-
-      if (!counselorId) {
-
-        setRows([]);
-
-        return undefined;
-      }
-
-
-      let ownerUnsubscribers = [];
-
-
-      const accessQuery =
-        query(
-          collection(
-            db,
-            "transferAccess"
-          ),
-          where(
-            "counselorId",
-            "==",
-            counselorId
-          ),
-          where(
-            "active",
-            "==",
-            true
-          )
-        );
-
-
-      const accessUnsubscribe =
-        onSnapshot(
-          accessQuery,
-
-          accessSnapshot => {
-
-            ownerUnsubscribers.forEach(
-              unsubscribe =>
-                unsubscribe()
-            );
-
-            ownerUnsubscribers = [];
-
-
-            if (
-              accessSnapshot.empty
-            ) {
-
-              setRows([]);
-
-              return;
-            }
-
-
-            const rowsByOwner =
-              new Map();
-
-
-            accessSnapshot.docs.forEach(
-              accessDocument => {
-
-                const access =
-                  accessDocument.data();
-
-
-                if (!access.ownerId) {
-                  return;
-                }
-
-
-                const ownerQuery =
-                  query(
-                    collection(
-                      db,
-                      collectionName
-                    ),
-                    where(
-                      "ownerId",
-                      "==",
-                      access.ownerId
-                    )
-                  );
-
-
-                const ownerUnsubscribe =
-                  onSnapshot(
-                    ownerQuery,
-
-                    snapshot => {
-
-                      rowsByOwner.set(
-                        access.ownerId,
-
-                        snapshot.docs.map(
-                          item => ({
-                            id:
-                              item.id,
-
-                            ...item.data()
-                          })
-                        )
-                      );
-
-
-                      setRows(
-                        mergeRowsById(
-                          ...Array.from(
-                            rowsByOwner.values()
-                          )
-                        )
-                      );
-                    },
-
-                    error => {
-
-                      console.error(
-                        `Unable to load transferred ${collectionName} records for ${access.ownerId}:`,
-                        error
-                      );
-
-
-                      rowsByOwner.set(
-                        access.ownerId,
-                        []
-                      );
-
-
-                      setRows(
-                        mergeRowsById(
-                          ...Array.from(
-                            rowsByOwner.values()
-                          )
-                        )
-                      );
-                    }
-                  );
-
-
-                ownerUnsubscribers.push(
-                  ownerUnsubscribe
-                );
-              }
-            );
-          },
-
-          error => {
-
-            console.error(
-              "Unable to load transferred-user access:",
-              error
-            );
-
-            setRows([]);
-          }
-        );
-
-
-      return () => {
-
-        accessUnsubscribe();
-
-
-        ownerUnsubscribers.forEach(
-          unsubscribe =>
-            unsubscribe()
-        );
-      };
-
-    },
-
-    [
-      collectionName,
-      counselorId
+      filters.active
     ]
   );
 
@@ -3731,12 +2678,11 @@ function mergeRowsById(...lists) {
 }
 
 
-function appointmentStartDate(row) {
+function appointmentHasStarted(row) {
 
   if (!row?.date || !row?.time) {
-    return null;
+    return false;
   }
-
 
   const timeMap = {
     "8:00 AM": "08:00",
@@ -3749,97 +2695,25 @@ function appointmentStartDate(row) {
     "4:00 PM": "16:00"
   };
 
-
   const normalizedTime =
     timeMap[row.time] ||
     row.time;
 
-
-  const timeWithSeconds =
-    /^\d{2}:\d{2}$/.test(
-      normalizedTime
-    )
-      ? `${normalizedTime}:00`
-      : normalizedTime;
-
-
-  // Counseling schedules are campus-local (Philippines / UTC+8).
-  // Using an explicit offset keeps transfer deadlines consistent
-  // even if a browser is temporarily using another timezone.
-  const date =
-    new Date(
-      `${row.date}T${timeWithSeconds}+08:00`
-    );
-
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return null;
-  }
-
-
-  return date;
-}
-
-
-function appointmentHasStarted(row) {
-
-  const start =
-    appointmentStartDate(row);
-
-
-  return Boolean(
-    start &&
-    Date.now() >=
-      start.getTime()
+  const date = new Date(
+    `${row.date}T${normalizedTime}`
   );
-}
 
-
-function transferRequestHasStarted(
-  transfer
-) {
-
-  const scheduledStartAt =
-    transfer?.scheduledStartAt;
-
-
-  if (
-    scheduledStartAt &&
-    typeof scheduledStartAt.toMillis ===
-      "function"
-  ) {
-
-    return (
-      Date.now() >=
-      scheduledStartAt.toMillis()
-    );
+  if (Number.isNaN(date.getTime())) {
+    return false;
   }
 
-
-  if (
-    scheduledStartAt instanceof Date
-  ) {
-
-    return (
-      Date.now() >=
-      scheduledStartAt.getTime()
-    );
-  }
-
-
-  return appointmentHasStarted(
-    transfer
-  );
+  return Date.now() >= date.getTime();
 }
 
 
 // ======================================================
 // DASHBOARD ACCESS
-// Student / Teaching / Non-teaching do not use Dashboard.
+// Student / Faculty / Personnel do not use Dashboard.
 // Counselor and Super Admin keep Dashboard access.
 // ======================================================
 
@@ -3900,8 +2774,8 @@ function Dashboard() {
       ? {}
       : isCounselor
         ? {
-            department:
-              user.department
+            assignedCounselorId:
+              user.id
           }
         : {
             ownerId:
@@ -3930,36 +2804,20 @@ function Dashboard() {
     );
 
 
-  const pendingTransferRows =
+  const pendingTransferRequests =
     useRows(
       "transferRequests",
       {
         status:
           "Pending approval"
-      },
-      Boolean(
-        isCounselor ||
-        isSuperAdmin
-      )
-    );
-
-
-  const pendingTransferRequests =
-    pendingTransferRows.filter(
-      row =>
-        isCounselor &&
-        row.requestedById !==
-          user.id
-    );
-
-
-  const outgoingTransferRequests =
-    pendingTransferRows.filter(
-      row =>
-        isCounselor &&
-        row.requestedById ===
-          user.id
-    );
+      }
+    )
+      .filter(
+        row =>
+          isCounselor &&
+          row.requestedById !==
+            user.id
+      );
 
 
   const [
@@ -3979,7 +2837,7 @@ function Dashboard() {
 
     if (
       !window.confirm(
-        `Approve the transfer of ${transfer.ownerName || "this user"} from ${transfer.requestedByName || "the current counselor"}? You will become the user's assigned counselor and gain access to their counseling-request and assessment history.`
+        `Approve the counselor transfer for ${transfer.ownerName || "this user"}? You will become the assigned counselor for this scheduled counseling request.`
       )
     ) {
       return;
@@ -4017,14 +2875,6 @@ function Dashboard() {
         );
 
 
-      const ownerUserRef =
-        doc(
-          db,
-          "users",
-          transfer.ownerId
-        );
-
-
       const accessRef =
         doc(
           db,
@@ -4032,17 +2882,6 @@ function Dashboard() {
           transferAccessDocumentId(
             transfer.ownerId,
             user.id
-          )
-        );
-
-
-      const previousAccessRef =
-        doc(
-          db,
-          "transferAccess",
-          transferAccessDocumentId(
-            transfer.ownerId,
-            transfer.requestedById
           )
         );
 
@@ -4068,112 +2907,32 @@ function Dashboard() {
             transferSnap.data();
 
 
-          const consultationSnap =
-            await transaction.get(
-              consultationRef
-            );
-
-
-          if (!consultationSnap.exists()) {
-
-            throw new Error(
-              "The counseling request connected to this transfer no longer exists."
-            );
-          }
-
-
-          const currentConsultation =
-            consultationSnap.data();
-
-
-          if (
-            currentConsultation
-              .status ===
-            "Concluded"
-          ) {
-
-            throw new Error(
-              "This transfer can no longer be approved because the counseling request has already been concluded."
-            );
-          }
-
-
-          if (
-            appointmentHasStarted(
-              currentConsultation
-            )
-          ) {
-
-            throw new Error(
-              "This transfer can no longer be approved because the scheduled counseling start time has already passed."
-            );
-          }
-
-
-          if (
-            currentConsultation
-              .ownerId !==
-            current.ownerId
-          ) {
-
-            throw new Error(
-              "The transfer request no longer matches the counseling record."
-            );
-          }
-
-
-          const slotReservingStatus =
-            [
-              "Pending approval",
-              "For review",
-              "Schedule for counseling"
-            ].includes(
-              currentConsultation
-                .status
-            );
-
-
-          const slotDate =
-            currentConsultation
-              .date ||
-            current.date ||
-            "";
-
-
-          const slotTime =
-            currentConsultation
-              .time ||
-            current.time ||
-            "";
-
-
           const oldSlotRef =
             current.requestedById &&
-            slotDate &&
-            slotTime
+            current.date &&
+            current.time
               ? doc(
                   db,
                   "counselingScheduleSlots",
                   counselingSlotDocumentId(
                     current.requestedById,
-                    slotDate,
-                    slotTime
+                    current.date,
+                    current.time
                   )
                 )
               : null;
 
 
           const newSlotRef =
-            slotReservingStatus &&
-            slotDate &&
-            slotTime
+            current.date &&
+            current.time
               ? doc(
                   db,
                   "counselingScheduleSlots",
                   counselingSlotDocumentId(
                     user.id,
-                    slotDate,
-                    slotTime
+                    current.date,
+                    current.time
                   )
                 )
               : null;
@@ -4184,18 +2943,6 @@ function Dashboard() {
 
           let newSlotSnap =
             null;
-
-
-          const currentAccessSnap =
-            await transaction.get(
-              accessRef
-            );
-
-
-          const previousAccessSnap =
-            await transaction.get(
-              previousAccessRef
-            );
 
 
           if (oldSlotRef) {
@@ -4318,96 +3065,11 @@ function Dashboard() {
               consultationId:
                 current.consultationId,
 
-              accessRole:
-                "assigned",
-
-              currentAssignment:
-                true,
-
               active:
                 true,
 
-              ...(
-                currentAccessSnap.exists()
-                  ? {}
-                  : {
-                      createdAt:
-                        serverTimestamp()
-                    }
-              ),
-
-              updatedAt:
+              createdAt:
                 serverTimestamp()
-            },
-            {
-              merge:
-                true
-            }
-          );
-
-
-          transaction.set(
-            previousAccessRef,
-            {
-              ownerId:
-                current.ownerId,
-
-              ownerName:
-                current.ownerName ||
-                "",
-
-              ownerDepartment:
-                current.ownerDepartment ||
-                "",
-
-              counselorId:
-                current.requestedById,
-
-              counselorName:
-                current.requestedByName ||
-                "Guidance Counselor",
-
-              counselorDepartment:
-                current.requestedByDepartment ||
-                "",
-
-              previousCounselorId:
-                current.requestedById,
-
-              previousCounselorName:
-                current.requestedByName ||
-                "",
-
-              transferRequestId:
-                transfer.id,
-
-              consultationId:
-                current.consultationId,
-
-              accessRole:
-                "documentation",
-
-              currentAssignment:
-                false,
-
-              active:
-                true,
-
-              ...(
-                previousAccessSnap.exists()
-                  ? {}
-                  : {
-                      createdAt:
-                        serverTimestamp()
-                    }
-              ),
-
-              updatedAt:
-                serverTimestamp()
-            },
-            {
-              merge:
-                true
             }
           );
 
@@ -4506,32 +3168,6 @@ function Dashboard() {
           );
 
 
-          // Keep the account-level counselor assignment current.
-          // This makes future counseling requests follow the
-          // newly approved counselor as well.
-          transaction.update(
-            ownerUserRef,
-            {
-              assignedCounselorId:
-                user.id,
-
-              assignedCounselorName:
-                user.name ||
-                "Guidance Counselor",
-
-              assignedCounselorDepartment:
-                user.department ||
-                "",
-
-              currentTransferRequestId:
-                transfer.id,
-
-              counselorTransferredAt:
-                serverTimestamp()
-            }
-          );
-
-
           if (
             oldSlotRef &&
             oldSlotSnap
@@ -4561,10 +3197,10 @@ function Dashboard() {
                   user.id,
 
                 date:
-                  slotDate,
+                  current.date,
 
                 time:
-                  slotTime,
+                  current.time,
 
                 consultationId:
                   current.consultationId,
@@ -4573,10 +3209,7 @@ function Dashboard() {
                   current.consultationId,
 
                 state:
-                  currentConsultation.status ===
-                    "Schedule for counseling"
-                    ? "booked"
-                    : "held",
+                  "booked",
 
                 ...(
                   newSlotSnap
@@ -4612,7 +3245,7 @@ function Dashboard() {
               "Counselor transfer approved",
 
             message:
-              `${user.name || "A Guidance Counselor"} [${user.department || "college not provided"}] approved your counselor transfer and is now your assigned counselor. You can continue to view the counseling request and schedule in MindTrack.`,
+              `${user.name || "A Guidance Counselor"} approved the transfer and is now assigned to your scheduled counseling request. Your counseling schedule remains available in MindTrack.`,
 
             notificationType:
               "counselor_transfer_update",
@@ -4654,7 +3287,7 @@ function Dashboard() {
               "Counselor transfer accepted",
 
             message:
-              `${user.name || "Another counselor"} accepted the transfer for ${transfer.ownerName || "the user"}. You keep read-only documentation access to the user's profile, counseling-request history, and assessment-case history. Only the currently assigned counselor can edit the case.`,
+              `${user.name || "Another counselor"} accepted the transfer for ${transfer.ownerName || "the user"}. The original transfer record remains available for documentation.`,
 
             notificationType:
               "transfer_status",
@@ -4686,7 +3319,7 @@ function Dashboard() {
 
 
       alert(
-        `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you. Their user information, counseling-request history, and assessment-case history are available to you.`
+        `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you for the scheduled counseling request.`
       );
 
     } catch (error) {
@@ -4823,11 +3456,11 @@ function Dashboard() {
               <div>
 
                 <h2>
-                  Counselor Transfer Center
+                  Counselor Transfer Requests
                 </h2>
 
                 <p>
-                  A transfer changes the user's assigned counselor only after another counselor approves it and only before the counseling start time.
+                  These scheduled counseling cases are waiting for another counselor to accept the transfer.
                 </p>
 
               </div>
@@ -4840,230 +3473,85 @@ function Dashboard() {
             </div>
 
 
-            <div className="transfer-dashboard-section">
-
-              <div className="transfer-dashboard-subheading">
-
-                <h3>
-                  Waiting for your approval
-                </h3>
-
-                <span>
-                  {pendingTransferRequests.length}
-                </span>
-
-              </div>
-
-
-              {pendingTransferRequests.length === 0
-
-                ? (
-
-                  <div className="transfer-empty-state">
-                    No users are currently waiting for your transfer approval.
-                  </div>
-
-                )
-
-                : (
-
-                  <div className="transfer-request-grid">
-
-                    {pendingTransferRequests.map(
-                      transfer => {
-
-                        const transferClosed =
-                          transferRequestHasStarted(
-                            transfer
-                          );
-
-
-                        return (
-
-                          <article
-                            className="transfer-request-card"
-                            key={transfer.id}
-                          >
-
-                            <div>
-
-                              <strong>
-                                {transfer.ownerName || "User"}
-                              </strong>
-
-                              <p>
-                                {transfer.ownerDepartment || "No college / office"}
-                              </p>
-
-                              <small>
-                                Request status: {transfer.requestStatus || "Not recorded"}
-                              </small>
-
-                              <small>
-                                Counseling start: {transfer.date || "No date"} · {transfer.time || "No time"}
-                              </small>
-
-                              <small>
-                                Current counselor: {transfer.requestedByName || "Counselor"}
-                              </small>
-
-                              {transfer.reason && (
-                                <small>
-                                  Transfer reason: {transfer.reason}
-                                </small>
-                              )}
-
-                              {transferClosed && (
-                                <small className="transfer-deadline-warning">
-                                  Transfer window closed because the counseling start time has passed.
-                                </small>
-                              )}
-
-                            </div>
-
-
-                            <button
-                              type="button"
-                              className="primary-button"
-                              disabled={
-                                transferClosed ||
-                                approvingTransferId ===
-                                  transfer.id
-                              }
-                              onClick={
-                                () =>
-                                  approveTransfer(
-                                    transfer
-                                  )
-                              }
-                              title={
-                                transferClosed
-                                  ? "Transfers must be approved before counseling starts."
-                                  : "Approve this transfer and become the assigned counselor."
-                              }
-                            >
-                              {
-                                transferClosed
-                                  ? "Counseling already started"
-                                  : approvingTransferId ===
-                                      transfer.id
-                                    ? "Approving..."
-                                    : "Approve transfer"
-                              }
-                            </button>
-
-                          </article>
-
-                        );
-                      }
-                    )}
-
-                  </div>
-
-                )
-              }
-
-            </div>
-
-
-            <div className="transfer-dashboard-section">
-
-              <div className="transfer-dashboard-subheading">
-
-                <h3>
-                  Your outgoing transfers
-                </h3>
-
-                <span>
-                  {outgoingTransferRequests.length}
-                </span>
-
-              </div>
-
-
-              {outgoingTransferRequests.length === 0
-
-                ? (
-
-                  <div className="transfer-empty-state">
-                    You have no counselor transfers waiting for another counselor.
-                  </div>
-
-                )
-
-                : (
-
-                  <div className="transfer-request-grid">
-
-                    {outgoingTransferRequests.map(
-                      transfer => {
-
-                        const transferClosed =
-                          transferRequestHasStarted(
-                            transfer
-                          );
-
-
-                        return (
-
-                          <article
-                            className="transfer-request-card transfer-request-card-outgoing"
-                            key={transfer.id}
-                          >
-
-                            <div>
-
-                              <strong>
-                                {transfer.ownerName || "User"}
-                              </strong>
-
-                              <p>
-                                {transfer.ownerDepartment || "No college / office"}
-                              </p>
-
-                              <small>
-                                Request status: {transfer.requestStatus || "Not recorded"}
-                              </small>
-
-                              <small>
-                                Counseling start: {transfer.date || "No date"} · {transfer.time || "No time"}
-                              </small>
-
-                              {transfer.reason && (
-                                <small>
-                                  Transfer reason: {transfer.reason}
-                                </small>
-                              )}
-
-                            </div>
-
-
-                            <span
-                              className={
-                                transferClosed
-                                  ? "transfer-deadline-label"
-                                  : "transfer-pending-label"
-                              }
-                            >
-                              {
-                                transferClosed
-                                  ? "Transfer window closed"
-                                  : "Waiting for another counselor"
-                              }
-                            </span>
-
-                          </article>
-
-                        );
-                      }
-                    )}
-
-                  </div>
-
-                )
-              }
-
-            </div>
+            {pendingTransferRequests.length === 0
+
+              ? (
+
+                <div className="transfer-empty-state">
+                  No users are currently waiting for counselor transfer approval.
+                </div>
+
+              )
+
+              : (
+
+                <div className="transfer-request-grid">
+
+                  {pendingTransferRequests.map(
+                    transfer => (
+
+                      <article
+                        className="transfer-request-card"
+                        key={transfer.id}
+                      >
+
+                        <div>
+
+                          <strong>
+                            {transfer.ownerName || "User"}
+                          </strong>
+
+                          <p>
+                            {transfer.ownerDepartment || "No college / office"}
+                          </p>
+
+                          <small>
+                            Schedule: {transfer.date || "No date"} · {transfer.time || "No time"}
+                          </small>
+
+                          <small>
+                            Requested by: {transfer.requestedByName || "Counselor"}
+                          </small>
+
+                          {transfer.reason && (
+                            <small>
+                              Reason: {transfer.reason}
+                            </small>
+                          )}
+
+                        </div>
+
+
+                        <button
+                          type="button"
+                          className="primary-button"
+                          disabled={
+                            approvingTransferId ===
+                            transfer.id
+                          }
+                          onClick={
+                            () =>
+                              approveTransfer(
+                                transfer
+                              )
+                          }
+                        >
+                          {
+                            approvingTransferId ===
+                            transfer.id
+                              ? "Approving..."
+                              : "Accept transfer"
+                          }
+                        </button>
+
+                      </article>
+                    )
+                  )}
+
+                </div>
+
+              )
+            }
 
           </section>
 
@@ -5135,7 +3623,10 @@ function Dashboard() {
           />
 
 
-          {employeeUserRole(
+          {[
+            "faculty",
+            "personnel"
+          ].includes(
             user.role
           ) && (
 
@@ -5192,46 +3683,6 @@ function Assessment() {
     useAuth();
 
 
-  const navigate =
-    useNavigate();
-
-
-  const assessmentRows =
-    useRows(
-      "assessments",
-      {
-        ownerId:
-          user.id
-      }
-    );
-
-
-  const blockingAssessment =
-    assessmentRows.find(
-      row =>
-        !assessmentAllowsAnother(
-          row.status
-        )
-    ) ||
-    null;
-
-
-  const assignedAssessmentCounselorId =
-    user.assignedCounselorId ||
-    "";
-
-
-  const assignedAssessmentCounselorName =
-    user.assignedCounselorName ||
-    "Guidance Counselor";
-
-
-  const assignedAssessmentCounselorDepartment =
-    user.assignedCounselorDepartment ||
-    user.department ||
-    "";
-
-
   const [answers, setAnswers] =
     useState({});
 
@@ -5248,30 +3699,6 @@ function Assessment() {
 
   const [saved, setSaved] =
     useState(null);
-
-
-  const answeredAssessmentQuestions =
-    scoredQuestionIds.filter(
-      questionId =>
-        answers[
-          questionId
-        ] !== undefined
-    ).length;
-
-
-  const totalAssessmentQuestions =
-    scoredQuestionIds.length;
-
-
-  const assessmentProgress =
-    totalAssessmentQuestions > 0
-      ? Math.round(
-          (
-            answeredAssessmentQuestions /
-            totalAssessmentQuestions
-          ) * 100
-        )
-      : 0;
 
 
   function answerQuestion(
@@ -5439,44 +3866,6 @@ function Assessment() {
     e.preventDefault();
 
 
-    if (
-      blockingAssessment
-    ) {
-
-      alert(
-        `You already have an assessment case with status "${assessmentCaseStatusLabel(blockingAssessment.status)}". You may take another assessment only after your assigned counselor marks the current assessment case Approved.`
-      );
-
-      return;
-    }
-
-
-    if (
-      !assignedAssessmentCounselorId
-    ) {
-
-      alert(
-        "No assigned Guidance Counselor is linked to your account. Please contact the MindTrack administrator before submitting an assessment."
-      );
-
-      return;
-    }
-
-
-    if (
-      !GENDER_OPTIONS.includes(
-        user.gender
-      )
-    ) {
-
-      alert(
-        "Please open Profile and select Male or Female before submitting a new assessment. This is required for the system analytics."
-      );
-
-      return;
-    }
-
-
     const answeredScoredQuestions =
       scoredQuestionIds.filter(
         questionId =>
@@ -5541,27 +3930,11 @@ function Assessment() {
       role:
         user.role,
 
-      gender:
-        normalizedGender(
-          user.gender
-        ),
-
       department:
-        canonicalCollegeName(
-          user.department
-        ),
+        user.department,
 
       program:
         user.program || "",
-
-      assignedCounselorId:
-        assignedAssessmentCounselorId,
-
-      assignedCounselorName:
-        assignedAssessmentCounselorName,
-
-      assignedCounselorDepartment:
-        assignedAssessmentCounselorDepartment,
 
       assessmentVersion:
         "WHO5-PHQ9-GAD7-DASS21-SUBSCALES-2026-09",
@@ -5589,173 +3962,15 @@ function Assessment() {
     };
 
 
-    const assessmentRef =
-      doc(
-        collection(
-          db,
-          "assessments"
-        )
-      );
+    await addRecord(
+      "assessments",
+      record
+    );
 
 
-    const assessmentGuardRef =
-      doc(
-        db,
-        "assessmentSubmissionGuards",
-        user.id
-      );
-
-
-    const counselorNotificationRef =
-      doc(
-        collection(
-          db,
-          "notifications"
-        )
-      );
-
-
-    try {
-
-      await runTransaction(
-        db,
-
-        async transaction => {
-
-          const guardSnap =
-            await transaction.get(
-              assessmentGuardRef
-            );
-
-
-          const activeAssessmentIds =
-            guardSnap.exists() &&
-            Array.isArray(
-              guardSnap.data()
-                ?.activeAssessmentIds
-            )
-              ? guardSnap.data()
-                  .activeAssessmentIds
-                  .filter(Boolean)
-              : [];
-
-
-          if (
-            activeAssessmentIds.length >
-            0
-          ) {
-
-            throw new Error(
-              "You already have an assessment case waiting for counselor approval. You may take another assessment only after the current case is marked Approved."
-            );
-          }
-
-
-          transaction.set(
-            assessmentRef,
-            {
-              ...record,
-
-              createdAt:
-                serverTimestamp()
-            }
-          );
-
-
-          transaction.set(
-            assessmentGuardRef,
-            {
-              ownerId:
-                user.id,
-
-              activeAssessmentIds: [
-                assessmentRef.id
-              ],
-
-              activeAssessmentCount:
-                1,
-
-              latestAssessmentId:
-                assessmentRef.id,
-
-              latestStatus:
-                "For review",
-
-              updatedById:
-                user.id,
-
-              updatedAt:
-                serverTimestamp()
-            },
-            {
-              merge:
-                true
-            }
-          );
-
-
-          transaction.set(
-            counselorNotificationRef,
-            {
-              ownerId:
-                assignedAssessmentCounselorId,
-
-              title:
-                "New psychological assessment submitted",
-
-              message:
-                `${user.name || "A user"} submitted a psychological assessment. Open Assessment Cases to review the new case.`,
-
-              notificationType:
-                "assessment_submitted",
-
-              senderRole:
-                user.role,
-
-              senderId:
-                user.id,
-
-              senderName:
-                user.name ||
-                "MindTrack user",
-
-              targetPath:
-                "/cases",
-
-              sourceType:
-                "assessment",
-
-              sourceId:
-                assessmentRef.id,
-
-              read:
-                false,
-
-              createdAt:
-                serverTimestamp()
-            }
-          );
-        }
-      );
-
-
-      setSaved(
-        result
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Assessment submission error:",
-        error
-      );
-
-
-      alert(
-        error?.message ||
-        "Unable to submit the psychological assessment."
-      );
-    }
+    setSaved(
+      result
+    );
 
   }
 
@@ -6013,84 +4228,6 @@ function Assessment() {
   }
 
 
-  if (
-    blockingAssessment
-  ) {
-
-    return (
-
-      <>
-
-        <PageTitle
-
-          title="Psychological Assessment"
-
-          subtitle="Complete all four screening tools when a new assessment is available."
-
-        />
-
-
-        <section className="panel assessment-limit-panel">
-
-          <h2>
-            Assessment currently unavailable
-          </h2>
-
-
-          <div className="notice assessment-limit-notice">
-
-            <strong>
-              You already have an assessment case awaiting completion of counselor review.
-            </strong>
-
-            <span>
-              Current status:
-              {" "}
-              <b>
-                {
-                  assessmentCaseStatusLabel(
-                    blockingAssessment.status
-                  )
-                }
-              </b>
-              .
-              {" "}
-              You may take another psychological assessment only after your assigned counselor marks this assessment case
-              {" "}
-              <b>
-                Approved
-              </b>
-              .
-            </span>
-
-          </div>
-
-
-          <button
-
-            type="button"
-
-            className="secondary-button"
-
-            onClick={
-              () =>
-                navigate(
-                  "/monitoring"
-                )
-            }
-
-          >
-            View assessment status
-          </button>
-
-        </section>
-
-      </>
-
-    );
-  }
-
-
   return (
 
     <>
@@ -6099,7 +4236,7 @@ function Assessment() {
 
         title="Psychological Assessment"
 
-        subtitle="Complete all four screening tools. Read each section carefully and choose the response that best matches your experience."
+        subtitle="Complete all four screening tools. Each section has its own title, questions, response scale, and scoring method."
 
       />
 
@@ -6116,60 +4253,6 @@ function Assessment() {
           Each answer keeps the original response wording, with a simpler meaning
           shown underneath to make the choices easier to understand.
         </p>
-
-      </div>
-
-
-      <div
-        className="assessment-progress-panel"
-        aria-live="polite"
-      >
-
-        <div className="assessment-progress-header">
-
-          <div>
-
-            <strong>
-              Assessment progress
-            </strong>
-
-            <span>
-              {answeredAssessmentQuestions} of {totalAssessmentQuestions} questions answered
-            </span>
-
-          </div>
-
-
-          <strong className="assessment-progress-percent">
-            {assessmentProgress}%
-          </strong>
-
-        </div>
-
-
-        <div
-          className="assessment-progress-track"
-          role="progressbar"
-          aria-label="Assessment progress"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={
-            assessmentProgress
-          }
-          aria-valuetext={
-            `${answeredAssessmentQuestions} of ${totalAssessmentQuestions} questions answered`
-          }
-        >
-
-          <div
-            className="assessment-progress-fill"
-            style={{
-              width:
-                `${assessmentProgress}%`
-            }}
-          />
-
-        </div>
 
       </div>
 
@@ -6196,6 +4279,11 @@ function Assessment() {
 
             </div>
 
+
+            <div className="assessment-score-range">
+              Score: 0-25 raw / 0-100 percentage
+            </div>
+
           </div>
 
 
@@ -6203,6 +4291,7 @@ function Assessment() {
 
             Think about the last two weeks. For each statement,
             choose the answer that is closest to how often you felt that way.
+            Higher numbers mean better well-being.
 
           </p>
 
@@ -6216,6 +4305,15 @@ function Assessment() {
 
 
           <div className="assessment-source-note">
+
+            Scoring: add the five responses for a raw score from
+            0 to 25, then multiply the raw score by 4 for a
+            percentage score from 0 to 100. A percentage below
+            50, or raw score below 13, is the WHO-5 suggested
+            cut-off for poor mental well-being and further assessment.
+
+            <br />
+            <br />
 
             Source: World Health Organization. The World Health
             Organization-Five Well-Being Index (WHO-5), 2024.
@@ -6240,6 +4338,11 @@ function Assessment() {
                 {PHQ9_TITLE}
               </h2>
 
+            </div>
+
+
+            <div className="assessment-score-range">
+              Total score: 0-27
             </div>
 
           </div>
@@ -6316,6 +4419,13 @@ function Assessment() {
 
           <div className="assessment-source-note">
 
+            Scoring: add the scores of items 1-9.
+            The functional difficulty question is recorded
+            separately and is not included in the PHQ-9 total.
+
+            <br />
+            <br />
+
             The provided PHQ-9 form states that no permission is
             required to reproduce, translate, display, or distribute it.
 
@@ -6340,6 +4450,11 @@ function Assessment() {
 
             </div>
 
+
+            <div className="assessment-score-range">
+              Total score: 0-21
+            </div>
+
           </div>
 
 
@@ -6360,6 +4475,12 @@ function Assessment() {
 
 
           <div className="assessment-source-note">
+
+            Scoring: add the scores of items 1-7 for a total
+            from 0 to 21.
+
+            <br />
+            <br />
 
             The provided GAD-7 form states that no permission is
             required to reproduce, translate, display, or distribute it.
@@ -6385,6 +4506,11 @@ function Assessment() {
 
             </div>
 
+
+            <div className="assessment-score-range">
+              3 scales · 7 items each
+            </div>
+
           </div>
 
 
@@ -6404,6 +4530,41 @@ function Assessment() {
           }
 
 
+          <div className="assessment-source-note">
+
+            DASS-21 is scored as three separate scales:
+
+            <br />
+            Depression:
+            {" "}
+            items 3, 5, 10, 13, 16, 17, and 21.
+
+            <br />
+            Anxiety:
+            {" "}
+            items 2, 4, 7, 9, 15, 19, and 20.
+
+            <br />
+            Stress:
+            {" "}
+            items 1, 6, 8, 11, 12, 14, and 18.
+
+            <br />
+            <br />
+
+            Each scale has 7 items scored from 0 to 3,
+            giving a raw score from 0 to 21.
+            For the adult DASS-21, MindTrack also shows the
+            adjusted score (raw score × 2), from 0 to 42.
+
+            <br />
+            <br />
+
+            MindTrack does not assign DASS-21 severity labels.
+            A counselor should interpret the scores together with
+            the user's overall assessment and situation.
+
+          </div>
 
         </section>
 
@@ -6519,48 +4680,6 @@ function activeCounselingSlotState(
 }
 
 
-
-const COUNSELING_REQUEST_RELEASE_STATUSES = [
-  "Follow up is recommended",
-  "Concluded"
-];
-
-
-const COUNSELING_REVIEW_STATUSES = [
-  "For review",
-  "Schedule for counseling",
-  "Follow up is recommended",
-  "Counseling is optional",
-  "For referral",
-  "Concluded"
-];
-
-
-function counselingRequestAllowsAnother(
-  status
-) {
-
-  return COUNSELING_REQUEST_RELEASE_STATUSES.includes(
-    String(
-      status || ""
-    ).trim()
-  );
-}
-
-
-function counselingRequestIsActive(
-  row
-) {
-
-  return Boolean(
-    row &&
-    !counselingRequestAllowsAnother(
-      row.status
-    )
-  );
-}
-
-
 function counselorProgramLabel(
   value
 ) {
@@ -6621,19 +4740,6 @@ function assessmentCaseStatusLabel(
 
   return status ||
     "For review";
-}
-
-
-function assessmentAllowsAnother(
-  status
-) {
-
-  return (
-    assessmentCaseStatusLabel(
-      status
-    ) ===
-    "Approved"
-  );
 }
 
 
@@ -7170,75 +5276,15 @@ function formatRecordDateTime(
 }
 
 
-function teachingUserRole(
-  role
-) {
-
-  return [
-    "teaching",
-    "faculty"
-  ].includes(role);
-}
-
-
-function nonTeachingUserRole(
-  role
-) {
-
-  return [
-    "non_teaching",
-    "personnel"
-  ].includes(role);
-}
-
-
-function employeeUserRole(
-  role
-) {
-
-  return (
-    teachingUserRole(role) ||
-    nonTeachingUserRole(role)
-  );
-}
-
-
 function generalUserRole(
   role
 ) {
 
-  return (
-    role === "student" ||
-    employeeUserRole(role)
-  );
-}
-
-
-function generalUserRoleLabel(
-  role
-) {
-
-  if (role === "student") {
-    return "Student";
-  }
-
-  if (teachingUserRole(role)) {
-    return "Teaching";
-  }
-
-  if (nonTeachingUserRole(role)) {
-    return "Non-teaching";
-  }
-
-  if (role === "counselor") {
-    return "Guidance Counselor";
-  }
-
-  if (role === "super_admin") {
-    return "Super Admin";
-  }
-
-  return role || "—";
+  return [
+    "student",
+    "faculty",
+    "personnel"
+  ].includes(role);
 }
 
 
@@ -7806,22 +5852,10 @@ function Consultations() {
     );
 
 
-  const activeCounselingRequests =
-    rows.filter(
-      counselingRequestIsActive
-    );
-
-
-  const blockingCounselingRequest =
-    activeCounselingRequests[0] ||
-    null;
-
-
   // Use the most recent counseling request that contains an
-  // assigned counselor as the current source. For newly registered
-  // Teaching / Non-teaching accounts, fall back to the counselor
-  // selected during registration until a counseling request exists.
-  // This avoids exposing private counselingProfiles notes to users.
+  // assigned counselor as the user's current counselor source.
+  // This avoids exposing private counselingProfiles notes to
+  // Student / Faculty / Personnel accounts.
   const currentCounselorAssignment =
     rows.find(
       row =>
@@ -7832,24 +5866,59 @@ function Consultations() {
     null;
 
 
+  // New users may not have an older consultation carrying their
+  // counselor assignment yet. Fall back to the active counselor
+  // directory for the user's department, but only when exactly
+  // one active counselor exists. This prevents a first request
+  // from being saved without a counselor/slot reservation.
+  const departmentCounselors =
+    useRows(
+      "counselorDirectory",
+      {
+        department:
+          user.department
+      }
+    );
+
+
+  const activeDepartmentCounselors =
+    departmentCounselors.filter(
+      counselor =>
+        counselor.active ===
+        true
+    );
+
+
+  const directoryCounselor =
+    activeDepartmentCounselors.length ===
+      1
+      ? activeDepartmentCounselors[0]
+      : null;
+
+
   const currentAssignedCounselorId =
     currentCounselorAssignment
       ?.assignedCounselorId ||
-    user.assignedCounselorId ||
+    directoryCounselor
+      ?.counselorId ||
+    directoryCounselor
+      ?.id ||
     "";
 
 
   const currentAssignedCounselorName =
     currentCounselorAssignment
       ?.assignedCounselorName ||
-    user.assignedCounselorName ||
+    directoryCounselor
+      ?.name ||
     "";
 
 
   const currentAssignedCounselorDepartment =
     currentCounselorAssignment
       ?.assignedCounselorDepartment ||
-    user.assignedCounselorDepartment ||
+    directoryCounselor
+      ?.department ||
     "";
 
 
@@ -7901,31 +5970,6 @@ function Consultations() {
   }
 
 
-  const counselingConcernOptions =
-    employeeUserRole(
-      user.role
-    )
-      ? [
-          "Anxiety or stress",
-          "Family concern",
-          "Workplace concern",
-          "Financial concern",
-          "Other"
-        ]
-      : [
-          "Academic concern",
-          "Anxiety or stress",
-          "Family concern",
-          "Workplace concern",
-          "Financial concern",
-          "Other"
-        ];
-
-
-  const defaultCounselingConcern =
-    counselingConcernOptions[0];
-
-
   const emptyRequest = {
     mode:
       "",
@@ -7937,7 +5981,7 @@ function Consultations() {
       "",
 
     category:
-      defaultCounselingConcern,
+      "Academic concern",
 
     message:
       ""
@@ -8135,44 +6179,6 @@ function Consultations() {
     e.preventDefault();
 
 
-    if (
-      blockingCounselingRequest
-    ) {
-
-      alert(
-        `You already have an active counseling request with status "${blockingCounselingRequest.status || "Pending approval"}". You may submit another request only after your counselor changes the current request to "Follow up is recommended" or "Concluded".`
-      );
-
-      return;
-    }
-
-
-    if (
-      !currentAssignedCounselorId
-    ) {
-
-      alert(
-        "No assigned Guidance Counselor is linked to your account. Please contact the MindTrack administrator before submitting a counseling request."
-      );
-
-      return;
-    }
-
-
-    if (
-      !GENDER_OPTIONS.includes(
-        user.gender
-      )
-    ) {
-
-      alert(
-        "Please open Profile and select Male or Female before submitting a counseling request. This is required for the system analytics."
-      );
-
-      return;
-    }
-
-
     if (!form.mode) {
 
       alert(
@@ -8206,6 +6212,20 @@ function Consultations() {
 
       alert(
         "Please select a valid preferred counseling time."
+      );
+
+      return;
+    }
+
+
+    if (
+      !currentAssignedCounselorId
+    ) {
+
+      alert(
+        activeDepartmentCounselors.length > 1
+          ? "More than one active counselor is available for your department, but you do not have a unique assigned counselor yet. Please contact Guidance before submitting a schedule."
+          : "No active assigned counselor was found for your department. Please contact Guidance before submitting a counseling request."
       );
 
       return;
@@ -8256,14 +6276,6 @@ function Consultations() {
         );
 
 
-      const requestGuardRef =
-        doc(
-          db,
-          "counselingRequestGuards",
-          user.id
-        );
-
-
       const slotRef =
         currentAssignedCounselorId
           ? doc(
@@ -8278,48 +6290,10 @@ function Consultations() {
           : null;
 
 
-      const counselorNotificationRef =
-        doc(
-          collection(
-            db,
-            "notifications"
-          )
-        );
-
-
       await runTransaction(
         db,
 
         async transaction => {
-
-          const requestGuardSnap =
-            await transaction.get(
-              requestGuardRef
-            );
-
-
-          const guardedActiveRequestIds =
-            requestGuardSnap.exists() &&
-            Array.isArray(
-              requestGuardSnap.data()
-                ?.activeRequestIds
-            )
-              ? requestGuardSnap.data()
-                  .activeRequestIds
-                  .filter(Boolean)
-              : [];
-
-
-          if (
-            guardedActiveRequestIds.length >
-            0
-          ) {
-
-            throw new Error(
-              "You already have an active counseling request. You may submit another only after the current request is marked Follow up is recommended or Concluded."
-            );
-          }
-
 
           let slotSnap =
             null;
@@ -8360,41 +6334,11 @@ function Consultations() {
               ownerName:
                 user.name,
 
-              role:
-                user.role,
-
-              gender:
-                normalizedGender(
-                  user.gender
-                ),
-
               department:
-                canonicalCollegeName(
-                  user.department
-                ),
+                user.department,
 
               program:
                 user.program ||
-                "",
-
-              // Counselor-facing account snapshot. Keeping these
-              // immutable fields on the counseling request means
-              // Account Information does not depend entirely on a
-              // second users/{uid} read.
-              userNumber:
-                user.userNumber ||
-                "",
-
-              phoneNumber:
-                user.phoneNumber ||
-                "",
-
-              contactPersonName:
-                user.contactPersonName ||
-                "",
-
-              contactPersonPhone:
-                user.contactPersonPhone ||
                 "",
 
               ...(currentAssignedCounselorId
@@ -8422,81 +6366,6 @@ function Consultations() {
           );
 
 
-          transaction.set(
-            requestGuardRef,
-            {
-              ownerId:
-                user.id,
-
-              activeRequestIds: [
-                consultationRef.id
-              ],
-
-              activeRequestCount:
-                1,
-
-              latestRequestId:
-                consultationRef.id,
-
-              latestStatus:
-                "Pending approval",
-
-              updatedById:
-                user.id,
-
-              updatedAt:
-                serverTimestamp()
-            },
-            {
-              merge:
-                true
-            }
-          );
-
-
-          transaction.set(
-            counselorNotificationRef,
-            {
-              ownerId:
-                currentAssignedCounselorId,
-
-              title:
-                "New counseling request submitted",
-
-              message:
-                `${user.name || "A user"} submitted a counseling request for ${form.category}. Requested schedule: ${form.date} · ${form.time}.`,
-
-              notificationType:
-                "counseling_request_submitted",
-
-              senderRole:
-                user.role,
-
-              senderId:
-                user.id,
-
-              senderName:
-                user.name ||
-                "MindTrack user",
-
-              targetPath:
-                "/counseling-requests",
-
-              sourceType:
-                "consultation",
-
-              sourceId:
-                consultationRef.id,
-
-              read:
-                false,
-
-              createdAt:
-                serverTimestamp()
-            }
-          );
-
-
           if (slotRef) {
 
             transaction.set(
@@ -8517,7 +6386,7 @@ function Consultations() {
                 assignmentSourceConsultationId:
                   currentCounselorAssignment
                     ?.id ||
-                  "",
+                  consultationRef.id,
 
                 state:
                   "held",
@@ -8584,11 +6453,8 @@ function Consultations() {
           : "",
 
       category:
-        counselingConcernOptions.includes(
-          row.category
-        )
-          ? row.category
-          : defaultCounselingConcern,
+        row.category ||
+        "Academic concern",
 
       message:
         row.message ||
@@ -8987,54 +6853,6 @@ function Consultations() {
           </h2>
 
 
-          {blockingCounselingRequest && (
-
-            <div className="notice counseling-request-limit-notice">
-
-              <strong>
-                You already have an active counseling request.
-              </strong>
-
-              <span>
-                Current status:
-                {" "}
-                <b>
-                  {
-                    blockingCounselingRequest.status ||
-                    "Pending approval"
-                  }
-                </b>
-                .
-                {" "}
-                You can submit another request only when your counselor marks this request
-                {" "}
-                <b>
-                  Follow up is recommended
-                </b>
-                {" "}
-                or
-                {" "}
-                <b>
-                  Concluded
-                </b>
-                .
-              </span>
-
-            </div>
-
-          )}
-
-
-          <fieldset
-            className="counseling-new-request-fieldset"
-            disabled={
-              Boolean(
-                blockingCounselingRequest
-              )
-            }
-          >
-
-
           <label>
 
             Mode
@@ -9184,18 +7002,29 @@ function Consultations() {
 
             >
 
-              {counselingConcernOptions.map(
-                category => (
+              <option>
+                Academic concern
+              </option>
 
-                  <option
-                    key={category}
-                    value={category}
-                  >
-                    {category}
-                  </option>
+              <option>
+                Anxiety or stress
+              </option>
 
-                )
-              )}
+              <option>
+                Family concern
+              </option>
+
+              <option>
+                Workplace concern
+              </option>
+
+              <option>
+                Financial concern
+              </option>
+
+              <option>
+                Other
+              </option>
 
             </select>
 
@@ -9236,9 +7065,6 @@ function Consultations() {
 
           </button>
 
-
-          </fieldset>
-
         </form>
 
 
@@ -9255,8 +7081,9 @@ function Consultations() {
               marginTop: 0
             }}
           >
-            You may edit a request while it is still Pending approval.
-            Only one active counseling request is allowed at a time. A new request becomes available after the current request is marked Follow up is recommended or Concluded.
+            You may edit a request after submitting it.
+            Changes are sent back for counselor review.
+            Completed or cancelled requests can no longer be edited.
           </p>
 
 
@@ -9280,9 +7107,7 @@ function Consultations() {
 
                   const canEdit =
                     row.status ===
-                      "Pending approval" &&
-                    row.transferStatus !==
-                      "Pending approval";
+                    "Pending approval";
 
 
                   return (
@@ -9511,18 +7336,29 @@ function Consultations() {
 
                               >
 
-                                {counselingConcernOptions.map(
-                                  category => (
+                                <option>
+                                  Academic concern
+                                </option>
 
-                                    <option
-                                      key={category}
-                                      value={category}
-                                    >
-                                      {category}
-                                    </option>
+                                <option>
+                                  Anxiety or stress
+                                </option>
 
-                                  )
-                                )}
+                                <option>
+                                  Family concern
+                                </option>
+
+                                <option>
+                                  Workplace concern
+                                </option>
+
+                                <option>
+                                  Financial concern
+                                </option>
+
+                                <option>
+                                  Other
+                                </option>
 
                               </select>
 
@@ -9613,59 +7449,6 @@ function Consultations() {
                             </span>
 
 
-                            {row.transferStatus ===
-                              "Pending approval" && (
-
-                              <div className="user-transfer-status user-transfer-status-pending">
-
-                                <strong>
-                                  Counselor transfer pending
-                                </strong>
-
-                                <span>
-                                  {
-                                    row.assignedCounselorName ||
-                                    "Your current counselor"
-                                  }
-                                  {" "}
-                                  remains assigned until another Guidance Counselor approves the transfer. Your counseling date and time stay unchanged while approval is pending.
-                                </span>
-
-                              </div>
-
-                            )}
-
-
-                            {row.transferStatus ===
-                              "Approved" && (
-
-                              <div className="user-transfer-status user-transfer-status-approved">
-
-                                <strong>
-                                  Counselor transferred
-                                </strong>
-
-                                <span>
-                                  Your assigned counselor is now
-                                  {" "}
-                                  <b>
-                                    {
-                                      row.assignedCounselorName ||
-                                      "the accepting Guidance Counselor"
-                                    }
-                                  </b>
-                                  {
-                                    row.assignedCounselorDepartment
-                                      ? ` [${row.assignedCounselorDepartment}]`
-                                      : ""
-                                  }.
-                                </span>
-
-                              </div>
-
-                            )}
-
-
                             <p>
 
                               {row.date}
@@ -9700,38 +7483,19 @@ function Consultations() {
                             )}
 
 
-                            <div
-                              style={{
-                                marginTop: "12px",
-                                padding: "12px 14px",
-                                borderRadius: "10px",
-                                background: "#f7f9fc",
-                                border: "1px solid #dfe5ef"
-                              }}
-                            >
+                            {row.counselorRemarks && (
 
-                              <strong
-                                style={{
-                                  display: "block",
-                                  marginBottom: "6px",
-                                  color: "#173f8f"
-                                }}
-                              >
-                                Counselor Remarks
-                              </strong>
+                              <small>
 
-                              <span
-                                style={{
-                                  whiteSpace: "pre-wrap"
-                                }}
-                              >
+                                Counselor:
+                                {" "}
                                 {
-                                  row.counselorRemarks?.trim() ||
-                                  "No counselor remarks yet."
+                                  row.counselorRemarks
                                 }
-                              </span>
 
-                            </div>
+                              </small>
+
+                            )}
 
 
                             {canEdit && (
@@ -9774,12 +7538,7 @@ function Consultations() {
                                   color: "#7b8495"
                                 }}
                               >
-                                {
-                                  row.transferStatus ===
-                                    "Pending approval"
-                                    ? "This request cannot be edited while a counselor transfer is waiting for approval."
-                                    : `This request can no longer be edited because it is ${String(row.status).toLowerCase()}.`
-                                }
+                                This request can no longer be edited because it is {String(row.status).toLowerCase()}.
                               </small>
 
                             )}
@@ -9826,9 +7585,12 @@ function Referrals() {
     );
 
 
-  const counselorDirectoryRows =
+  const counselorDirectory =
     useRows(
-      "counselorDirectory"
+      "counselorDirectory",
+      {
+        active: true
+      }
     );
 
 
@@ -9847,195 +7609,72 @@ function Referrals() {
       reason:
         "",
 
+      urgency:
+        "Routine",
+
       contact:
         ""
 
     });
 
 
-  const selectedReferralCounselor =
-    useMemo(
-      () => {
-
-        if (!form.department) {
-          return null;
-        }
-
-
-        return (
-          counselorDirectoryRows.find(
-            counselor =>
-              counselor.active !==
-                false &&
-              counselor.id &&
-              normalizedCounselorDepartment(
-                counselor.department
-              ) ===
-                normalizedCounselorDepartment(
-                  form.department
-                )
-          ) ||
-          null
-        );
-
-      },
-      [
-        counselorDirectoryRows,
-        form.department
-      ]
-    );
-
-
   async function submit(e) {
 
     e.preventDefault();
 
+    const assignedCounselor =
+      counselorDirectory.find(
+        counselor =>
+          counselor.department ===
+            form.department &&
+          counselor.active !== false
+      ) ||
+      null;
 
-    if (!/^\d{11}$/.test(form.contact)) {
 
+    if (!assignedCounselor) {
       alert(
-        "Contact information must contain exactly 11 digits."
+        "No active Guidance Counselor is configured for the selected college/office."
       );
-
       return;
     }
 
 
-    if (
-      !selectedReferralCounselor
-        ?.id
-    ) {
+    await addRecord(
+      "referrals",
+      {
 
-      alert(
-        "No active counselor is linked to the selected college. Please contact the administrator before submitting this referral."
-      );
+        ...form,
 
-      return;
-    }
+        ownerId:
+          user.id,
 
+        referrerId:
+          user.id,
 
-    const referralRef =
-      doc(
-        collection(
-          db,
-          "referrals"
-        )
-      );
+        referrerName:
+          user.name,
 
+        referrerRole:
+          user.role,
 
-    const counselorNotificationRef =
-      doc(
-        collection(
-          db,
-          "notifications"
-        )
-      );
+        assignedCounselorId:
+          assignedCounselor.counselorId ||
+          assignedCounselor.id,
 
+        assignedCounselorName:
+          assignedCounselor.name ||
+          "Guidance Counselor",
 
-    try {
+        assignedCounselorDepartment:
+          assignedCounselor.department ||
+          form.department,
 
-      await runTransaction(
-        db,
+        status:
+          "Received"
 
-        async transaction => {
-
-          transaction.set(
-            referralRef,
-            {
-
-              ...form,
-
-              ownerId:
-                user.id,
-
-              referrerId:
-                user.id,
-
-              referrerName:
-                user.name,
-
-              referrerRole:
-                user.role,
-
-              assignedCounselorId:
-                selectedReferralCounselor.id,
-
-              assignedCounselorName:
-                selectedReferralCounselor.name ||
-                "Guidance Counselor",
-
-              assignedCounselorDepartment:
-                selectedReferralCounselor.department ||
-                form.department,
-
-              status:
-                "Received",
-
-              createdAt:
-                serverTimestamp()
-            }
-          );
-
-
-          transaction.set(
-            counselorNotificationRef,
-            {
-              ownerId:
-                selectedReferralCounselor.id,
-
-              title:
-                "New referral submitted",
-
-              message:
-                `${user.name || "A Teaching/Non-teaching user"} submitted a referral for ${form.personName}. College / Office: ${form.department}.`,
-
-              notificationType:
-                "referral_submitted",
-
-              senderRole:
-                user.role,
-
-              senderId:
-                user.id,
-
-              senderName:
-                user.name ||
-                "MindTrack user",
-
-              targetPath:
-                "/referrals",
-
-              sourceType:
-                "referral",
-
-              sourceId:
-                referralRef.id,
-
-              read:
-                false,
-
-              createdAt:
-                serverTimestamp()
-            }
-          );
-        }
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Unable to submit referral:",
-        error
-      );
-
-
-      alert(
-        error?.message ||
-        "Unable to submit the referral."
-      );
-
-      return;
-    }
+      }
+    );
 
 
     setForm({
@@ -10051,6 +7690,9 @@ function Referrals() {
 
       reason:
         "",
+
+      urgency:
+        "Routine",
 
       contact:
         ""
@@ -10076,7 +7718,7 @@ function Referrals() {
 
         title="Referral"
 
-        subtitle="Teaching and non-teaching users may refer someone who may benefit from guidance support."
+        subtitle="Faculty and personnel may refer someone who may benefit from guidance support."
 
       />
 
@@ -10142,11 +7784,11 @@ function Referrals() {
               </option>
 
               <option>
-                Teaching
+                Faculty
               </option>
 
               <option>
-                Non-teaching
+                Personnel
               </option>
 
             </select>
@@ -10158,7 +7800,7 @@ function Referrals() {
 
             College / Office
 
-            <select
+            <input
 
               required
 
@@ -10175,62 +7817,9 @@ function Referrals() {
                   })
               }
 
-            >
-
-              <option
-                value=""
-                disabled
-              >
-                Select college / office
-              </option>
-
-              {
-                PREFERRED_COUNSELORS.map(
-                  counselor => (
-
-                    <option
-                      key={
-                        counselor.key
-                      }
-                      value={
-                        counselor.department
-                      }
-                    >
-                      {
-                        counselor.department
-                      }
-                    </option>
-
-                  )
-                )
-              }
-
-            </select>
+            />
 
           </label>
-
-
-          {form.department && (
-
-            <div className="notice">
-
-              <strong>
-                Assigned counselor
-              </strong>
-
-              <span>
-
-                {
-                  selectedReferralCounselor
-                    ? `${selectedReferralCounselor.name || "Guidance Counselor"} [${selectedReferralCounselor.department || form.department}]`
-                    : `No active counselor is currently linked to ${form.department}.`
-                }
-
-              </span>
-
-            </div>
-
-          )}
 
 
           <label>
@@ -10238,20 +7827,6 @@ function Referrals() {
             Contact information
 
             <input
-
-              type="tel"
-
-              required
-
-              inputMode="numeric"
-
-              pattern="[0-9]{11}"
-
-              minLength={11}
-
-              maxLength={11}
-
-              placeholder="09XXXXXXXXX"
 
               value={
                 form.contact
@@ -10263,12 +7838,44 @@ function Referrals() {
                     ...form,
                     contact:
                       e.target.value
-                        .replace(/\D/g, "")
-                        .slice(0, 11)
                   })
               }
 
             />
+
+          </label>
+
+
+          <label>
+
+            Urgency
+
+            <select
+
+              value={
+                form.urgency
+              }
+
+              onChange={
+                e =>
+                  setForm({
+                    ...form,
+                    urgency:
+                      e.target.value
+                  })
+              }
+
+            >
+
+              <option>
+                Routine
+              </option>
+
+              <option>
+                Urgent
+              </option>
+
+            </select>
 
           </label>
 
@@ -10301,15 +7908,7 @@ function Referrals() {
           </label>
 
 
-          <button
-            className="primary-button"
-            disabled={
-              Boolean(
-                form.department
-              ) &&
-              !selectedReferralCounselor
-            }
-          >
+          <button className="primary-button">
 
             Submit referral
 
@@ -10371,34 +7970,20 @@ function Referrals() {
                         row.department
                       }
 
+                      {" · "}
+
+                      {
+                        row.urgency
+                      }
+
                     </p>
 
 
-                    <div className="referral-status-details">
+                    <small>
 
-                      <div className="referral-status-detail-row">
+                      Private assessment and counseling notes are not shown to the referrer.
 
-                        <strong>
-                          Assigned counselor:
-                        </strong>
-
-                        <span>
-                          {
-                            row.assignedCounselorName ||
-                            "Not recorded"
-                          }
-                        </span>
-
-                      </div>
-
-
-                      <div className="referral-status-privacy-note">
-
-                        Private assessment and counseling notes are not shown to the referrer.
-
-                      </div>
-
-                    </div>
+                    </small>
 
                   </article>
 
@@ -10417,596 +8002,10 @@ function Referrals() {
 
 
 
-const REFERRAL_MANAGEMENT_STATUSES = [
-  "Received",
-  "In review",
-  "Contacted",
-  "Closed"
-];
-
-
-function ReferralManagement() {
-
-  const { user } =
-    useAuth();
-
-
-  const isSuperAdmin =
-    user.role ===
-    "super_admin";
-
-
-  const isCounselor =
-    user.role ===
-    "counselor";
-
-
-  const referrals =
-    useRows(
-      "referrals",
-      isCounselor
-        ? {
-            assignedCounselorId:
-              user.id
-          }
-        : {},
-      isCounselor ||
-      isSuperAdmin
-    );
-
-
-  const [
-    collegeFilter,
-    setCollegeFilter
-  ] = useState("");
-
-
-  const [
-    statusFilter,
-    setStatusFilter
-  ] = useState("");
-
-
-  const [
-    savingReferralId,
-    setSavingReferralId
-  ] = useState("");
-
-
-  const visibleReferrals =
-    useMemo(
-      () =>
-        referrals.filter(
-          row => {
-
-            const collegeMatches =
-              !collegeFilter ||
-              normalizedCounselorDepartment(
-                row.department
-              ) ===
-                normalizedCounselorDepartment(
-                  collegeFilter
-                );
-
-
-            const statusMatches =
-              !statusFilter ||
-              row.status ===
-                statusFilter;
-
-
-            return (
-              collegeMatches &&
-              statusMatches
-            );
-          }
-        ),
-      [
-        referrals,
-        collegeFilter,
-        statusFilter
-      ]
-    );
-
-
-  async function updateReferralStatus(
-    row,
-    nextStatus
-  ) {
-
-    if (
-      !REFERRAL_MANAGEMENT_STATUSES.includes(
-        nextStatus
-      )
-    ) {
-      return;
-    }
-
-
-    try {
-
-      setSavingReferralId(
-        row.id
-      );
-
-
-      await updateRecord(
-        "referrals",
-        row.id,
-        {
-          status:
-            nextStatus
-        }
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Unable to update referral status:",
-        error
-      );
-
-
-      alert(
-        error?.message ||
-        "Unable to update the referral status."
-      );
-
-    } finally {
-
-      setSavingReferralId("");
-    }
-  }
-
-
-  if (
-    !isCounselor &&
-    !isSuperAdmin
-  ) {
-
-    return (
-      <Navigate
-        to="/dashboard"
-        replace
-      />
-    );
-  }
-
-
-  return (
-
-    <>
-
-      <PageTitle
-
-        title="Referrals"
-
-        subtitle={
-          isSuperAdmin
-            ? "Review Teaching and Non-teaching referrals across all colleges and offices."
-            : `Review referrals assigned to you for ${canonicalCollegeName(user.department)}.`
-        }
-
-      />
-
-
-      <section className="panel">
-
-        <div className="filter-grid">
-
-          {isSuperAdmin && (
-
-            <label>
-
-              College / Office
-
-              <select
-                value={
-                  collegeFilter
-                }
-                onChange={
-                  event =>
-                    setCollegeFilter(
-                      event.target.value
-                    )
-                }
-              >
-
-                <option value="">
-                  All colleges
-                </option>
-
-                {
-                  PREFERRED_COUNSELORS.map(
-                    counselor => (
-
-                      <option
-                        key={
-                          counselor.key
-                        }
-                        value={
-                          counselor.department
-                        }
-                      >
-                        {
-                          counselor.department
-                        }
-                      </option>
-
-                    )
-                  )
-                }
-
-              </select>
-
-            </label>
-
-          )}
-
-
-          <label>
-
-            Status
-
-            <select
-              value={
-                statusFilter
-              }
-              onChange={
-                event =>
-                  setStatusFilter(
-                    event.target.value
-                  )
-              }
-            >
-
-              <option value="">
-                All statuses
-              </option>
-
-              {
-                REFERRAL_MANAGEMENT_STATUSES.map(
-                  status => (
-
-                    <option
-                      key={
-                        status
-                      }
-                      value={
-                        status
-                      }
-                    >
-                      {
-                        status
-                      }
-                    </option>
-
-                  )
-                )
-              }
-
-            </select>
-
-          </label>
-
-        </div>
-
-
-      </section>
-
-
-      <section className="panel">
-
-        <h2>
-          Referral List
-        </h2>
-
-
-        {visibleReferrals.length === 0
-
-          ? (
-
-            <Empty
-              text={
-                isSuperAdmin
-                  ? "No referrals match the selected filters."
-                  : "No referrals are currently assigned to you."
-              }
-            />
-
-          )
-
-          : (
-
-            <div className="table-wrap">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-
-                    <th>
-                      Referred Person
-                    </th>
-
-                    <th>
-                      Type
-                    </th>
-
-                    <th>
-                      College / Office
-                    </th>
-
-                    <th>
-                      Contact
-                    </th>
-
-                    <th>
-                      Referred By
-                    </th>
-
-                    {isSuperAdmin && (
-
-                      <th>
-                        Assigned Counselor
-                      </th>
-
-                    )}
-
-                    <th>
-                      Reason
-                    </th>
-
-                    <th>
-                      Submitted
-                    </th>
-
-                    <th>
-                      Status
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                  {
-                    visibleReferrals.map(
-                      row => (
-
-                        <tr
-                          key={
-                            row.id
-                          }
-                        >
-
-                          <td>
-                            <strong>
-                              {
-                                row.personName ||
-                                "Not recorded"
-                              }
-                            </strong>
-                          </td>
-
-
-                          <td>
-                            {
-                              row.personType ||
-                              "Not recorded"
-                            }
-                          </td>
-
-
-                          <td>
-                            {
-                              canonicalCollegeName(
-                                row.department
-                              )
-                            }
-                          </td>
-
-
-                          <td>
-                            {
-                              row.contact ||
-                              "Not provided"
-                            }
-                          </td>
-
-
-                          <td>
-
-                            {
-                              row.referrerName ||
-                              "Not recorded"
-                            }
-
-                            <br />
-
-                            <small>
-
-                              {
-                                generalUserRoleLabel(
-                                  row.referrerRole
-                                )
-                              }
-
-                            </small>
-
-                          </td>
-
-
-                          {isSuperAdmin && (
-
-                            <td>
-
-                              {
-                                row.assignedCounselorName ||
-                                "Not assigned"
-                              }
-
-                              <br />
-
-                              <small>
-
-                                {
-                                  row.assignedCounselorDepartment ||
-                                  row.department ||
-                                  "Not recorded"
-                                }
-
-                              </small>
-
-                            </td>
-
-                          )}
-
-
-                          <td>
-                            {
-                              row.reason ||
-                              "No reason provided"
-                            }
-                          </td>
-
-
-                          <td>
-                            {
-                              formatRecordDateTime(
-                                row.createdAt
-                              )
-                            }
-                          </td>
-
-
-                          <td>
-
-                            <select
-
-                              className="referral-management-status-select"
-
-                              value={
-                                REFERRAL_MANAGEMENT_STATUSES.includes(
-                                  row.status
-                                )
-                                  ? row.status
-                                  : "Received"
-                              }
-
-                              disabled={
-                                savingReferralId ===
-                                  row.id
-                              }
-
-                              onChange={
-                                event =>
-                                  updateReferralStatus(
-                                    row,
-                                    event.target.value
-                                  )
-                              }
-
-                            >
-
-                              {
-                                REFERRAL_MANAGEMENT_STATUSES.map(
-                                  status => (
-
-                                    <option
-                                      key={
-                                        status
-                                      }
-                                      value={
-                                        status
-                                      }
-                                    >
-                                      {
-                                        status
-                                      }
-                                    </option>
-
-                                  )
-                                )
-                              }
-
-                            </select>
-
-                          </td>
-
-                        </tr>
-
-                      )
-                    )
-                  }
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          )
-        }
-
-      </section>
-
-    </>
-
-  );
-}
-
-
-
-function ReferralRoute() {
-
-  const { user } =
-    useAuth();
-
-
-  if (
-    user.role ===
-      "counselor" ||
-    user.role ===
-      "super_admin"
-  ) {
-
-    return (
-      <ReferralManagement />
-    );
-  }
-
-
-  if (
-    employeeUserRole(
-      user.role
-    )
-  ) {
-
-    return (
-      <Referrals />
-    );
-  }
-
-
-  return (
-    <Navigate
-      to="/dashboard"
-      replace
-    />
-  );
-}
-
-
-
 // ======================================================
 // RATINGS & FEEDBACK
-// STUDENT / TEACHING / NON-TEACHING
+// STUDENT / FACULTY / PERSONNEL
 // ======================================================
-
 
 function Feedback() {
 
@@ -11016,8 +8015,6 @@ function Feedback() {
 
   const allowedRoles = [
     "student",
-    "teaching",
-    "non_teaching",
     "faculty",
     "personnel"
   ];
@@ -11621,17 +8618,12 @@ function Profile() {
 
   const allowedRoles = [
     "student",
-    "teaching",
-    "non_teaching",
     "faculty",
     "personnel"
   ];
 
   const [form, setForm] =
     useState({
-      gender:
-        user?.gender || "",
-
       phoneNumber:
         user?.phoneNumber || "",
 
@@ -11663,9 +8655,6 @@ function Profile() {
     () => {
 
       setForm({
-        gender:
-          user?.gender || "",
-
         phoneNumber:
           user?.phoneNumber || "",
 
@@ -11684,7 +8673,6 @@ function Profile() {
 
     },
     [
-      user?.gender,
       user?.phoneNumber,
       user?.address,
       user?.facebookAccount,
@@ -11746,20 +8734,6 @@ function Profile() {
 
     setMessage("");
     setError("");
-
-
-    if (
-      !GENDER_OPTIONS.includes(
-        form.gender
-      )
-    ) {
-
-      setError(
-        "Please select Male or Female."
-      );
-
-      return;
-    }
 
 
     if (
@@ -11840,9 +8814,6 @@ function Profile() {
 
 
       await updateProfile({
-        gender:
-          form.gender,
-
         phoneNumber:
           form.phoneNumber,
 
@@ -11927,9 +8898,17 @@ function Profile() {
           <div className="profile-role-badge">
 
             {
-              generalUserRoleLabel(
-                user.role
-              )
+              user.role ===
+              "student"
+
+                ? "Student"
+
+                : user.role ===
+                  "faculty"
+
+                  ? "Faculty"
+
+                  : "Personnel"
             }
 
           </div>
@@ -11977,9 +8956,17 @@ function Profile() {
 
               <input
                 value={
-                  generalUserRoleLabel(
-                    user.role
-                  )
+                  user.role ===
+                  "student"
+
+                    ? "Student"
+
+                    : user.role ===
+                      "faculty"
+
+                      ? "Faculty"
+
+                      : "Personnel"
                 }
                 readOnly
               />
@@ -11987,11 +8974,7 @@ function Profile() {
 
 
             <label>
-              {
-                user.role === "student"
-                  ? "College / Office"
-                  : "Assigned Counselor College"
-              }
+              College / Office
 
               <input
                 value={
@@ -12001,26 +8984,6 @@ function Profile() {
                 readOnly
               />
             </label>
-
-
-            {employeeUserRole(
-              user.role
-            ) && (
-
-              <label className="full-width-field">
-                Assigned Counselor
-
-                <input
-                  value={
-                    user.assignedCounselorName
-                      ? `${user.assignedCounselorName} [${user.assignedCounselorDepartment || user.department || "College not provided"}]`
-                      : "Not assigned"
-                  }
-                  readOnly
-                />
-              </label>
-
-            )}
 
 
             {user.role === "student" && (
@@ -12078,37 +9041,6 @@ function Profile() {
 
 
             <div className="profile-grid">
-
-              <label>
-                Sex
-
-                <select
-                  name="gender"
-                  value={
-                    form.gender
-                  }
-                  onChange={change}
-                  required
-                >
-
-                  <option
-                    value=""
-                    disabled
-                  >
-                    Select sex
-                  </option>
-
-                  <option value="Male">
-                    Male
-                  </option>
-
-                  <option value="Female">
-                    Female
-                  </option>
-
-                </select>
-              </label>
-
 
               <label>
                 Phone Number
@@ -12384,142 +9316,35 @@ function UserProfilesContent({
   );
 
 
-  // Track transfer state without exposing private counseling
-  // profile fields. Super Admin may audit counselingProfiles.
-  // Counselors must query only their own deterministic transferAccess
-  // records because Firestore authorizes transferAccess reads by
-  // counselorId == request.auth.uid. Querying previousCounselorId
-  // can include another counselor's access record and makes Firestore
-  // reject the entire query.
-  useEffect(
-    () => {
-
-      const transferStateQuery =
-        isSuperAdmin
-          ? collection(
-              db,
-              "counselingProfiles"
-            )
-          : query(
-              collection(
-                db,
-                "transferAccess"
-              ),
-              where(
-                "counselorId",
-                "==",
-                currentUser.id
-              ),
-              where(
-                "active",
-                "==",
-                true
-              )
-            );
-
-
-      return onSnapshot(
-        transferStateQuery,
-
-        snapshot => {
-
-          const map = {};
-
-
-          snapshot.docs.forEach(
-            item => {
-
-              const data =
-                item.data();
-
-
-              if (isSuperAdmin) {
-
-                map[
-                  item.id
-                ] =
-                  data;
-
-                return;
-              }
-
-
-              if (
-                data.ownerId &&
-                data.active ===
-                  true
-              ) {
-
-                map[
-                  data.ownerId
-                ] = {
-                  transferActive:
-                    true,
-
-                  accessRole:
-                    data.accessRole ||
-                    (
-                      data.currentAssignment ===
-                        false
-                        ? "documentation"
-                        : "assigned"
-                    ),
-
-                  currentAssignment:
-                    data.currentAssignment !==
-                    false,
-
-                  assignedCounselorId:
-                    data.currentAssignment ===
-                      false
-                      ? ""
-                      : (
-                          data.counselorId ||
-                          ""
-                        )
-                };
-              }
-            }
-          );
-
-
-          setProfileTransferMap(
-            map
-          );
-        },
-
-        error => {
-
-          console.error(
-            "Unable to load counseling transfer state:",
-            error
-          );
-
-
-          setProfileTransferMap(
-            {}
-          );
-        }
-      );
-
-    },
-
-    [
-      isSuperAdmin,
-      currentUser.id
-    ]
-  );
-
-
-  // Load users formally transferred TO the current counselor.
   useEffect(
     () => {
 
       if (isSuperAdmin) {
 
-        setTransferredRows([]);
+        const unsubscribe =
+          onSnapshot(
+            collection(
+              db,
+              "counselingProfiles"
+            ),
+            snapshot => {
 
-        return undefined;
+              const map = {};
+
+              snapshot.docs.forEach(
+                item => {
+                  map[item.id] =
+                    item.data();
+                }
+              );
+
+              setProfileTransferMap(map);
+            },
+            () =>
+              setProfileTransferMap({})
+          );
+
+        return unsubscribe;
       }
 
 
@@ -12542,89 +9367,66 @@ function UserProfilesContent({
         );
 
 
-      return onSnapshot(
-        accessQuery,
+      const unsubscribe =
+        onSnapshot(
+          accessQuery,
+          async snapshot => {
 
-        async snapshot => {
+            try {
 
-          try {
+              const rows =
+                await Promise.all(
+                  snapshot.docs.map(
+                    async accessDoc => {
 
-            const rows =
-              await Promise.all(
-                snapshot.docs.map(
-                  async accessDoc => {
+                      const access =
+                        accessDoc.data();
 
-                    const access =
-                      accessDoc.data();
+                      const userSnap =
+                        await getDoc(
+                          doc(
+                            db,
+                            "users",
+                            access.ownerId
+                          )
+                        );
 
+                      if (!userSnap.exists()) {
+                        return null;
+                      }
 
-                    if (!access.ownerId) {
-                      return null;
+                      return {
+                        id:
+                          userSnap.id,
+                        ...userSnap.data(),
+                        _transferredAccess:
+                          true,
+                        _transferAccessId:
+                          accessDoc.id
+                      };
                     }
+                  )
+                );
 
-
-                    const userSnap =
-                      await getDoc(
-                        doc(
-                          db,
-                          "users",
-                          access.ownerId
-                        )
-                      );
-
-
-                    if (!userSnap.exists()) {
-                      return null;
-                    }
-
-
-                    return {
-                      id:
-                        userSnap.id,
-
-                      ...userSnap.data(),
-
-                      _transferredAccess:
-                        true,
-
-                      _transferAccessId:
-                        accessDoc.id
-                    };
-                  }
-                )
+              setTransferredRows(
+                rows.filter(Boolean)
               );
 
+            } catch (error) {
 
-            setTransferredRows(
-              rows.filter(Boolean)
-            );
+              console.error(
+                "Unable to load transferred users:",
+                error
+              );
 
-          } catch (error) {
-
-            console.error(
-              "Unable to load transferred users:",
-              error
-            );
-
-
-            setTransferredRows([]);
+              setTransferredRows([]);
+            }
           }
-        },
+        );
 
-        error => {
-
-          console.error(
-            "Unable to load transfer access for User Profiles:",
-            error
-          );
-
-
-          setTransferredRows([]);
-        }
-      );
+      return unsubscribe;
 
     },
-
     [
       isSuperAdmin,
       currentUser.id
@@ -12632,18 +9434,11 @@ function UserProfilesContent({
   );
 
 
-  // Keep same-department users visible to a former counselor
-  // for read-only documentation after a transfer. Cross-college
-  // former counselors keep access through their transferAccess record.
-  const activeDepartmentRows =
-    departmentRows;
-
-
   const combinedRows =
     isSuperAdmin
       ? departmentRows
       : mergeRowsById(
-          activeDepartmentRows,
+          departmentRows,
           transferredRows
         );
 
@@ -12659,9 +9454,11 @@ function UserProfilesContent({
             .trim()
             .toLowerCase();
 
-        return generalUserRole(
-          role
-        );
+        return [
+          "student",
+          "faculty",
+          "personnel"
+        ].includes(role);
       }
     );
 
@@ -12693,12 +9490,8 @@ function UserProfilesContent({
       );
     }
 
-
     return Boolean(
-      account._transferredAccess ||
-      profileTransferMap[
-        account.id
-      ]?.transferActive
+      account._transferredAccess
     );
   }
 
@@ -12823,9 +9616,10 @@ function UserProfilesContent({
 
 
   function displayRole(role) {
-    return generalUserRoleLabel(
-      role
-    );
+    if (role === "student") return "Student";
+    if (role === "faculty") return "Faculty";
+    if (role === "personnel") return "Personnel";
+    return role || "—";
   }
 
 
@@ -12846,7 +9640,7 @@ function UserProfilesContent({
       <div className="readonly-access-notice">
         <strong>Profile access</strong>
         <span>
-          User profile information is read-only. Private case information is managed from Counseling Requests by the assigned counselor or Super Admin. Approved transferred users remain accessible to the accepting counselor through transfer access.
+          User profile information is read-only. The assigned counselor may manage Counselor Notes. Approved transferred users remain accessible to the accepting counselor through transfer access.
         </span>
       </div>
 
@@ -13083,9 +9877,6 @@ function UserNotificationsContent({
         ) {
 
           return [
-            "assessment_submitted",
-            "counseling_request_submitted",
-            "referral_submitted",
             "transfer_request",
             "transfer_status"
           ].includes(
@@ -13146,39 +9937,18 @@ function UserNotificationsContent({
       row.sourceId
     ) {
 
-      if (
-        user.role ===
-        "counselor"
-      ) {
+      navigate(
+        "/consultations",
+        {
+          state: {
+            requestId:
+              row.sourceId,
 
-        navigate(
-          "/counseling-requests",
-          {
-            state: {
-              requestId:
-                row.sourceId,
-
-              fromNotification:
-                true
-            }
+            fromNotification:
+              true
           }
-        );
-
-      } else {
-
-        navigate(
-          "/consultations",
-          {
-            state: {
-              requestId:
-                row.sourceId,
-
-              fromNotification:
-                true
-            }
-          }
-        );
-      }
+        }
+      );
 
       return;
     }
@@ -13190,42 +9960,17 @@ function UserNotificationsContent({
       row.sourceId
     ) {
 
-      if (
-        user.role ===
-        "counselor"
-      ) {
-
-        navigate(
-          "/cases"
-        );
-
-      } else {
-
-        navigate(
-          "/monitoring",
-          {
-            state: {
-              assessmentId:
-                row.sourceId,
-
-              fromNotification:
-                true
-            }
-          }
-        );
-      }
-
-      return;
-    }
-
-
-    if (
-      row.sourceType ===
-        "referral"
-    ) {
-
       navigate(
-        "/referrals"
+        "/monitoring",
+        {
+          state: {
+            assessmentId:
+              row.sourceId,
+
+            fromNotification:
+              true
+          }
+        }
       );
 
       return;
@@ -13310,7 +10055,7 @@ function UserNotificationsContent({
 
         subtitle={
           user.role === "counselor"
-            ? "New assessment submissions, counseling requests, referrals, and counselor-transfer updates."
+            ? "Transfer requests and transfer status updates for Guidance Counselors."
             : "Counselor updates about your psychological assessment cases, counseling requests, and counselor transfers."
         }
 
@@ -14581,40 +11326,6 @@ function History() {
 
                   </p>
 
-
-                  <div
-                    style={{
-                      marginTop: "12px",
-                      padding: "12px 14px",
-                      borderRadius: "10px",
-                      background: "#f7f9fc",
-                      border: "1px solid #dfe5ef"
-                    }}
-                  >
-
-                    <strong
-                      style={{
-                        display: "block",
-                        marginBottom: "6px",
-                        color: "#173f8f"
-                      }}
-                    >
-                      Counselor Remarks
-                    </strong>
-
-                    <span
-                      style={{
-                        whiteSpace: "pre-wrap"
-                      }}
-                    >
-                      {
-                        row.counselorRemarks?.trim() ||
-                        "No counselor remarks yet."
-                      }
-                    </span>
-
-                  </div>
-
                 </article>
 
               )
@@ -14653,176 +11364,11 @@ function Cases() {
         };
 
 
-  const departmentAssessmentRows =
+  const rows =
     useRows(
       "assessments",
       assessmentFilters
     );
-
-
-  const transferredAssessmentRows =
-    useTransferredOwnerRows(
-      "assessments",
-      isSuperAdmin
-        ? ""
-        : user.id
-    );
-
-
-  const rows =
-    useMemo(
-      () =>
-        isSuperAdmin
-          ? departmentAssessmentRows
-          : mergeRowsById(
-              departmentAssessmentRows,
-              transferredAssessmentRows
-            ),
-      [
-        isSuperAdmin,
-        departmentAssessmentRows,
-        transferredAssessmentRows
-      ]
-    );
-
-
-  const departmentConsultationRows =
-    useRows(
-      "consultations",
-      isSuperAdmin
-        ? {
-            ownerId:
-              "__NO_ACCESS__"
-          }
-        : {
-            department:
-              user.department
-          }
-    );
-
-
-  const assignedConsultationRows =
-    useRows(
-      "consultations",
-      isSuperAdmin
-        ? {
-            ownerId:
-              "__NO_ACCESS__"
-          }
-        : {
-            assignedCounselorId:
-              user.id
-          }
-    );
-
-
-  const counselingAssignmentMap =
-    useMemo(
-      () => {
-
-        const map = {};
-
-
-        mergeRowsById(
-          departmentConsultationRows,
-          assignedConsultationRows
-        ).forEach(
-          consultation => {
-
-            if (
-              !consultation.ownerId ||
-              !consultation.assignedCounselorId
-            ) {
-
-              return;
-            }
-
-
-            const current =
-              map[
-                consultation.ownerId
-              ];
-
-
-            const consultationDate =
-              recordDateObject(
-                consultation.updatedAt ||
-                consultation.transferredAt ||
-                consultation.createdAt
-              );
-
-
-            const currentDate =
-              current
-                ? recordDateObject(
-                    current.updatedAt ||
-                    current.transferredAt ||
-                    current.createdAt
-                  )
-                : null;
-
-
-            if (
-              !current ||
-              (
-                consultationDate
-                  ?.getTime() ||
-                0
-              ) >=
-              (
-                currentDate
-                  ?.getTime() ||
-                0
-              )
-            ) {
-
-              map[
-                consultation.ownerId
-              ] =
-                consultation;
-            }
-          }
-        );
-
-
-        return map;
-      },
-
-      [
-        departmentConsultationRows,
-        assignedConsultationRows
-      ]
-    );
-
-
-  function assessmentIsReadOnly(
-    row
-  ) {
-
-    if (
-      isSuperAdmin ||
-      user.role !==
-        "counselor"
-    ) {
-
-      return false;
-    }
-
-
-    const assignment =
-      counselingAssignmentMap[
-        row?.ownerId
-      ];
-
-
-    return Boolean(
-      assignment
-        ?.assignedCounselorId &&
-      assignment
-        .assignedCounselorId !==
-        user.id
-    );
-  }
 
 
   function ownerKey(
@@ -15092,8 +11638,24 @@ function Cases() {
     "Counseling is recommended",
     "Follow up is recommended",
     "Counseling is optional",
-    "Approved"
+    "Approved",
+    "Concluded"
   ];
+
+
+  function allowedAssessmentStatuses(
+    currentStatus
+  ) {
+    if (currentStatus === "Concluded") {
+      return ["Concluded"];
+    }
+
+    if (currentStatus === "Approved") {
+      return ["Approved", "Concluded"];
+    }
+
+    return assessmentStatuses;
+  }
 
 
   const selectedHistory =
@@ -15138,7 +11700,6 @@ function Cases() {
       row.counselorRemarks ||
       ""
     );
-
   }
 
 
@@ -15227,15 +11788,13 @@ function Cases() {
 
 
     if (
-      assessmentIsReadOnly(
-        selected
-      )
+      !allowedAssessmentStatuses(
+        selected.status
+      ).includes(statusDraft)
     ) {
-
       alert(
-        "This user is currently assigned to another counselor. You may view the assessment record, but only the assigned counselor can change its status or remarks."
+        "This assessment status transition is not allowed."
       );
-
       return;
     }
 
@@ -15293,102 +11852,10 @@ function Cases() {
       }
 
 
-      const assessmentRef =
-        doc(
-          db,
-          "assessments",
-          selected.id
-        );
-
-
-      const assessmentGuardRef =
-        doc(
-          db,
-          "assessmentSubmissionGuards",
-          selected.ownerId
-        );
-
-
-      await runTransaction(
-        db,
-
-        async transaction => {
-
-          const guardSnap =
-            await transaction.get(
-              assessmentGuardRef
-            );
-
-
-          const currentActiveIds =
-            guardSnap.exists() &&
-            Array.isArray(
-              guardSnap.data()
-                ?.activeAssessmentIds
-            )
-              ? guardSnap.data()
-                  .activeAssessmentIds
-                  .filter(Boolean)
-              : [];
-
-
-          const nextActiveIds =
-            statusDraft ===
-              "Approved"
-              ? currentActiveIds.filter(
-                  assessmentId =>
-                    assessmentId !==
-                    selected.id
-                )
-              : Array.from(
-                  new Set([
-                    ...currentActiveIds,
-                    selected.id
-                  ])
-                );
-
-
-          transaction.update(
-            assessmentRef,
-            {
-              ...assessmentUpdate,
-
-              updatedAt:
-                serverTimestamp()
-            }
-          );
-
-
-          transaction.set(
-            assessmentGuardRef,
-            {
-              ownerId:
-                selected.ownerId,
-
-              activeAssessmentIds:
-                nextActiveIds,
-
-              activeAssessmentCount:
-                nextActiveIds.length,
-
-              latestAssessmentId:
-                selected.id,
-
-              latestStatus:
-                statusDraft,
-
-              updatedById:
-                user.id,
-
-              updatedAt:
-                serverTimestamp()
-            },
-            {
-              merge:
-                true
-            }
-          );
-        }
+      await updateRecord(
+        "assessments",
+        selected.id,
+        assessmentUpdate
       );
 
 
@@ -16592,17 +13059,6 @@ function Cases() {
                 </p>
 
 
-                {assessmentIsReadOnly(
-                  selected
-                ) && (
-
-                  <div className="notice">
-                    Read-only assessment record: this user is assigned to another counselor. You can review the assessment history and scores, but you cannot change the status or counselor remarks.
-                  </div>
-
-                )}
-
-
                 <label>
 
                   Status
@@ -16611,12 +13067,6 @@ function Cases() {
 
                     value={
                       statusDraft
-                    }
-
-                    disabled={
-                      assessmentIsReadOnly(
-                        selected
-                      )
                     }
 
                     onChange={
@@ -16628,7 +13078,9 @@ function Cases() {
 
                   >
 
-                    {assessmentStatuses.map(
+                    {allowedAssessmentStatuses(
+                      selected.status
+                    ).map(
                       status => (
 
                         <option
@@ -16660,12 +13112,6 @@ function Cases() {
 
                     value={
                       remarksDraft
-                    }
-
-                    readOnly={
-                      assessmentIsReadOnly(
-                        selected
-                      )
                     }
 
                     onChange={
@@ -16706,10 +13152,7 @@ function Cases() {
                     className="primary-button"
 
                     disabled={
-                      savingCase ||
-                      assessmentIsReadOnly(
-                        selected
-                      )
+                      savingCase
                     }
 
                     onClick={
@@ -16719,13 +13162,9 @@ function Cases() {
                   >
 
                     {
-                      assessmentIsReadOnly(
-                        selected
-                      )
-                        ? "Read only"
-                        : savingCase
-                          ? "Saving..."
-                          : "Save case update"
+                      savingCase
+                        ? "Saving..."
+                        : "Save case update"
                     }
 
                   </button>
@@ -16784,75 +13223,20 @@ function CounselingRequestsManagement() {
     "super_admin";
 
 
-  // Once a user has an assigned counselor, only that
-  // counselor may change the user's counseling records.
-  // Former counselors keep read-only access for continuity.
+  // A counseling request that is already assigned to another
+  // counselor remains viewable for record continuity, but the
+  // former counselor must not be able to change it.
   function requestIsReadOnly(
     row
   ) {
 
-    if (
-      user.role !==
-        "counselor"
-    ) {
-
-      return false;
-    }
-
-
-    const latestApprovedTransfer =
-      transferRequests.find(
-        transfer =>
-          transfer.ownerId ===
-            row?.ownerId &&
-          transfer.status ===
-            "Approved" &&
-          transfer.acceptedById
-      );
-
-
-    if (latestApprovedTransfer) {
-
-      return (
-        latestApprovedTransfer
-          .acceptedById !==
+    return Boolean(
+      user.role ===
+        "counselor" &&
+      row?.assignedCounselorId &&
+      row.assignedCounselorId !==
         user.id
-      );
-    }
-
-
-    const counselingProfile =
-      caseProfileMap[
-        row?.ownerId
-      ];
-
-
-    if (
-      counselingProfile
-        ?.assignedCounselorId
-    ) {
-
-      return (
-        counselingProfile
-          .assignedCounselorId !==
-        user.id
-      );
-    }
-
-
-    if (
-      row
-        ?.assignedCounselorId
-    ) {
-
-      return (
-        row.assignedCounselorId !==
-        user.id
-      );
-    }
-
-
-    return false;
+    );
   }
 
 
@@ -16889,16 +13273,6 @@ function CounselingRequestsManagement() {
     );
 
 
-  const transferredOwnerConsultations =
-    useTransferredOwnerRows(
-      "consultations",
-      !hasAccess ||
-      isSuperAdmin
-        ? ""
-        : user.id
-    );
-
-
   const rows =
     useMemo(
       () =>
@@ -16906,83 +13280,17 @@ function CounselingRequestsManagement() {
           ? departmentConsultations
           : mergeRowsById(
               departmentConsultations,
-              assignedConsultations,
-              transferredOwnerConsultations
+              assignedConsultations
             ),
       [
         isSuperAdmin,
         departmentConsultations,
-        assignedConsultations,
-        transferredOwnerConsultations
+        assignedConsultations
       ]
     );
 
 
-  const departmentCaseProfiles =
-    useRows(
-      "counselingProfiles",
-      {},
-      Boolean(
-        hasAccess &&
-        isSuperAdmin
-      )
-    );
-
-
-  const assignedCaseProfiles =
-    useRows(
-      "counselingProfiles",
-      {
-        assignedCounselorId:
-          user.id
-      },
-      Boolean(
-        hasAccess &&
-        !isSuperAdmin
-      )
-    );
-
-
-  const caseProfileMap =
-    useMemo(
-      () => {
-
-        const map = {};
-
-
-        mergeRowsById(
-          departmentCaseProfiles,
-          assignedCaseProfiles
-        ).forEach(
-          counselingProfile => {
-
-            const ownerId =
-              counselingProfile.ownerId ||
-              counselingProfile.id;
-
-
-            if (ownerId) {
-
-              map[
-                ownerId
-              ] =
-                counselingProfile;
-            }
-          }
-        );
-
-
-        return map;
-      },
-
-      [
-        departmentCaseProfiles,
-        assignedCaseProfiles
-      ]
-    );
-
-
-  const departmentAssessmentRows =
+  const assessmentRows =
     useRows(
       "assessments",
       !hasAccess
@@ -16996,33 +13304,6 @@ function CounselingRequestsManagement() {
               department:
                 user.department
             }
-    );
-
-
-  const transferredAssessmentRows =
-    useTransferredOwnerRows(
-      "assessments",
-      !hasAccess ||
-      isSuperAdmin
-        ? ""
-        : user.id
-    );
-
-
-  const assessmentRows =
-    useMemo(
-      () =>
-        isSuperAdmin
-          ? departmentAssessmentRows
-          : mergeRowsById(
-              departmentAssessmentRows,
-              transferredAssessmentRows
-            ),
-      [
-        isSuperAdmin,
-        departmentAssessmentRows,
-        transferredAssessmentRows
-      ]
     );
 
 
@@ -17257,248 +13538,9 @@ function CounselingRequestsManagement() {
 
 
   const [
-    caseHistoryDraft,
-    setCaseHistoryDraft
-  ] = useState("");
-
-
-  const [
-    sessionSummaryDraft,
-    setSessionSummaryDraft
-  ] = useState("");
-
-
-  const [
-    observationDraft,
-    setObservationDraft
-  ] = useState("");
-
-
-  const [
-    recommendationsDraft,
-    setRecommendationsDraft
-  ] = useState("");
-
-
-  const [
-    selectedAccount,
-    setSelectedAccount
-  ] = useState(null);
-
-
-  function counselingAccountSnapshot(
-    row
-  ) {
-
-    if (!row) {
-      return null;
-    }
-
-
-    return {
-      id:
-        row.ownerId ||
-        "",
-
-      role:
-        row.role ||
-        "",
-
-      department:
-        row.department ||
-        "",
-
-      program:
-        row.program ||
-        "",
-
-      gender:
-        row.gender ||
-        "",
-
-      userNumber:
-        row.userNumber ||
-        "",
-
-      phoneNumber:
-        row.phoneNumber ||
-        "",
-
-      contactPersonName:
-        row.contactPersonName ||
-        "",
-
-      contactPersonPhone:
-        row.contactPersonPhone ||
-        ""
-    };
-  }
-
-
-  const [
-    selectedAccountLoading,
-    setSelectedAccountLoading
-  ] = useState(false);
-
-
-  const [
-    selectedAccountError,
-    setSelectedAccountError
-  ] = useState("");
-
-
-  const [
     saving,
     setSaving
   ] = useState(false);
-
-
-  const selectedCaseProfile =
-    selected
-      ? caseProfileMap[
-          selected.ownerId
-        ] || null
-      : null;
-
-
-  const selectedAssignedCounselorId =
-    selectedCaseProfile
-      ?.assignedCounselorId ||
-    selected
-      ?.assignedCounselorId ||
-    "";
-
-
-  const selectedAssignedCounselorDepartment =
-    selectedCaseProfile
-      ?.assignedCounselorDepartment ||
-    selected
-      ?.assignedCounselorDepartment ||
-    "";
-
-
-  const isCurrentAssignedCounselor =
-    Boolean(
-      selected &&
-      user.role ===
-        "counselor" &&
-      selectedAssignedCounselorId ===
-        user.id
-    );
-
-
-  const canViewPrivateCaseFields =
-    Boolean(
-      selected &&
-      (
-        isSuperAdmin ||
-        isCurrentAssignedCounselor
-      )
-    );
-
-
-  const canCreatePrivateCaseProfile =
-    Boolean(
-      selected &&
-      isCurrentAssignedCounselor &&
-      !selectedCaseProfile &&
-      (
-        !selectedAssignedCounselorDepartment ||
-        selectedAssignedCounselorDepartment ===
-          selected.department
-      )
-    );
-
-
-  const canEditPrivateCaseFields =
-    Boolean(
-      selected &&
-      (
-        (
-          isCurrentAssignedCounselor &&
-          (
-            Boolean(
-              selectedCaseProfile
-            ) ||
-            canCreatePrivateCaseProfile
-          )
-        ) ||
-        (
-          isSuperAdmin &&
-          Boolean(
-            selectedCaseProfile
-          )
-        )
-      )
-    );
-
-
-  const privateDraftOwnerRef =
-    useRef("");
-
-
-  function resetPrivateCaseDrafts() {
-
-    setCaseHistoryDraft("");
-
-    setSessionSummaryDraft("");
-
-    setObservationDraft("");
-
-    setRecommendationsDraft("");
-
-    privateDraftOwnerRef.current =
-      "";
-  }
-
-
-  function initializePrivateCaseDrafts(
-    row
-  ) {
-
-    const profileData =
-      row?.ownerId
-        ? caseProfileMap[
-            row.ownerId
-          ] || null
-        : null;
-
-
-    setCaseHistoryDraft(
-      profileData
-        ?.caseHistory ||
-      profileData
-        ?.notes ||
-      ""
-    );
-
-
-    setSessionSummaryDraft(
-      profileData
-        ?.counselingSessionSummary ||
-      ""
-    );
-
-
-    setObservationDraft(
-      profileData
-        ?.counselorObservation ||
-      ""
-    );
-
-
-    setRecommendationsDraft(
-      profileData
-        ?.recommendations ||
-      ""
-    );
-
-
-    privateDraftOwnerRef.current =
-      profileData
-        ? row.ownerId
-        : "";
-  }
 
 
   // Keep modal navigation metadata in refs rather than state.
@@ -17512,23 +13554,17 @@ function CounselingRequestsManagement() {
     useRef("");
 
 
-  const closingRequestReviewRef =
-    useRef(false);
-
-
   function closeRequestReview() {
 
     const destination =
       reviewReturnPathRef.current;
 
 
-    // Block the route-state opening effect while the close
-    // navigation is being processed.
-    closingRequestReviewRef.current =
-      true;
-
-
     reviewReturnPathRef.current =
+      "";
+
+
+    handledRequestNavigationRef.current =
       "";
 
 
@@ -17538,34 +13574,13 @@ function CounselingRequestsManagement() {
 
     setRemarksDraft("");
 
-    resetPrivateCaseDrafts();
-
-    setSelectedAccount(null);
-
-    setSelectedAccountError("");
-
 
     if (destination) {
 
       navigate(
         destination,
         {
-          replace: true,
-          state: null
-        }
-      );
-
-      return;
-    }
-
-
-    if (requestedRequestId) {
-
-      navigate(
-        location.pathname,
-        {
-          replace: true,
-          state: null
+          replace: true
         }
       );
     }
@@ -17620,223 +13635,6 @@ function CounselingRequestsManagement() {
   );
 
 
-  useEffect(
-    () => {
-
-      let active = true;
-
-
-      if (
-        !selected
-          ?.ownerId
-      ) {
-
-        setSelectedAccount(null);
-
-        setSelectedAccountError("");
-
-        setSelectedAccountLoading(false);
-
-        return () => {
-          active = false;
-        };
-      }
-
-
-      const requestSnapshot =
-        counselingAccountSnapshot(
-          selected
-        );
-
-
-      // Show the information already authorized through the
-      // counseling request immediately.
-      setSelectedAccount(
-        requestSnapshot
-      );
-
-      setSelectedAccountLoading(true);
-
-      setSelectedAccountError("");
-
-
-      // A current users/{uid} read is useful when allowed, but
-      // it is only an enrichment step now. Legacy permission
-      // mismatches no longer break the Account Information UI.
-      getDoc(
-        doc(
-          db,
-          "users",
-          selected.ownerId
-        )
-      )
-        .then(
-          snapshot => {
-
-            if (!active) {
-              return;
-            }
-
-
-            if (
-              snapshot.exists()
-            ) {
-
-              setSelectedAccount({
-                ...requestSnapshot,
-
-                id:
-                  snapshot.id,
-
-                ...snapshot.data()
-              });
-            }
-          }
-        )
-        .catch(
-          error => {
-
-            if (!active) {
-              return;
-            }
-
-
-            const errorCode =
-              String(
-                error?.code ||
-                ""
-              )
-                .toLowerCase();
-
-
-            const errorMessage =
-              String(
-                error?.message ||
-                ""
-              )
-                .toLowerCase();
-
-
-            if (
-              errorCode.includes(
-                "permission-denied"
-              ) ||
-              errorMessage.includes(
-                "missing or insufficient permissions"
-              )
-            ) {
-
-              console.warn(
-                "Using the counseling-request account snapshot because this legacy users/{uid} document is not directly readable by the current counselor."
-              );
-
-              setSelectedAccount(
-                requestSnapshot
-              );
-
-              setSelectedAccountError("");
-
-              return;
-            }
-
-
-            console.error(
-              "Unable to enrich counseling request account information:",
-              error
-            );
-
-
-            setSelectedAccount(
-              requestSnapshot
-            );
-
-            setSelectedAccountError(
-              "Some current account information could not be refreshed. Showing the information stored with this counseling request."
-            );
-          }
-        )
-        .finally(
-          () => {
-
-            if (active) {
-
-              setSelectedAccountLoading(
-                false
-              );
-            }
-          }
-        );
-
-
-      return () => {
-
-        active = false;
-      };
-
-    },
-
-    [
-      selected
-        ?.ownerId,
-      selected
-        ?.id,
-      selected
-        ?.program,
-      selected
-        ?.gender,
-      selected
-        ?.userNumber,
-      selected
-        ?.phoneNumber,
-      selected
-        ?.contactPersonName,
-      selected
-        ?.contactPersonPhone
-    ]
-  );
-
-
-  useEffect(
-    () => {
-
-      if (
-        !selected
-          ?.ownerId ||
-        privateDraftOwnerRef
-          .current ===
-          selected.ownerId
-      ) {
-
-        return;
-      }
-
-
-      const profileData =
-        caseProfileMap[
-          selected.ownerId
-        ];
-
-
-      if (!profileData) {
-
-        return;
-      }
-
-
-      initializePrivateCaseDrafts(
-        selected
-      );
-
-    },
-
-    [
-      selected
-        ?.ownerId,
-      caseProfileMap
-    ]
-  );
-
-
   const requestedRequestId =
     location.state
       ?.requestId ||
@@ -17859,18 +13657,6 @@ function CounselingRequestsManagement() {
     () => {
 
       if (!requestedRequestId) {
-
-        closingRequestReviewRef.current =
-          false;
-
-        return;
-      }
-
-
-      if (
-        closingRequestReviewRef.current
-      ) {
-
         return;
       }
 
@@ -17916,8 +13702,24 @@ function CounselingRequestsManagement() {
           : "";
 
 
-      const allowedReviewStatuses =
-        COUNSELING_REVIEW_STATUSES;
+      const allowedReviewStatuses = [
+        "For review",
+        "Schedule for counseling",
+        "Follow up is recommended",
+        "Counseling is optional",
+        "For referral"
+      ];
+
+
+      // Consume the route state before opening the modal so
+      // closing the modal cannot re-trigger the same request.
+      navigate(
+        location.pathname,
+        {
+          replace: true,
+          state: null
+        }
+      );
 
 
       setSelected(
@@ -17939,21 +13741,18 @@ function CounselingRequestsManagement() {
         ""
       );
 
-      resetPrivateCaseDrafts();
-
-      initializePrivateCaseDrafts(
-        target
-      );
-
     },
 
     [
       requestedRequestId,
       requestedFromSchedule,
       requestedNavigationKey,
-      enrichedRows
+      enrichedRows,
+      navigate,
+      location.pathname
     ]
   );
+
 
   if (!hasAccess) {
 
@@ -17974,13 +13773,15 @@ function CounselingRequestsManagement() {
     handledRequestNavigationRef.current =
       "";
 
-    closingRequestReviewRef.current =
-      false;
-
     setSelected(row);
 
-    const allowedReviewStatuses =
-      COUNSELING_REVIEW_STATUSES;
+    const allowedReviewStatuses = [
+      "For review",
+      "Schedule for counseling",
+      "Follow up is recommended",
+      "Counseling is optional",
+      "For referral"
+    ];
 
 
     setStatusDraft(
@@ -17994,12 +13795,6 @@ function CounselingRequestsManagement() {
     setRemarksDraft(
       row.counselorRemarks ||
       ""
-    );
-
-    resetPrivateCaseDrafts();
-
-    initializePrivateCaseDrafts(
-      row
     );
   }
 
@@ -18018,208 +13813,27 @@ function CounselingRequestsManagement() {
   }
 
 
-  function transferRequestForOwner(
-    ownerId
-  ) {
-
-    return transferRequests.find(
-      row =>
-        row.ownerId ===
-          ownerId &&
-        row.status ===
-          "Pending approval"
-    );
-  }
-
-
-  function assignedCounselorIdForTransfer(
-    row
-  ) {
-
-    const latestApprovedTransfer =
-      transferRequests.find(
-        transfer =>
-          transfer.ownerId ===
-            row?.ownerId &&
-          transfer.status ===
-            "Approved" &&
-          transfer.acceptedById
-      );
-
-
-    return (
-      latestApprovedTransfer
-        ?.acceptedById ||
-      caseProfileMap[
-        row?.ownerId
-      ]?.assignedCounselorId ||
-      row?.assignedCounselorId ||
-      ""
-    );
-  }
-
-
-  function transferActionState(
-    row
-  ) {
-
-    const assignedCounselorId =
-      assignedCounselorIdForTransfer(
-        row
-      );
-
+  function canRequestTransfer(row) {
 
     if (
-      user.role !==
-        "counselor" ||
-      assignedCounselorId !==
-        user.id
-    ) {
-
-      return {
-        visible:
-          false,
-
-        disabled:
-          true,
-
-        pending:
-          false,
-
-        deadlinePassed:
-          false,
-
-        concluded:
-          false,
-
-        reason:
-          "Only the currently assigned counselor can transfer this user."
-      };
-    }
-
-
-    if (
-      row?.status ===
-        "Concluded"
-    ) {
-
-      return {
-        visible:
-          true,
-
-        disabled:
-          true,
-
-        pending:
-          false,
-
-        deadlinePassed:
-          false,
-
-        concluded:
-          true,
-
-        reason:
-          "This counseling request has been concluded and can no longer be transferred."
-      };
-    }
-
-
-    const pendingTransfer =
-      transferRequestForOwner(
-        row.ownerId
-      );
-
-
-    if (pendingTransfer) {
-
-      return {
-        visible:
-          true,
-
-        disabled:
-          true,
-
-        pending:
-          true,
-
-        deadlinePassed:
-          transferRequestHasStarted(
-            pendingTransfer
-          ),
-
-        concluded:
-          false,
-
-        reason:
-          "A counselor transfer for this user is already waiting for approval."
-      };
-    }
-
-
-    if (
-      appointmentHasStarted(
-        row
+      user.role !== "counselor" ||
+      row.status !==
+        "Schedule for counseling" ||
+      !row.date ||
+      !row.time ||
+      appointmentHasStarted(row) ||
+      transferRequestForConsultation(
+        row.id
       )
     ) {
-
-      return {
-        visible:
-          true,
-
-        disabled:
-          true,
-
-        pending:
-          false,
-
-        deadlinePassed:
-          true,
-
-        concluded:
-          false,
-
-        reason:
-          "Transfers must be requested before the counseling start time."
-      };
+      return false;
     }
 
 
-    return {
-      visible:
-        true,
-
-      disabled:
-        false,
-
-      pending:
-        false,
-
-      deadlinePassed:
-        false,
-
-      concluded:
-        false,
-
-      reason:
-        "Transfer this user to another counselor. The assignment changes only after another counselor approves."
-    };
-  }
-
-
-  function canRequestTransfer(
-    row
-  ) {
-
-    const state =
-      transferActionState(
-        row
-      );
-
-
     return (
-      state.visible &&
-      !state.disabled
+      !row.assignedCounselorId ||
+      row.assignedCounselorId ===
+        user.id
     );
   }
 
@@ -18228,24 +13842,10 @@ function CounselingRequestsManagement() {
     row
   ) {
 
-    if (
-      row?.status ===
-        "Concluded"
-    ) {
-
-      alert(
-        "This counseling request has already been concluded and can no longer be transferred."
-      );
-
-      return;
-    }
-
-
     if (!canRequestTransfer(row)) {
 
       alert(
-        transferActionState(row).reason ||
-        "This user cannot be transferred right now."
+        "This counseling request cannot be transferred. Transfers are only available to the currently assigned counselor before the scheduled counseling session starts."
       );
 
       return;
@@ -18254,7 +13854,7 @@ function CounselingRequestsManagement() {
 
     const reason =
       window.prompt(
-        "Briefly state why this user needs to be transferred to another counselor before the counseling starts."
+        "Briefly state why this scheduled counseling request needs to be transferred to another counselor."
       );
 
 
@@ -18273,34 +13873,9 @@ function CounselingRequestsManagement() {
     }
 
 
-    const scheduledStartAt =
-      appointmentStartDate(
-        row
-      );
-
-
-    if (
-      scheduledStartAt &&
-      Date.now() >=
-        scheduledStartAt.getTime()
-    ) {
-
-      alert(
-        "The counseling start time has already passed. This user can no longer be transferred for this counseling schedule."
-      );
-
-      return;
-    }
-
-
     if (
       !window.confirm(
-        [
-          `Transfer ${row.ownerName || "this user"} to another counselor?`,
-          "",
-          "Your assignment remains active until another counselor approves.",
-          `Counseling start: ${row.date || "No date"} · ${row.time || "No time"}`
-        ].join("\n")
+        `Request another counselor to take over ${row.ownerName || "this user's"} scheduled counseling session?`
       )
     ) {
       return;
@@ -18467,14 +14042,6 @@ function CounselingRequestsManagement() {
             row.mode ||
             "Face-to-face",
 
-          requestStatus:
-            row.status ||
-            "Pending approval",
-
-          scheduledStartAt:
-            scheduledStartAt ||
-            null,
-
           requestedById:
             user.id,
 
@@ -18515,13 +14082,16 @@ function CounselingRequestsManagement() {
         row.id,
         {
           assignedCounselorId:
+            row.assignedCounselorId ||
             user.id,
 
           assignedCounselorName:
+            row.assignedCounselorName ||
             user.name ||
             "Guidance Counselor",
 
           assignedCounselorDepartment:
+            row.assignedCounselorDepartment ||
             user.department ||
             "",
 
@@ -18555,7 +14125,7 @@ function CounselingRequestsManagement() {
                   "User waiting for counselor transfer",
 
                 message:
-                  `${row.ownerName || "A user"} is waiting for counselor transfer approval from ${user.name || "the currently assigned counselor"}. Status: ${row.status || "Not recorded"}. Counseling start: ${row.date || "No date"} · ${row.time || "No time"}. Open your Dashboard to review the transfer before counseling starts.`,
+                  `${row.ownerName || "A user"} has a scheduled counseling request that ${user.name || "the assigned counselor"} needs to transfer. Open your Dashboard to review and accept the transfer if you are available.`,
 
                 notificationType:
                   "transfer_request",
@@ -18600,7 +14170,7 @@ function CounselingRequestsManagement() {
             "Counselor transfer requested",
 
           message:
-            `${user.name || "Your assigned counselor"} requested a transfer to another Guidance Counselor. Your current counselor remains assigned until another counselor approves. Your counseling schedule stays unchanged while approval is pending.`,
+            `${user.name || "Your assigned counselor"} requested another Guidance Counselor to take over your scheduled counseling session. Your schedule remains active while another counselor reviews the transfer request.`,
 
           notificationType:
             "counselor_transfer_update",
@@ -18634,7 +14204,7 @@ function CounselingRequestsManagement() {
 
 
       alert(
-        "Transfer request sent. Every other counselor has been notified. You remain the assigned counselor until another counselor approves the transfer before the counseling start time."
+        "Transfer request sent. Other counselors have been notified and the transfer will only take effect after another counselor approves it."
       );
 
     } catch (error) {
@@ -18734,20 +14304,26 @@ function CounselingRequestsManagement() {
         );
 
 
-      const legacyActiveRequestIdsForOwner =
-        enrichedRows
-          .filter(
-            row =>
-              row.ownerId ===
-                selected.ownerId &&
-              counselingRequestIsActive(
-                row
-              )
-          )
-          .map(
-            row =>
-              row.id
-          );
+      const effectiveCounselorName =
+        selected.assignedCounselorName ||
+        (
+          user.role ===
+            "counselor"
+            ? user.name ||
+              "Guidance Counselor"
+            : ""
+        );
+
+
+      const effectiveCounselorDepartment =
+        selected.assignedCounselorDepartment ||
+        (
+          user.role ===
+            "counselor"
+            ? user.department ||
+              ""
+            : ""
+        );
 
 
       if (
@@ -18762,70 +14338,11 @@ function CounselingRequestsManagement() {
       }
 
 
-      const willAssignCurrentCounselor =
-        Boolean(
-          user.role ===
-            "counselor" &&
-          statusDraft ===
-            "Schedule for counseling" &&
-          !selected.assignedCounselorId
-        );
-
-
-      const caseProfileRef =
-        selected.ownerId
-          ? doc(
-              db,
-              "counselingProfiles",
-              selected.ownerId
-            )
-          : null;
-
-
-      const needsCaseProfileCreation =
-        Boolean(
-          caseProfileRef &&
-          user.role ===
-            "counselor" &&
-          (
-            willAssignCurrentCounselor ||
-            (
-              canEditPrivateCaseFields &&
-              !selectedCaseProfile
-            )
-          )
-        );
-
-
-      if (
-        needsCaseProfileCreation &&
-        (
-          !selectedAccount
-            ?.name ||
-          !selectedAccount
-            ?.department
-        )
-      ) {
-
-        throw new Error(
-          "Please wait for the user's account information to finish loading, then save the review again."
-        );
-      }
-
-
       const requestRef =
         doc(
           db,
           "consultations",
           selected.id
-        );
-
-
-      const requestGuardRef =
-        doc(
-          db,
-          "counselingRequestGuards",
-          selected.ownerId
         );
 
 
@@ -18856,12 +14373,6 @@ function CounselingRequestsManagement() {
             );
 
 
-          const requestGuardSnap =
-            await transaction.get(
-              requestGuardRef
-            );
-
-
           if (!requestSnap.exists()) {
 
             throw new Error(
@@ -18882,76 +14393,10 @@ function CounselingRequestsManagement() {
             statusDraft ===
               "Schedule for counseling"
               ? "booked"
-              : (
-                  statusDraft ===
-                    "For review" &&
-                  Boolean(
-                    selected.assignedCounselorId
-                  )
-                )
+              : statusDraft ===
+                  "For review"
                 ? "held"
                 : "";
-
-
-          const existingGuardIds =
-            requestGuardSnap.exists() &&
-            Array.isArray(
-              requestGuardSnap.data()
-                ?.activeRequestIds
-            )
-              ? requestGuardSnap.data()
-                  .activeRequestIds
-                  .filter(Boolean)
-              : legacyActiveRequestIdsForOwner;
-
-
-          const uniqueGuardIds =
-            Array.from(
-              new Set(
-                existingGuardIds
-              )
-            );
-
-
-          const nextRequestIsReleased =
-            counselingRequestAllowsAnother(
-              statusDraft
-            );
-
-
-          const selectedWasReleased =
-            counselingRequestAllowsAnother(
-              selected.status
-            );
-
-
-          let nextGuardIds =
-            uniqueGuardIds.filter(
-              requestId =>
-                requestId !==
-                selected.id
-            );
-
-
-          if (!nextRequestIsReleased) {
-
-            if (
-              selectedWasReleased &&
-              nextGuardIds.length >
-                0
-            ) {
-
-              throw new Error(
-                "This user already has another active counseling request. Conclude or mark that request for follow up before reopening this case."
-              );
-            }
-
-
-            nextGuardIds = [
-              ...nextGuardIds,
-              selected.id
-            ];
-          }
 
 
           if (
@@ -18982,183 +14427,6 @@ function CounselingRequestsManagement() {
                 serverTimestamp()
             }
           );
-
-
-          transaction.set(
-            requestGuardRef,
-            {
-              ownerId:
-                selected.ownerId,
-
-              activeRequestIds:
-                nextGuardIds,
-
-              activeRequestCount:
-                nextGuardIds.length,
-
-              latestRequestId:
-                selected.id,
-
-              latestStatus:
-                statusDraft,
-
-              updatedById:
-                user.id,
-
-              updatedAt:
-                serverTimestamp()
-            },
-            {
-              merge:
-                true
-            }
-          );
-
-
-          if (
-            caseProfileRef &&
-            willAssignCurrentCounselor
-          ) {
-
-            transaction.set(
-              caseProfileRef,
-              {
-                ownerId:
-                  selected.ownerId,
-
-                ownerName:
-                  selectedAccount
-                    ?.name ||
-                  selected.ownerName ||
-                  "",
-
-                department:
-                  selectedAccount
-                    ?.department ||
-                  selected.department ||
-                  "",
-
-                assignedCounselorId:
-                  user.id,
-
-                assignedCounselorName:
-                  user.name ||
-                  "Guidance Counselor",
-
-                assignedCounselorDepartment:
-                  user.department ||
-                  "",
-
-                updatedById:
-                  user.id,
-
-                updatedByName:
-                  user.name ||
-                  "Guidance Counselor",
-
-                updatedAt:
-                  serverTimestamp()
-              },
-              {
-                merge:
-                  true
-              }
-            );
-          }
-
-
-          if (
-            caseProfileRef &&
-            canEditPrivateCaseFields
-          ) {
-
-            const privateCaseUpdate = {
-
-              caseHistory:
-                caseHistoryDraft.trim(),
-
-              counselingSessionSummary:
-                sessionSummaryDraft.trim(),
-
-              counselorObservation:
-                observationDraft.trim(),
-
-              recommendations:
-                recommendationsDraft.trim(),
-
-              updatedById:
-                user.id,
-
-              updatedByName:
-                user.name ||
-                user.email ||
-                "Authorized user",
-
-              updatedAt:
-                serverTimestamp()
-
-            };
-
-
-            if (
-              user.role ===
-                "counselor" &&
-              !selectedCaseProfile
-            ) {
-
-              transaction.set(
-                caseProfileRef,
-                {
-                  ownerId:
-                    selected.ownerId,
-
-                  ownerName:
-                    selectedAccount
-                      ?.name ||
-                    selected.ownerName ||
-                    "",
-
-                  department:
-                    selectedAccount
-                      ?.department ||
-                    selected.department ||
-                    "",
-
-                  assignedCounselorId:
-                    selectedAssignedCounselorId ||
-                    user.id,
-
-                  assignedCounselorName:
-                    selected
-                      .assignedCounselorName ||
-                    user.name ||
-                    "Guidance Counselor",
-
-                  assignedCounselorDepartment:
-                    selectedAssignedCounselorDepartment ||
-                    user.department ||
-                    "",
-
-                  ...privateCaseUpdate
-                },
-                {
-                  merge:
-                    true
-                }
-              );
-
-            } else {
-
-              transaction.set(
-                caseProfileRef,
-                privateCaseUpdate,
-                {
-                  merge:
-                    true
-                }
-              );
-            }
-          }
 
 
           if (
@@ -19246,7 +14514,7 @@ function CounselingRequestsManagement() {
                 "Counseling request updated by counselor",
 
               message:
-                `Your counselor updated your counseling request. Status: ${statusDraft}.${COUNSELING_REQUEST_RELEASE_STATUSES.includes(statusDraft) ? " You may now submit another counseling request if needed." : ""}${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
+                `Your counselor updated your counseling request. Status: ${statusDraft}.${remarksDraft.trim() ? " A counselor remark is available." : ""}`,
 
               notificationType:
                 "counselor_update",
@@ -19550,39 +14818,20 @@ function CounselingRequestsManagement() {
 
                 >
 
-                  <div className="counseling-request-list-card-header">
-
-                    <strong>
-                      {
-                        row.ownerName ||
-                        "User"
-                      }
-                    </strong>
+                  <strong>
+                    {
+                      row.ownerName ||
+                      "User"
+                    }
+                  </strong>
 
 
-                    <div className="counseling-request-status-group">
-
-                      <span className="status">
-                        {
-                          row.status ||
-                          "Pending approval"
-                        }
-                      </span>
-
-
-                      {transferRequestForOwner(
-                        row.ownerId
-                      ) && (
-
-                        <span className="transfer-pending-label">
-                          Transfer awaiting approval
-                        </span>
-
-                      )}
-
-                    </div>
-
-                  </div>
+                  <span className="status">
+                    {
+                      row.status ||
+                      "Pending approval"
+                    }
+                  </span>
 
 
                   <p>
@@ -19676,21 +14925,11 @@ function CounselingRequestsManagement() {
                     </button>
 
 
-                    {transferActionState(row).visible && (
+                    {canRequestTransfer(row) && (
 
                       <button
                         type="button"
                         className="transfer-user-button"
-                        disabled={
-                          transferActionState(
-                            row
-                          ).disabled
-                        }
-                        title={
-                          transferActionState(
-                            row
-                          ).reason
-                        }
                         onClick={
                           () =>
                             requestCounselorTransfer(
@@ -19698,29 +14937,19 @@ function CounselingRequestsManagement() {
                             )
                         }
                       >
-                        Transfer user to another counselor
+                        Request counselor transfer
                       </button>
 
                     )}
 
 
-                    {
-                      transferActionState(
-                        row
-                      ).visible &&
-                      transferActionState(
-                        row
-                      ).deadlinePassed &&
-                      !transferActionState(
-                        row
-                      ).pending && (
+                    {transferRequestForConsultation(row.id) && (
 
-                        <span className="transfer-deadline-label">
-                          Transfer closed: counseling already started
-                        </span>
+                      <span className="transfer-pending-label">
+                        Transfer awaiting approval
+                      </span>
 
-                      )
-                    }
+                    )}
 
                   </div>
 
@@ -19797,22 +15026,11 @@ function CounselingRequestsManagement() {
                     }
                   </span>
 
-
-                  {transferRequestForOwner(
-                    selected.ownerId
-                  ) && (
-
-                    <span className="transfer-pending-label">
-                      Transfer awaiting approval
-                    </span>
-
-                  )}
-
                 </div>
 
                 <p className="review-request-modal-subtitle">
-                  Review the user's account information first,
-                  then the counseling request and counselor review.
+                  Review the request details, update the status,
+                  and add counselor remarks.
                 </p>
 
               </div>
@@ -19841,186 +15059,10 @@ function CounselingRequestsManagement() {
 
             <div className="review-request-modal-body">
 
-              <section className="review-request-modal-card review-request-account-card">
-
-                <div className="review-request-account-heading">
-
-                  <div>
-
-                    <h3>
-                      Account Information
-                    </h3>
-
-                    <p>
-                      Verify the user's account information before reviewing the counseling request.
-                    </p>
-
-                  </div>
-
-                </div>
-
-
-                {selectedAccountLoading
-
-                  ? (
-
-                    <div className="user-profile-empty">
-                      Loading account information...
-                    </div>
-
-                  )
-
-                  : (
-
-                    <>
-
-                      {selectedAccountError && (
-
-                        <div className="error-box">
-                          {selectedAccountError}
-                        </div>
-
-                      )}
-
-
-                      <div className="review-request-detail-grid review-request-account-grid">
-
-                        <div className="review-request-detail-item">
-
-                          <span>
-                            Program
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAccount
-                                ?.program ||
-                              selected.program ||
-                              (
-                                selectedAccount
-                                  ?.role ===
-                                  "student"
-                                  ? "Not provided"
-                                  : "Not applicable"
-                              )
-                            }
-                          </strong>
-
-                        </div>
-
-
-                        <div className="review-request-detail-item">
-
-                          <span>
-                            {
-                              selectedAccount
-                                ?.role ===
-                                "student"
-                                ? "Student Number"
-                                : (
-                                    employeeUserRole(
-                                      selectedAccount
-                                        ?.role
-                                    )
-                                      ? "Employee Number"
-                                      : "Student / Employee Number"
-                                  )
-                            }
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAccount
-                                ?.userNumber ||
-                              "Not provided"
-                            }
-                          </strong>
-
-                        </div>
-
-
-                        <div className="review-request-detail-item">
-
-                          <span>
-                            Sex
-                          </span>
-
-                          <strong>
-                            {
-                              normalizedGender(
-                                selectedAccount
-                                  ?.gender
-                              )
-                            }
-                          </strong>
-
-                        </div>
-
-
-                        <div className="review-request-detail-item">
-
-                          <span>
-                            Contact Number
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAccount
-                                ?.phoneNumber ||
-                              "Not provided"
-                            }
-                          </strong>
-
-                        </div>
-
-
-                        <div className="review-request-detail-item">
-
-                          <span>
-                            Contact Person
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAccount
-                                ?.contactPersonName ||
-                              "Not provided"
-                            }
-                          </strong>
-
-                        </div>
-
-
-                        <div className="review-request-detail-item">
-
-                          <span>
-                            Contact Person Number
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAccount
-                                ?.contactPersonPhone ||
-                              "Not provided"
-                            }
-                          </strong>
-
-                        </div>
-
-                      </div>
-
-                    </>
-
-                  )
-                }
-
-              </section>
-
-
               <section className="review-request-modal-card">
 
                 <h3>
-                  Counseling Request Details
+                  Request Details
                 </h3>
 
 
@@ -20052,6 +15094,23 @@ function CounselingRequestsManagement() {
                       {
                         selected.department ||
                         "Not provided"
+                      }
+                    </strong>
+
+                  </div>
+
+
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      Program
+                    </span>
+
+                    <strong>
+                      {
+                        counselorProgramLabel(
+                          selected.program
+                        )
                       }
                     </strong>
 
@@ -20196,10 +15255,6 @@ function CounselingRequestsManagement() {
                       For referral
                     </option>
 
-                    <option>
-                      Concluded
-                    </option>
-
                   </select>
 
                 </label>
@@ -20208,10 +15263,6 @@ function CounselingRequestsManagement() {
                 <label>
 
                   Counselor remarks
-
-                  <small className="review-field-visibility-note">
-                    Visible to the user in Counseling Requests and History.
-                  </small>
 
                   <textarea
 
@@ -20241,160 +15292,6 @@ function CounselingRequestsManagement() {
                 </label>
 
 
-                {canViewPrivateCaseFields
-
-                  ? (
-
-                    <div className="review-private-case-section">
-
-                      <div className="review-private-case-heading">
-
-                        <h4>
-                          Private Case Information
-                        </h4>
-
-                        <p>
-                          Only the assigned counselor and Super Admin can view these fields. They are never shown to Student, Teaching, or Non-teaching users.
-                        </p>
-
-                      </div>
-
-
-                      {!canEditPrivateCaseFields && (
-
-                        <div className="notice">
-                          This private case record is read-only here. A counselor must be assigned before a new private case profile can be created.
-                        </div>
-
-                      )}
-
-
-                      <div className="counselor-notes-grid">
-
-                        <label className="counselor-note-field">
-
-                          <span>
-                            Case History
-                          </span>
-
-                          <textarea
-                            rows="5"
-                            value={caseHistoryDraft}
-                            readOnly={
-                              !canEditPrivateCaseFields ||
-                              requestIsReadOnly(
-                                selected
-                              )
-                            }
-                            onChange={
-                              event =>
-                                setCaseHistoryDraft(
-                                  event.target.value
-                                )
-                            }
-                            placeholder="Record relevant case background, previous concerns, and important case developments."
-                          />
-
-                        </label>
-
-
-                        <label className="counselor-note-field">
-
-                          <span>
-                            Summary of Counseling Sessions
-                          </span>
-
-                          <textarea
-                            rows="5"
-                            value={sessionSummaryDraft}
-                            readOnly={
-                              !canEditPrivateCaseFields ||
-                              requestIsReadOnly(
-                                selected
-                              )
-                            }
-                            onChange={
-                              event =>
-                                setSessionSummaryDraft(
-                                  event.target.value
-                                )
-                            }
-                            placeholder="Summarize the important topics, concerns, and outcomes discussed during counseling."
-                          />
-
-                        </label>
-
-
-                        <label className="counselor-note-field">
-
-                          <span>
-                            Counselor's Observations
-                          </span>
-
-                          <textarea
-                            rows="5"
-                            value={observationDraft}
-                            readOnly={
-                              !canEditPrivateCaseFields ||
-                              requestIsReadOnly(
-                                selected
-                              )
-                            }
-                            onChange={
-                              event =>
-                                setObservationDraft(
-                                  event.target.value
-                                )
-                            }
-                            placeholder="Record relevant professional observations from the counseling interaction."
-                          />
-
-                        </label>
-
-
-                        <label className="counselor-note-field">
-
-                          <span>
-                            Recommendations
-                          </span>
-
-                          <textarea
-                            rows="5"
-                            value={recommendationsDraft}
-                            readOnly={
-                              !canEditPrivateCaseFields ||
-                              requestIsReadOnly(
-                                selected
-                              )
-                            }
-                            onChange={
-                              event =>
-                                setRecommendationsDraft(
-                                  event.target.value
-                                )
-                            }
-                            placeholder="Record follow-up steps, support recommendations, or other counselor guidance."
-                          />
-
-                        </label>
-
-                      </div>
-
-                    </div>
-
-                  )
-
-                  : user.role ===
-                      "counselor" && (
-
-                    <div className="review-private-case-restricted">
-                      Private case information is available only to the counselor currently assigned to this user and to Super Admin.
-                    </div>
-
-                  )
-                }
-
-
                 <div className="review-request-modal-actions">
 
                   <button
@@ -20410,61 +15307,6 @@ function CounselingRequestsManagement() {
                   >
                     Close
                   </button>
-
-
-                  {transferActionState(
-                    selected
-                  ).visible && (
-
-                    <button
-
-                      type="button"
-
-                      className="transfer-user-button"
-
-                      disabled={
-                        transferActionState(
-                          selected
-                        ).disabled
-                      }
-
-                      title={
-                        transferActionState(
-                          selected
-                        ).reason
-                      }
-
-                      onClick={
-                        () =>
-                          requestCounselorTransfer(
-                            selected
-                          )
-                      }
-
-                    >
-                      Transfer user to another counselor
-                    </button>
-
-                  )}
-
-
-                  {
-                    transferActionState(
-                      selected
-                    ).visible &&
-                    transferActionState(
-                      selected
-                    ).deadlinePassed &&
-                    !transferActionState(
-                      selected
-                    ).pending && (
-
-                      <span className="transfer-deadline-label">
-                        Transfer closed: counseling already started
-                      </span>
-
-                    )
-                  }
 
 
                   <button
@@ -20493,7 +15335,7 @@ function CounselingRequestsManagement() {
                         ? "Read only"
                         : saving
                           ? "Saving..."
-                          : "Save counselor review"
+                          : "Save request update"
                     }
 
                   </button>
@@ -20526,12 +15368,6 @@ function Schedule() {
 
   const navigate =
     useNavigate();
-
-
-  const [
-    scheduleStatusFilter,
-    setScheduleStatusFilter
-  ] = useState("all");
 
 
   const isSuperAdmin =
@@ -20622,64 +15458,6 @@ function Schedule() {
       );
 
 
-  const concludedAppointments =
-    appointments.filter(
-      row =>
-        row.status ===
-        "Concluded"
-    );
-
-
-  const currentAppointments =
-    appointments.filter(
-      row =>
-        row.status !==
-        "Concluded"
-    );
-
-
-  const scheduleStatusOptions =
-    Array.from(
-      new Set([
-        "Pending approval",
-        ...COUNSELING_REVIEW_STATUSES
-          .filter(
-            status =>
-              status !==
-              "Concluded"
-          ),
-        ...currentAppointments
-          .map(
-            row =>
-              row.status ||
-              "For review"
-          )
-          .filter(
-            status =>
-              Boolean(
-                status
-              ) &&
-              status !==
-                "Concluded"
-          )
-      ])
-    );
-
-
-  const filteredCurrentAppointments =
-    scheduleStatusFilter ===
-      "all"
-      ? currentAppointments
-      : currentAppointments.filter(
-          row =>
-            (
-              row.status ||
-              "For review"
-            ) ===
-              scheduleStatusFilter
-        );
-
-
   function openAppointment(
     appointment
   ) {
@@ -20710,161 +15488,27 @@ function Schedule() {
 
         title="Counselor Schedule"
 
-        subtitle="Current appointments are shown first and can be filtered by counseling-request status. Concluded sessions are kept in a separate section below."
+        subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
 
       />
 
 
-      <section className="panel counselor-filter-panel">
-
-        <div className="counselor-filter-heading">
-
-          <div>
-
-            <h2>
-              Filter Schedule
-            </h2>
-
-            <p>
-              Filter the current schedule by counseling-request status. Concluded sessions are always shown separately below.
-            </p>
-
-          </div>
-
-
-          <span className="counselor-filter-count">
-
-            {
-              filteredCurrentAppointments.length
-            }
-
-            {" "}
-
-            of
-
-            {" "}
-
-            {
-              currentAppointments.length
-            }
-
-          </span>
-
-        </div>
-
-
-        <div className="counselor-filter-grid">
-
-          <label>
-
-            Counseling Request Status
-
-            <select
-
-              value={
-                scheduleStatusFilter
-              }
-
-              onChange={
-                event =>
-                  setScheduleStatusFilter(
-                    event.target.value
-                  )
-              }
-
-            >
-
-              <option value="all">
-                All current statuses
-              </option>
-
-              {
-                scheduleStatusOptions.map(
-                  status => (
-
-                    <option
-                      key={
-                        status
-                      }
-                      value={
-                        status
-                      }
-                    >
-                      {
-                        status
-                      }
-                    </option>
-
-                  )
-                )
-              }
-
-            </select>
-
-          </label>
-
-        </div>
-
-      </section>
-
-
       <section className="panel">
-
-        <div className="counselor-filter-heading">
-
-          <div>
-
-            <h2>
-              Current Schedule
-            </h2>
-
-            <p>
-              Active and ongoing counseling requests with a scheduled date and time.
-            </p>
-
-          </div>
-
-
-          <span className="counselor-filter-count">
-
-            {
-              filteredCurrentAppointments.length
-            }
-
-            {" "}
-
-            of
-
-            {" "}
-
-            {
-              currentAppointments.length
-            }
-
-          </span>
-
-        </div>
-
 
         <div className="schedule-grid">
 
 
-          {filteredCurrentAppointments.length === 0
+          {appointments.length === 0
 
             ? (
 
               <Empty
-                text={
-                  currentAppointments.length ===
-                    0
-                    ? "No current appointments yet."
-                    : `No current appointments with status "${scheduleStatusFilter}".`
-                }
+                text="No appointments yet."
               />
 
             )
 
-            : filteredCurrentAppointments.map(
+            : appointments.map(
                 row => (
 
                   <button
@@ -20962,141 +15606,6 @@ function Schedule() {
 
       </section>
 
-
-      <section className="panel">
-
-        <div className="counselor-filter-heading">
-
-          <div>
-
-            <h2>
-              Concluded Sessions
-            </h2>
-
-            <p>
-              Completed counseling sessions are separated from the current schedule for easier review.
-            </p>
-
-          </div>
-
-
-          <span className="counselor-filter-count">
-
-            {
-              concludedAppointments.length
-            }
-
-          </span>
-
-        </div>
-
-
-        <div className="schedule-grid">
-
-
-          {concludedAppointments.length === 0
-
-            ? (
-
-              <Empty
-                text="No concluded sessions yet."
-              />
-
-            )
-
-            : concludedAppointments.map(
-                row => (
-
-                  <button
-
-                    type="button"
-
-                    className="schedule-card schedule-card-button"
-
-                    key={
-                      row.id
-                    }
-
-                    onClick={
-                      () =>
-                        openAppointment(
-                          row
-                        )
-                    }
-
-                    title="Open concluded counseling request"
-
-                  >
-
-                    <Calendar />
-
-
-                    <div>
-
-                      <strong>
-
-                        {
-                          row.date
-                        }
-
-                        {" — "}
-
-                        {
-                          row.time
-                        }
-
-                      </strong>
-
-
-                      <p>
-
-                        {
-                          row.ownerName ||
-                          "User"
-                        }
-
-                        {row.program && (
-                          <>
-                            {" · "}
-                            {row.program}
-                          </>
-                        )}
-
-                        {row.mode && (
-                          <>
-                            {" · "}
-                            {row.mode}
-                          </>
-                        )}
-
-                      </p>
-
-
-                      <div className="schedule-card-footer">
-
-                        <span className="status">
-                          Concluded
-                        </span>
-
-
-                        <span className="schedule-open-hint">
-                          Open record
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                  </button>
-
-                )
-              )
-          }
-
-        </div>
-
-      </section>
-
     </>
 
   );
@@ -21123,7 +15632,7 @@ function Accounts() {
 
         title="Account Management"
 
-        subtitle="Super Admin overview of students, teaching, non-teaching, counselors, and administrators."
+        subtitle="Super Admin overview of students, faculty, personnel, counselors, and administrators."
 
       />
 
@@ -21185,9 +15694,7 @@ function Accounts() {
 
                     <td>
                       {
-                        generalUserRoleLabel(
-                          account.role
-                        )
+                        account.role
                       }
                     </td>
 
@@ -21386,7 +15893,7 @@ function FeedbackAnalytics() {
           </h2>
 
           <p>
-            Summary of feedback submitted by Student, Teaching, and Non-teaching users.
+            Summary of feedback submitted by Student, Faculty, and Personnel users.
           </p>
 
         </div>
@@ -21639,9 +16146,8 @@ function FeedbackAnalytics() {
 
                                   <td className="capitalize-text">
                                     {
-                                      generalUserRoleLabel(
-                                        item.role
-                                      )
+                                      item.role ||
+                                      "—"
                                     }
                                   </td>
 
@@ -21723,387 +16229,6 @@ function FeedbackAnalytics() {
 // REPORTS
 // ======================================================
 
-function AnalyticsBar({
-  label,
-  value,
-  maxValue,
-  tone = "default"
-}) {
-
-  const safeValue =
-    Number(
-      value || 0
-    );
-
-
-  const width =
-    maxValue > 0
-      ? (
-          safeValue /
-          maxValue
-        ) * 100
-      : 0;
-
-
-  const visibleWidth =
-    safeValue > 0
-      ? Math.max(
-          width,
-          2
-        )
-      : 0;
-
-
-  return (
-
-    <div className="analytics-bar-row">
-
-      <div className="analytics-bar-label">
-        {label}
-      </div>
-
-
-      <div
-        className="analytics-bar-track"
-        aria-hidden="true"
-      >
-
-        <div
-          className={
-            `analytics-bar-fill analytics-tone-${tone}`
-          }
-          style={{
-            width:
-              `${visibleWidth}%`
-          }}
-        />
-
-      </div>
-
-
-      <strong className="analytics-bar-value">
-        {safeValue}
-      </strong>
-
-    </div>
-
-  );
-}
-
-
-function AnalyticsLegend() {
-
-  const items = [
-    {
-      label: "Low",
-      tone: "low"
-    },
-    {
-      label: "Moderate",
-      tone: "moderate"
-    },
-    {
-      label: "High",
-      tone: "high"
-    },
-    {
-      label: "Critical",
-      tone: "critical"
-    },
-    {
-      label: "Assessment cases",
-      tone: "assessment"
-    },
-    {
-      label: "Counseling requests",
-      tone: "requests"
-    },
-    {
-      label: "Scheduled sessions",
-      tone: "sessions"
-    }
-  ];
-
-
-  return (
-
-    <div className="analytics-chart-legend">
-
-      {items.map(
-        item => (
-
-          <div
-            key={item.label}
-            className="analytics-legend-item"
-          >
-
-            <span
-              className={
-                `analytics-legend-swatch analytics-tone-${item.tone}`
-              }
-            />
-
-            <span>
-              {item.label}
-            </span>
-
-          </div>
-
-        )
-      )}
-
-    </div>
-
-  );
-}
-
-
-function AnalyticsSummaryBarChart({
-  title,
-  description,
-  rows
-}) {
-
-  const maxValue =
-    Math.max(
-      1,
-      ...rows.map(
-        row =>
-          Number(
-            row.value || 0
-          )
-      )
-    );
-
-
-  return (
-
-    <section className="panel analytics-chart-panel">
-
-      <div className="analytics-breakdown-heading">
-
-        <div>
-
-          <h2>
-            {title}
-          </h2>
-
-          <p>
-            {description}
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <div className="analytics-summary-bars">
-
-        {rows.map(
-          row => (
-
-            <AnalyticsBar
-              key={row.label}
-              label={row.label}
-              value={row.value}
-              maxValue={maxValue}
-              tone={row.tone}
-            />
-
-          )
-        )}
-
-      </div>
-
-    </section>
-
-  );
-}
-
-
-function OperationalAnalyticsBarChart({
-  title,
-  description,
-  rows
-}) {
-
-  const maxValue =
-    Math.max(
-      1,
-      ...rows.flatMap(
-        row => [
-          ...ANALYTICS_PRIORITIES.map(
-            priority =>
-              Number(
-                row[
-                  priority
-                ] || 0
-              )
-          ),
-          Number(
-            row.assessmentCases || 0
-          ),
-          Number(
-            row.counselingRequests || 0
-          ),
-          Number(
-            row.counselingSessions || 0
-          )
-        ]
-      )
-    );
-
-
-  return (
-
-    <section className="panel analytics-breakdown-panel analytics-chart-panel">
-
-      <div className="analytics-breakdown-heading">
-
-        <div>
-
-          <h2>
-            {title}
-          </h2>
-
-          <p>
-            {description}
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <AnalyticsLegend />
-
-
-      {rows.length === 0
-
-        ? (
-
-          <div className="empty">
-            No records are available for this breakdown.
-          </div>
-
-        )
-
-        : (
-
-          <div className="analytics-groups-list">
-
-            {rows.map(
-              row => (
-
-                <article
-                  key={row.label}
-                  className="analytics-group-chart"
-                >
-
-                  <div className="analytics-group-chart-head">
-
-                    <h3>
-                      {row.label}
-                    </h3>
-
-                    <span>
-                      {
-                        row.assessmentCases
-                      }
-                      {" "}
-                      assessment case
-                      {
-                        row.assessmentCases === 1
-                          ? ""
-                          : "s"
-                      }
-                    </span>
-
-                  </div>
-
-
-                  <div className="analytics-chart-block">
-
-                    <h4>
-                      Assessment priority
-                    </h4>
-
-                    {ANALYTICS_PRIORITIES.map(
-                      priority => (
-
-                        <AnalyticsBar
-                          key={
-                            `${row.label}-${priority}`
-                          }
-                          label={priority}
-                          value={
-                            row[
-                              priority
-                            ]
-                          }
-                          maxValue={maxValue}
-                          tone={
-                            priority.toLowerCase()
-                          }
-                        />
-
-                      )
-                    )}
-
-                  </div>
-
-
-                  <div className="analytics-chart-block">
-
-                    <h4>
-                      Assessment and counseling activity
-                    </h4>
-
-                    <AnalyticsBar
-                      label="Assessment cases"
-                      value={
-                        row.assessmentCases
-                      }
-                      maxValue={maxValue}
-                      tone="assessment"
-                    />
-
-                    <AnalyticsBar
-                      label="Counseling requests"
-                      value={
-                        row.counselingRequests
-                      }
-                      maxValue={maxValue}
-                      tone="requests"
-                    />
-
-                    <AnalyticsBar
-                      label="Scheduled sessions"
-                      value={
-                        row.counselingSessions
-                      }
-                      maxValue={maxValue}
-                      tone="sessions"
-                    />
-
-                  </div>
-
-                </article>
-
-              )
-            )}
-
-          </div>
-
-        )
-      }
-
-    </section>
-
-  );
-}
-
-
 function Reports() {
 
   const { user } =
@@ -22115,18 +16240,21 @@ function Reports() {
     "super_admin";
 
 
-  const reportDepartment =
-    canonicalCollegeName(
-      user.department
-    );
-
-
   const filters =
     isSuperAdmin
       ? {}
       : {
           department:
-            reportDepartment
+            user.department
+        };
+
+
+  const referralFilters =
+    isSuperAdmin
+      ? {}
+      : {
+          assignedCounselorId:
+            user.id
         };
 
 
@@ -22147,20 +16275,17 @@ function Reports() {
   const referrals =
     useRows(
       "referrals",
-      filters
+      referralFilters
     );
 
 
-  const scheduledSessions =
-    consultations.filter(
-      consultation =>
-        consultation.status ===
-        "Schedule for counseling"
-    ).length;
-
-
   const counts =
-    ANALYTICS_PRIORITIES.map(
+    [
+      "Low",
+      "Moderate",
+      "High",
+      "Critical"
+    ].map(
       priority => ({
 
         priority,
@@ -22176,97 +16301,6 @@ function Reports() {
     );
 
 
-  const byCollege =
-    operationalAnalyticsRows(
-      assessments,
-      consultations,
-      "college"
-    );
-
-
-  const byProgram =
-    operationalAnalyticsRows(
-      assessments,
-      consultations,
-      "program"
-    );
-
-
-  const byGender =
-    operationalAnalyticsRows(
-      assessments,
-      consultations,
-      "gender"
-    );
-
-
-  const overallActivity =
-    [
-      {
-        label:
-          "Assessment cases",
-        value:
-          assessments.length,
-        tone:
-          "assessment"
-      },
-      {
-        label:
-          "Counseling requests",
-        value:
-          consultations.length,
-        tone:
-          "requests"
-      },
-      {
-        label:
-          "Scheduled sessions",
-        value:
-          scheduledSessions,
-        tone:
-          "sessions"
-      },
-      {
-        label:
-          "Referrals",
-        value:
-          referrals.length,
-        tone:
-          "referrals"
-      },
-      {
-        label:
-          "Reviewed cases",
-        value:
-          assessments.filter(
-            assessment =>
-              assessment.status &&
-              assessment.status !==
-              "For review"
-          ).length,
-        tone:
-          "reviewed"
-      }
-    ];
-
-
-  const missingGenderRecords =
-    assessments.filter(
-      record =>
-        normalizedGender(
-          record.gender
-        ) ===
-        "Not recorded"
-    ).length +
-    consultations.filter(
-      record =>
-        normalizedGender(
-          record.gender
-        ) ===
-        "Not recorded"
-    ).length;
-
-
   return (
 
     <>
@@ -22275,11 +16309,7 @@ function Reports() {
 
         title="Reports and Analytics"
 
-        subtitle={
-          isSuperAdmin
-            ? "Institution-wide assessment priority and counseling analytics by college, program, and sex."
-            : `Assessment priority and counseling analytics for ${reportDepartment}.`
-        }
+        subtitle="Live operational totals from current records."
 
       />
 
@@ -22289,7 +16319,7 @@ function Reports() {
 
         <Stat
 
-          title="Assessment cases"
+          title="Assessments"
 
           value={
             assessments.length
@@ -22304,7 +16334,7 @@ function Reports() {
 
         <Stat
 
-          title="Counseling requests"
+          title="Consultations"
 
           value={
             consultations.length
@@ -22312,21 +16342,6 @@ function Reports() {
 
           icon={
             <Calendar />
-          }
-
-        />
-
-
-        <Stat
-
-          title="Scheduled sessions"
-
-          value={
-            scheduledSessions
-          }
-
-          icon={
-            <CheckCircle2 />
           }
 
         />
@@ -22369,80 +16384,66 @@ function Reports() {
       </div>
 
 
-      {missingGenderRecords > 0 && (
+      <section className="panel">
 
-        <div className="notice analytics-data-note">
+        <h2>
+          Priority breakdown
+        </h2>
 
-          {missingGenderRecords}
-          {" "}
-          historical assessment/counseling record
-          {
-            missingGenderRecords === 1
-              ? ""
-              : "s"
-          }
-          {" "}
-          do not yet have sex recorded. They appear under
-          {" "}
-          <strong>
-            Not recorded
-          </strong>
-          {" "}
-          until the user updates their Profile and the optional backfill is rerun.
+
+        <div className="bar-list">
+
+
+          {counts.map(
+            item => (
+
+              <div
+                key={
+                  item.priority
+                }
+              >
+
+                <span>
+                  {
+                    item.priority
+                  }
+                </span>
+
+
+                <div className="bar">
+
+                  <i
+                    style={{
+                      width:
+                        `${
+                          assessments.length
+
+                            ? (
+                                item.count /
+                                assessments.length
+                              ) * 100
+
+                            : 0
+                        }%`
+                    }}
+                  />
+
+                </div>
+
+
+                <b>
+                  {
+                    item.count
+                  }
+                </b>
+
+              </div>
+
+            )
+          )}
 
         </div>
 
-      )}
-
-
-      <AnalyticsSummaryBarChart
-        title="Overall activity"
-        description="A quick comparison of assessment, counseling, referral, and reviewed-case totals."
-        rows={overallActivity}
-      />
-
-
-      <AnalyticsSummaryBarChart
-        title="Overall assessment priority"
-        description='Assessment cases are grouped into Low, Moderate, High, and Critical priority levels.'
-        rows={
-          counts.map(
-            item => ({
-              label:
-                item.priority,
-              value:
-                item.count,
-              tone:
-                item.priority
-                  .toLowerCase()
-            })
-          )
-        }
-      />
-
-
-      <OperationalAnalyticsBarChart
-        title="Analytics by college"
-        description="Assessment priority levels, assessment-case totals, counseling requests, and scheduled sessions are shown for each college."
-        rows={byCollege}
-      />
-
-
-      <OperationalAnalyticsBarChart
-        title="Analytics by program"
-        description="Student programs are shown individually. Teaching and Non-teaching records without a program appear as Not applicable."
-        rows={byProgram}
-      />
-
-
-      <OperationalAnalyticsBarChart
-        title="Analytics by sex"
-        description="Male and Female totals use the sex recorded on the account and copied into each assessment and counseling record."
-        rows={byGender}
-      />
-
-
-      <section className="panel analytics-print-panel">
 
         <button
 
@@ -23226,7 +17227,11 @@ export default function App() {
                   path="/assessment"
 
                   element={
-                    <Assessment />
+                    <RoleProtected
+                      allowedRoles={["student", "faculty", "personnel"]}
+                    >
+                      <Assessment />
+                    </RoleProtected>
                   }
 
                 />
@@ -23237,7 +17242,11 @@ export default function App() {
                   path="/monitoring"
 
                   element={
-                    <Monitoring />
+                    <RoleProtected
+                      allowedRoles={["student", "faculty", "personnel"]}
+                    >
+                      <Monitoring />
+                    </RoleProtected>
                   }
 
                 />
@@ -23259,7 +17268,11 @@ export default function App() {
                   path="/consultations"
 
                   element={
-                    <Consultations />
+                    <RoleProtected
+                      allowedRoles={["student", "faculty", "personnel"]}
+                    >
+                      <Consultations />
+                    </RoleProtected>
                   }
 
                 />
@@ -23270,7 +17283,11 @@ export default function App() {
                   path="/referrals"
 
                   element={
-                    <ReferralRoute />
+                    <RoleProtected
+                      allowedRoles={["faculty", "personnel"]}
+                    >
+                      <Referrals />
+                    </RoleProtected>
                   }
 
                 />
@@ -23280,7 +17297,11 @@ export default function App() {
                   path="/feedback"
 
                   element={
-                    <Feedback />
+                    <RoleProtected
+                      allowedRoles={["student", "faculty", "personnel"]}
+                    >
+                      <Feedback />
+                    </RoleProtected>
                   }
 
                 />
@@ -23301,7 +17322,11 @@ export default function App() {
                   path="/user-profiles"
 
                   element={
-                    <UserProfiles />
+                    <RoleProtected
+                      allowedRoles={["counselor", "super_admin"]}
+                    >
+                      <UserProfiles />
+                    </RoleProtected>
                   }
 
                 />
@@ -23312,7 +17337,11 @@ export default function App() {
                   path="/history"
 
                   element={
-                    <History />
+                    <RoleProtected
+                      allowedRoles={["student", "faculty", "personnel"]}
+                    >
+                      <History />
+                    </RoleProtected>
                   }
 
                 />
@@ -23323,7 +17352,11 @@ export default function App() {
                   path="/cases"
 
                   element={
-                    <Cases />
+                    <RoleProtected
+                      allowedRoles={["counselor", "super_admin"]}
+                    >
+                      <Cases />
+                    </RoleProtected>
                   }
 
                 />
@@ -23334,7 +17367,11 @@ export default function App() {
                   path="/counseling-requests"
 
                   element={
-                    <CounselingRequestsManagement />
+                    <RoleProtected
+                      allowedRoles={["counselor", "super_admin"]}
+                    >
+                      <CounselingRequestsManagement />
+                    </RoleProtected>
                   }
 
                 />
@@ -23345,7 +17382,11 @@ export default function App() {
                   path="/schedule"
 
                   element={
-                    <Schedule />
+                    <RoleProtected
+                      allowedRoles={["counselor", "super_admin"]}
+                    >
+                      <Schedule />
+                    </RoleProtected>
                   }
 
                 />
@@ -23356,7 +17397,11 @@ export default function App() {
                   path="/accounts"
 
                   element={
-                    <Accounts />
+                    <RoleProtected
+                      allowedRoles={["super_admin"]}
+                    >
+                      <Accounts />
+                    </RoleProtected>
                   }
 
                 />
@@ -23367,7 +17412,11 @@ export default function App() {
                   path="/reports"
 
                   element={
-                    <Reports />
+                    <RoleProtected
+                      allowedRoles={["counselor", "super_admin"]}
+                    >
+                      <Reports />
+                    </RoleProtected>
                   }
 
                 />
