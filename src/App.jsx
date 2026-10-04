@@ -784,6 +784,7 @@ function Register() {
     lastName: "",
     email: "",
     role: "",
+    preferredCounselorId: "",
     department: "",
     program: "",
     userNumber: "",
@@ -840,6 +841,62 @@ function Register() {
 
   const [loading, setLoading] =
     useState(false);
+
+
+  const counselorDirectoryRows =
+    useRows(
+      "counselorDirectory",
+      {
+        active:
+          true
+      }
+    );
+
+
+  const activeRegistrationCounselors =
+    [...counselorDirectoryRows]
+      .filter(
+        counselor =>
+          counselor.active ===
+            true &&
+          String(
+            counselor.counselorId ||
+            counselor.id ||
+            ""
+          ).trim() &&
+          String(
+            counselor.name ||
+            ""
+          ).trim() &&
+          String(
+            counselor.department ||
+            ""
+          ).trim()
+      )
+      .sort(
+        (a, b) =>
+          String(
+            a.name ||
+            ""
+          ).localeCompare(
+            String(
+              b.name ||
+              ""
+            )
+          )
+      );
+
+
+  const selectedRegistrationCounselor =
+    activeRegistrationCounselors.find(
+      counselor =>
+        String(
+          counselor.counselorId ||
+          counselor.id
+        ) ===
+        form.preferredCounselorId
+    ) ||
+    null;
 
 
   useEffect(() => {
@@ -934,21 +991,69 @@ function Register() {
 
         return {
           ...current,
-          role: nextValue,
+
+          role:
+            nextValue,
+
+          preferredCounselorId:
+            "",
+
+          department:
+            "",
+
           program:
-            nextValue === "student"
-              ? current.program
-              : ""
+            ""
         };
       }
 
 
-      if (name === "department") {
+      if (
+        name ===
+        "department"
+      ) {
 
         return {
           ...current,
-          department: nextValue,
-          program: ""
+
+          department:
+            nextValue,
+
+          program:
+            ""
+        };
+      }
+
+
+      if (
+        name ===
+        "preferredCounselorId"
+      ) {
+
+        const selectedCounselor =
+          activeRegistrationCounselors.find(
+            counselor =>
+              String(
+                counselor.counselorId ||
+                counselor.id
+              ) ===
+              nextValue
+          );
+
+
+        return {
+          ...current,
+
+          preferredCounselorId:
+            nextValue,
+
+          department:
+            String(
+              selectedCounselor?.department ||
+              ""
+            ).trim(),
+
+          program:
+            ""
         };
       }
 
@@ -1355,12 +1460,142 @@ function Register() {
       return;
     }
 
-    if (!form.department) {
-      setError(
-        "Please select your college or office."
+    const choosesPreferredCounselor =
+      [
+        "teaching",
+        "non_teaching"
+      ].includes(
+        form.role
       );
-      return;
+
+
+    let registrationDepartment =
+      String(
+        form.department ||
+        ""
+      ).trim();
+
+
+    let selectedCounselorId =
+      "";
+
+    let selectedCounselorName =
+      "";
+
+    let selectedCounselorDepartment =
+      "";
+
+
+    if (
+      form.role ===
+      "student"
+    ) {
+
+      if (
+        !registrationDepartment
+      ) {
+
+        setError(
+          "Please select your college or office."
+        );
+
+        return;
+      }
+
+    } else if (
+      choosesPreferredCounselor
+    ) {
+
+      if (
+        counselorDirectoryRows.loading
+      ) {
+
+        setError(
+          "Please wait while the counselor list is loading."
+        );
+
+        return;
+      }
+
+
+      if (
+        counselorDirectoryRows.error
+      ) {
+
+        setError(
+          "Unable to load the Guidance Counselor list. Please refresh the page or contact the Super Admin."
+        );
+
+        return;
+      }
+
+
+      if (
+        !form.preferredCounselorId ||
+        !selectedRegistrationCounselor
+      ) {
+
+        setError(
+          "Please select your preferred Guidance Counselor."
+        );
+
+        return;
+      }
+
+
+      if (
+        selectedRegistrationCounselor.active !==
+        true
+      ) {
+
+        setError(
+          "The selected Guidance Counselor is not currently available. Please select another counselor."
+        );
+
+        return;
+      }
+
+
+      selectedCounselorId =
+        String(
+          selectedRegistrationCounselor.counselorId ||
+          selectedRegistrationCounselor.id ||
+          ""
+        ).trim();
+
+
+      selectedCounselorName =
+        String(
+          selectedRegistrationCounselor.name ||
+          ""
+        ).trim();
+
+
+      selectedCounselorDepartment =
+        String(
+          selectedRegistrationCounselor.department ||
+          ""
+        ).trim();
+
+
+      if (
+        !selectedCounselorId ||
+        !selectedCounselorName ||
+        !selectedCounselorDepartment
+      ) {
+
+        setError(
+          "The selected Guidance Counselor does not have a valid counselor-directory record."
+        );
+
+        return;
+      }
+
+
+      registrationDepartment =
+        selectedCounselorDepartment;
     }
+
 
     if (
       form.role === "student" &&
@@ -1523,13 +1758,35 @@ function Register() {
         name: fullName,
         email: form.email,
         password: form.password,
-        role: form.role,
-        department: form.department,
+        role:
+          form.role,
+
+        department:
+          registrationDepartment,
+
         program:
-          form.role === "student"
+          form.role ===
+            "student"
             ? form.program
             : "",
-        userNumber: form.userNumber,
+
+        assignedCounselorId:
+          choosesPreferredCounselor
+            ? selectedCounselorId
+            : "",
+
+        assignedCounselorName:
+          choosesPreferredCounselor
+            ? selectedCounselorName
+            : "",
+
+        assignedCounselorDepartment:
+          choosesPreferredCounselor
+            ? selectedCounselorDepartment
+            : "",
+
+        userNumber:
+          form.userNumber,
         gender: form.gender,
         phoneNumber: form.phoneNumber,
         address: fullAddress,
@@ -1791,54 +2048,206 @@ function Register() {
                     Student
                   </option>
 
-                  <option value="faculty">
-                    Faculty
+                  <option value="teaching">
+                    Teaching
                   </option>
 
-                  <option value="personnel">
-                    Personnel
+                  <option value="non_teaching">
+                    Non-teaching
                   </option>
 
                 </select>
               </label>
 
 
-              <label>
-                College / Office
-                <span
-                  className="required-asterisk"
-                  aria-hidden="true"
-                >
-                  *
-                </span>
+              {form.role === "student" && (
 
-                <select
-                  name="department"
-                  value={form.department}
-                  onChange={change}
-                  required
-                >
-
-                  <option
-                    value=""
-                    disabled
+                <label>
+                  College / Office
+                  <span
+                    className="required-asterisk"
+                    aria-hidden="true"
                   >
-                    Select college / office
-                  </option>
+                    *
+                  </span>
 
-                  {COLLEGE_OPTIONS.map(
-                    college => (
+                  <select
+                    name="department"
+                    value={
+                      form.department
+                    }
+                    onChange={
+                      change
+                    }
+                    required
+                  >
+
+                    <option
+                      value=""
+                      disabled
+                    >
+                      Select college / office
+                    </option>
+
+                    {
+                      COLLEGE_OPTIONS.map(
+                        college => (
+
+                          <option
+                            key={
+                              college
+                            }
+                            value={
+                              college
+                            }
+                          >
+                            {college}
+                          </option>
+
+                        )
+                      )
+                    }
+
+                  </select>
+                </label>
+
+              )}
+
+
+              {
+                [
+                  "teaching",
+                  "non_teaching"
+                ].includes(
+                  form.role
+                ) && (
+
+                  <label>
+                    Preferred Guidance Counselor
+                    <span
+                      className="required-asterisk"
+                      aria-hidden="true"
+                    >
+                      *
+                    </span>
+
+                    <select
+                      name="preferredCounselorId"
+                      value={
+                        form.preferredCounselorId
+                      }
+                      onChange={
+                        change
+                      }
+                      disabled={
+                        counselorDirectoryRows.loading
+                      }
+                      required
+                    >
+
                       <option
-                        key={college}
-                        value={college}
+                        value=""
+                        disabled
                       >
-                        {college}
+                        {
+                          counselorDirectoryRows.loading
+                            ? "Loading counselors..."
+                            : "Select preferred counselor"
+                        }
                       </option>
-                    )
-                  )}
 
-                </select>
-              </label>
+                      {
+                        activeRegistrationCounselors.map(
+                          counselor => {
+
+                            const counselorId =
+                              String(
+                                counselor.counselorId ||
+                                counselor.id
+                              );
+
+
+                            return (
+
+                              <option
+                                key={
+                                  counselorId
+                                }
+                                value={
+                                  counselorId
+                                }
+                              >
+                                {
+                                  counselor.name
+                                }
+                                {" — "}
+                                {
+                                  counselor.department
+                                }
+                              </option>
+
+                            );
+                          }
+                        )
+                      }
+
+                    </select>
+
+
+                    {
+                      selectedRegistrationCounselor &&
+                      (
+
+                        <span
+                          className="optional-text"
+                          style={{
+                            display:
+                              "block",
+
+                            marginTop:
+                              "6px"
+                          }}
+                        >
+                          College / Office:
+                          {" "}
+                          {
+                            selectedRegistrationCounselor.department
+                          }
+                        </span>
+
+                      )
+                    }
+
+
+                    {
+                      counselorDirectoryRows.error &&
+                      (
+
+                        <span
+                          style={{
+                            display:
+                              "block",
+
+                            marginTop:
+                              "6px",
+
+                            color:
+                              "#b91c1c",
+
+                            fontSize:
+                              "0.82rem"
+                          }}
+                        >
+                          Unable to load available counselors.
+                        </span>
+
+                      )
+                    }
+
+                  </label>
+
+                )
+              }
 
 
               {form.role === "student" && (
@@ -1898,8 +2307,8 @@ function Register() {
 
                 {form.role === "student"
                   ? "Student Number"
-                  : form.role === "faculty" ||
-                      form.role === "personnel"
+                  : form.role === "teaching" ||
+                      form.role === "non_teaching"
                     ? "Employee Number"
                     : "Student / Employee Number"}
 
@@ -2854,7 +3263,7 @@ function appointmentHasStarted(row) {
 
 // ======================================================
 // DASHBOARD ACCESS
-// Student / Faculty / Personnel do not use Dashboard.
+// Student / Teaching / Non-teaching users do not use Dashboard.
 // Counselor and Super Admin keep Dashboard access.
 // ======================================================
 
@@ -3851,10 +4260,7 @@ function Dashboard() {
           />
 
 
-          {[
-            "faculty",
-            "personnel"
-          ].includes(
+          {REFERRAL_USER_ROLE_VALUES.includes(
             user.role
           ) && (
 
@@ -3929,6 +4335,227 @@ function Assessment() {
     useState(null);
 
 
+  const assessmentHistory =
+    useRows(
+      "assessments",
+      {
+        ownerId:
+          user.id
+      }
+    );
+
+
+  const assessmentLocks =
+    useRows(
+      "assessmentLocks",
+      {
+        ownerId:
+          user.id
+      }
+    );
+
+
+  const assessmentLock =
+    assessmentLocks[0] ||
+    null;
+
+
+  const latestAssessment =
+    assessmentHistory[0] ||
+    null;
+
+
+  const activeAssessment =
+    assessmentHistory.find(
+      row =>
+        row.status !==
+        "Concluded"
+    ) ||
+    null;
+
+
+  const ASSESSMENT_COOLDOWN_DAYS =
+    14;
+
+
+  const ASSESSMENT_COOLDOWN_MS =
+    ASSESSMENT_COOLDOWN_DAYS *
+    24 *
+    60 *
+    60 *
+    1000;
+
+
+  function assessmentTimestampMillis(
+    value
+  ) {
+
+    if (!value) {
+      return 0;
+    }
+
+
+    if (
+      typeof value.toMillis ===
+      "function"
+    ) {
+
+      return value.toMillis();
+    }
+
+
+    if (
+      typeof value.seconds ===
+      "number"
+    ) {
+
+      return (
+        value.seconds *
+        1000
+      );
+    }
+
+
+    const parsed =
+      new Date(
+        value
+      ).getTime();
+
+
+    return Number.isNaN(
+      parsed
+    )
+      ? 0
+      : parsed;
+  }
+
+
+  const earlyReassessmentAllowed =
+    Boolean(
+      assessmentLock &&
+      latestAssessment &&
+      assessmentLock.latestAssessmentId ===
+        latestAssessment.id &&
+      assessmentLock.status ===
+        "Concluded" &&
+      assessmentLock.earlyReassessmentAllowed ===
+        true
+    );
+
+
+  const concludedAtMillis =
+    assessmentLock?.status ===
+      "Concluded"
+
+      ? assessmentTimestampMillis(
+          assessmentLock.concludedAt
+        )
+
+      : (
+          latestAssessment?.status ===
+            "Concluded"
+
+            ? assessmentTimestampMillis(
+                latestAssessment.updatedAt ||
+                latestAssessment.createdAt
+              )
+
+            : 0
+        );
+
+
+  const nextAssessmentAtMillis =
+    concludedAtMillis
+      ? (
+          concludedAtMillis +
+          ASSESSMENT_COOLDOWN_MS
+        )
+      : 0;
+
+
+  const cooldownBlocked =
+    Boolean(
+      !activeAssessment &&
+      latestAssessment?.status ===
+        "Concluded" &&
+      !earlyReassessmentAllowed &&
+      (
+        !nextAssessmentAtMillis ||
+        Date.now() <
+          nextAssessmentAtMillis
+      )
+    );
+
+
+  const assessmentEligibilityLoading =
+    rowsAreLoading(
+      assessmentHistory,
+      assessmentLocks
+    );
+
+
+  const assessmentEligibilityError =
+    firstRowsError(
+      assessmentHistory,
+      assessmentLocks
+    );
+
+
+  const assessmentLockMissing =
+    !assessmentEligibilityLoading &&
+    !assessmentEligibilityError &&
+    !assessmentLock;
+
+
+  const assessmentBlocked =
+    Boolean(
+      assessmentLockMissing ||
+      activeAssessment ||
+      cooldownBlocked
+    );
+
+
+  const nextAssessmentDateLabel =
+    nextAssessmentAtMillis
+      ? new Date(
+          nextAssessmentAtMillis
+        ).toLocaleString(
+          "en-PH",
+          {
+            dateStyle:
+              "medium",
+
+            timeStyle:
+              "short"
+          }
+        )
+      : "";
+
+
+  const answeredQuestionCount =
+    scoredQuestionIds.filter(
+      questionId =>
+        answers[
+          questionId
+        ] !== undefined
+    ).length;
+
+
+  const totalQuestionCount =
+    scoredQuestionIds.length;
+
+
+  const assessmentProgress =
+    totalQuestionCount
+      ? Math.round(
+          (
+            answeredQuestionCount /
+            totalQuestionCount
+          ) * 100
+        )
+      : 0;
+
+
   function answerQuestion(
     questionId,
     value
@@ -3999,7 +4626,7 @@ function Assessment() {
 
           <div
             className={
-              choicesList.length > 4
+              choicesList.length >= 4
                 ? "choice-row assessment-choice-row-wide"
                 : "choice-row"
             }
@@ -4092,6 +4719,20 @@ function Assessment() {
   async function submit(e) {
 
     e.preventDefault();
+
+
+    if (assessmentBlocked) {
+
+      alert(
+        activeAssessment
+          ? "You already have an active psychological assessment. A new assessment can only be taken after the current assessment is concluded."
+          : cooldownBlocked
+            ? `A new psychological assessment will be available after the 14-day reassessment period${nextAssessmentDateLabel ? ` (${nextAssessmentDateLabel})` : "."}`
+            : "Your assessment eligibility record is not ready. Please contact the Guidance Office or Super Admin."
+      );
+
+      return;
+    }
 
 
     const answeredScoredQuestions =
@@ -4190,15 +4831,161 @@ function Assessment() {
     };
 
 
-    await addRecord(
-      "assessments",
-      record
-    );
+    try {
+
+      const assessmentRef =
+        doc(
+          collection(
+            db,
+            "assessments"
+          )
+        );
 
 
-    setSaved(
-      result
-    );
+      const lockRef =
+        doc(
+          db,
+          "assessmentLocks",
+          user.id
+        );
+
+
+      await runTransaction(
+        db,
+
+        async transaction => {
+
+          const lockSnapshot =
+            await transaction.get(
+              lockRef
+            );
+
+
+          if (!lockSnapshot.exists()) {
+
+            throw new Error(
+              "Your assessment eligibility record is missing. Please contact the Guidance Office or Super Admin."
+            );
+          }
+
+
+          const lockData =
+            lockSnapshot.data();
+
+
+          if (
+            lockData.ownerId !==
+            user.id
+          ) {
+
+            throw new Error(
+              "The assessment eligibility record is invalid."
+            );
+          }
+
+
+          if (
+            lockData.status !==
+              "Eligible" &&
+            lockData.status !==
+              "Concluded"
+          ) {
+
+            throw new Error(
+              "You already have an active psychological assessment. Wait until the current assessment is concluded."
+            );
+          }
+
+
+          if (
+            lockData.status ===
+              "Concluded" &&
+            lockData.earlyReassessmentAllowed !==
+              true
+          ) {
+
+            const lockConcludedAt =
+              assessmentTimestampMillis(
+                lockData.concludedAt
+              );
+
+
+            if (!lockConcludedAt) {
+
+              throw new Error(
+                "Your previous assessment does not yet have a valid conclusion date. Please contact your counselor."
+              );
+            }
+
+
+            const eligibleAt =
+              lockConcludedAt +
+              ASSESSMENT_COOLDOWN_MS;
+
+
+            if (
+              Date.now() <
+              eligibleAt
+            ) {
+
+              throw new Error(
+                `Your next psychological assessment will be available on ${new Date(eligibleAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}.`
+              );
+            }
+          }
+
+
+          transaction.set(
+            assessmentRef,
+            {
+              ...record,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.update(
+            lockRef,
+            {
+              latestAssessmentId:
+                assessmentRef.id,
+
+              status:
+                "For review",
+
+              concludedAt:
+                null,
+
+              earlyReassessmentAllowed:
+                false,
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+        }
+      );
+
+
+      setSaved(
+        result
+      );
+
+    } catch (assessmentError) {
+
+      console.error(
+        "Psychological assessment submission error:",
+        assessmentError
+      );
+
+
+      alert(
+        assessmentError?.message ||
+        "Unable to submit the psychological assessment."
+      );
+    }
 
   }
 
@@ -4230,193 +5017,13 @@ function Assessment() {
         </div>
 
 
-        <div className="assessment-result-grid">
+        <div className="notice">
 
-          <section className="assessment-result-item">
-
-            <span>
-              WHO-5
-            </span>
-
-            <strong>
-              {
-                saved.instrumentResults
-                  .who5
-                  .percentageScore
-              }/100
-            </strong>
-
-            <small>
-              Raw:
-              {" "}
-              {
-                saved.instrumentResults
-                  .who5
-                  .rawScore
-              }/25
-            </small>
-
-            <p>
-              {
-                saved.instrumentResults
-                  .who5
-                  .interpretation
-              }
-            </p>
-
-          </section>
-
-
-          <section className="assessment-result-item">
-
-            <span>
-              PHQ-9
-            </span>
-
-            <strong>
-              {
-                saved.instrumentResults
-                  .phq9
-                  .totalScore
-              }/27
-            </strong>
-
-            <small>
-              {
-                saved.instrumentResults
-                  .phq9
-                  .severity
-              }
-              {" "}
-              symptom range
-            </small>
-
-          </section>
-
-
-          <section className="assessment-result-item">
-
-            <span>
-              GAD-7
-            </span>
-
-            <strong>
-              {
-                saved.instrumentResults
-                  .gad7
-                  .totalScore
-              }/21
-            </strong>
-
-            <small>
-              {
-                saved.instrumentResults
-                  .gad7
-                  .severity
-              }
-              {" "}
-              symptom range
-            </small>
-
-          </section>
-
-          <section className="assessment-result-item dass21-subscale-card">
-
-            <span>
-              DASS-21 Depression
-            </span>
-
-            <strong>
-              {
-                saved.instrumentResults
-                  .dass21
-                  .depression
-                  .adjustedScore
-              }/42
-            </strong>
-
-            <small>
-              Raw:
-              {" "}
-              {
-                saved.instrumentResults
-                  .dass21
-                  .depression
-                  .rawScore
-              }/21
-            </small>
-
-            <p>
-              Adjusted DASS-21 Depression score.
-            </p>
-
-          </section>
-
-
-          <section className="assessment-result-item dass21-subscale-card">
-
-            <span>
-              DASS-21 Anxiety
-            </span>
-
-            <strong>
-              {
-                saved.instrumentResults
-                  .dass21
-                  .anxiety
-                  .adjustedScore
-              }/42
-            </strong>
-
-            <small>
-              Raw:
-              {" "}
-              {
-                saved.instrumentResults
-                  .dass21
-                  .anxiety
-                  .rawScore
-              }/21
-            </small>
-
-            <p>
-              Adjusted DASS-21 Anxiety score.
-            </p>
-
-          </section>
-
-
-          <section className="assessment-result-item dass21-subscale-card">
-
-            <span>
-              DASS-21 Stress
-            </span>
-
-            <strong>
-              {
-                saved.instrumentResults
-                  .dass21
-                  .stress
-                  .adjustedScore
-              }/42
-            </strong>
-
-            <small>
-              Raw:
-              {" "}
-              {
-                saved.instrumentResults
-                  .dass21
-                  .stress
-                  .rawScore
-              }/21
-            </small>
-
-            <p>
-              Adjusted DASS-21 Stress score.
-            </p>
-
-          </section>
+          Your assessment was submitted successfully.
+          Individual WHO-5, PHQ-9, GAD-7, and DASS-21 scores
+          are intentionally not displayed on this page.
+          The detailed screening results remain available
+          to authorized Guidance Counselors for review.
 
         </div>
 
@@ -4456,6 +5063,151 @@ function Assessment() {
   }
 
 
+  if (
+    assessmentEligibilityLoading
+  ) {
+
+    return (
+      <>
+        <PageTitle
+          title="Psychological Assessment"
+          subtitle="Checking whether a new psychological assessment is currently available."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Checking assessment eligibility..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (
+    assessmentEligibilityError
+  ) {
+
+    return (
+      <>
+        <PageTitle
+          title="Psychological Assessment"
+          subtitle="Psychological assessment availability could not be checked."
+        />
+
+        <div className="error-box">
+          {assessmentEligibilityError}
+        </div>
+      </>
+    );
+  }
+
+
+  if (assessmentBlocked) {
+
+    const blockedStatus =
+      activeAssessment?.status ||
+      (
+        cooldownBlocked
+          ? "Reassessment cooldown"
+          : "Eligibility unavailable"
+      );
+
+
+    return (
+      <>
+        <PageTitle
+          title="Psychological Assessment"
+          subtitle="MindTrack limits repeated assessments to prevent duplicate or spam submissions."
+        />
+
+        <section
+          className="panel"
+          style={{
+            width: "100%",
+            maxWidth: "950px",
+            boxSizing: "border-box",
+            marginLeft: "auto",
+            marginRight: "auto"
+          }}
+        >
+
+          <h2>
+            New assessment temporarily unavailable
+          </h2>
+
+
+          <p>
+            Current status:
+            {" "}
+            <strong>
+              {blockedStatus}
+            </strong>
+          </p>
+
+
+          {activeAssessment && (
+
+            <div className="notice">
+
+              You already have a psychological assessment that is still active.
+              A new assessment cannot be started while the current assessment is
+              waiting for review, approved, recommended for counseling/follow-up,
+              or otherwise not yet concluded.
+
+            </div>
+
+          )}
+
+
+          {cooldownBlocked && (
+
+            <div className="notice">
+
+              Your previous assessment has been concluded.
+              MindTrack requires a
+              {" "}
+              <strong>
+                {ASSESSMENT_COOLDOWN_DAYS}-day reassessment period
+              </strong>
+              {" "}
+              before another psychological assessment can be submitted.
+
+              {nextAssessmentDateLabel && (
+                <>
+                  <br />
+                  <br />
+                  Next available:
+                  {" "}
+                  <strong>
+                    {nextAssessmentDateLabel}
+                  </strong>
+                </>
+              )}
+
+            </div>
+
+          )}
+
+
+          {assessmentLockMissing && (
+
+            <div className="error-box">
+
+              Your assessment eligibility record has not been initialized yet.
+              Ask the Super Admin to run the assessment-lock migration before
+              taking a new assessment.
+
+            </div>
+
+          )}
+
+        </section>
+      </>
+    );
+  }
+
+
   return (
 
     <>
@@ -4464,12 +5216,22 @@ function Assessment() {
 
         title="Psychological Assessment"
 
-        subtitle="Complete all four screening tools. Each section has its own title, questions, response scale, and scoring method."
+        subtitle="Complete all four screening tools. Your progress is shown while you answer, while individual test scores remain hidden from this page."
 
       />
 
 
-      <div className="assessment-simple-guide">
+      <div
+        className="assessment-simple-guide"
+        style={{
+          width: "100%",
+          maxWidth: "950px",
+          boxSizing: "border-box",
+          marginLeft: "auto",
+          marginRight: "auto",
+          marginBottom: "18px"
+        }}
+      >
 
         <strong>
           How to answer
@@ -4485,9 +5247,124 @@ function Assessment() {
       </div>
 
 
+      <section
+        className="panel assessment-sticky-progress"
+        aria-label="Assessment progress"
+        style={{
+          position: "sticky",
+          top: "72px",
+          zIndex: 30,
+          width: "100%",
+          maxWidth: "950px",
+          boxSizing: "border-box",
+          overflow: "hidden",
+          padding: "16px 20px",
+          marginLeft: "auto",
+          marginRight: "auto",
+          marginBottom: "18px",
+          boxShadow:
+            "0 8px 24px rgba(15, 23, 42, 0.10)"
+        }}
+      >
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+            marginBottom: "10px"
+          }}
+        >
+
+          <div>
+
+            <strong
+              style={{
+                display: "block"
+              }}
+            >
+              Assessment Progress
+            </strong>
+
+            <small>
+              {answeredQuestionCount}
+              {" "}
+              of
+              {" "}
+              {totalQuestionCount}
+              {" "}
+              questions answered
+            </small>
+
+          </div>
+
+
+          <strong
+            style={{
+              color: "#132f73",
+              fontSize: "1rem"
+            }}
+          >
+            {assessmentProgress}%
+          </strong>
+
+        </div>
+
+
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={assessmentProgress}
+          aria-label="Overall psychological assessment completion"
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "100%",
+            minWidth: 0,
+            boxSizing: "border-box",
+            height: "10px",
+            borderRadius: "999px",
+            overflow: "hidden",
+            background: "#e7ebf2"
+          }}
+        >
+
+          <div
+            style={{
+              width:
+                `${Math.min(
+                  100,
+                  Math.max(
+                    0,
+                    assessmentProgress
+                  )
+                )}%`,
+              maxWidth: "100%",
+              height: "100%",
+              borderRadius: "999px",
+              background: "#173f8f",
+              transition:
+                "width 180ms ease"
+            }}
+          />
+
+        </div>
+
+      </section>
+
+
       <form
         className="assessment-form standardized-assessment-form"
         onSubmit={submit}
+        style={{
+          width: "100%",
+          maxWidth: "950px",
+          marginLeft: "auto",
+          marginRight: "auto"
+        }}
       >
 
 
@@ -4507,11 +5384,6 @@ function Assessment() {
 
             </div>
 
-
-            <div className="assessment-score-range">
-              Score: 0-25 raw / 0-100 percentage
-            </div>
-
           </div>
 
 
@@ -4519,7 +5391,6 @@ function Assessment() {
 
             Think about the last two weeks. For each statement,
             choose the answer that is closest to how often you felt that way.
-            Higher numbers mean better well-being.
 
           </p>
 
@@ -4534,18 +5405,15 @@ function Assessment() {
 
           <div className="assessment-source-note">
 
-            Scoring: add the five responses for a raw score from
-            0 to 25, then multiply the raw score by 4 for a
-            percentage score from 0 to 100. A percentage below
-            50, or raw score below 13, is the WHO-5 suggested
-            cut-off for poor mental well-being and further assessment.
-
-            <br />
-            <br />
-
             Source: World Health Organization. The World Health
             Organization-Five Well-Being Index (WHO-5), 2024.
             License: CC BY-NC-SA 3.0 IGO.
+
+            <br />
+            <br />
+
+            MindTrack keeps the detailed result for authorized
+            counselor review rather than displaying the score here.
 
           </div>
 
@@ -4566,11 +5434,6 @@ function Assessment() {
                 {PHQ9_TITLE}
               </h2>
 
-            </div>
-
-
-            <div className="assessment-score-range">
-              Total score: 0-27
             </div>
 
           </div>
@@ -4647,15 +5510,14 @@ function Assessment() {
 
           <div className="assessment-source-note">
 
-            Scoring: add the scores of items 1-9.
-            The functional difficulty question is recorded
-            separately and is not included in the PHQ-9 total.
+            The PHQ-9 response set and functional difficulty response
+            are recorded for authorized counselor review.
 
             <br />
             <br />
 
-            The provided PHQ-9 form states that no permission is
-            required to reproduce, translate, display, or distribute it.
+            Individual scoring details are intentionally not displayed
+            while the user is completing the assessment.
 
           </div>
 
@@ -4676,11 +5538,6 @@ function Assessment() {
                 {GAD7_TITLE}
               </h2>
 
-            </div>
-
-
-            <div className="assessment-score-range">
-              Total score: 0-21
             </div>
 
           </div>
@@ -4704,14 +5561,14 @@ function Assessment() {
 
           <div className="assessment-source-note">
 
-            Scoring: add the scores of items 1-7 for a total
-            from 0 to 21.
+            The GAD-7 responses are recorded for authorized
+            counselor review and monitoring.
 
             <br />
             <br />
 
-            The provided GAD-7 form states that no permission is
-            required to reproduce, translate, display, or distribute it.
+            Individual scoring details are intentionally not displayed
+            while the user is completing the assessment.
 
           </div>
 
@@ -4732,11 +5589,6 @@ function Assessment() {
                 {DASS21_TITLE}
               </h2>
 
-            </div>
-
-
-            <div className="assessment-score-range">
-              3 scales · 7 items each
             </div>
 
           </div>
@@ -4760,37 +5612,14 @@ function Assessment() {
 
           <div className="assessment-source-note">
 
-            DASS-21 is scored as three separate scales:
-
-            <br />
-            Depression:
-            {" "}
-            items 3, 5, 10, 13, 16, 17, and 21.
-
-            <br />
-            Anxiety:
-            {" "}
-            items 2, 4, 7, 9, 15, 19, and 20.
-
-            <br />
-            Stress:
-            {" "}
-            items 1, 6, 8, 11, 12, 14, and 18.
+            DASS-21 covers depression, anxiety, and stress response areas.
+            MindTrack records the responses for authorized counselor review.
 
             <br />
             <br />
 
-            Each scale has 7 items scored from 0 to 3,
-            giving a raw score from 0 to 21.
-            For the adult DASS-21, MindTrack also shows the
-            adjusted score (raw score × 2), from 0 to 42.
-
-            <br />
-            <br />
-
-            MindTrack does not assign DASS-21 severity labels.
-            A counselor should interpret the scores together with
-            the user's overall assessment and situation.
+            Individual scoring details are intentionally not displayed
+            while the user is completing the assessment.
 
           </div>
 
@@ -5504,15 +6333,135 @@ function formatRecordDateTime(
 }
 
 
+const GENERAL_USER_ROLE_VALUES = [
+  "student",
+  "teaching",
+  "non_teaching",
+
+  // Legacy values kept temporarily so older Firestore
+  // accounts continue to work until the migration is run.
+  "faculty",
+  "personnel"
+];
+
+
+const REFERRAL_USER_ROLE_VALUES = [
+  "teaching",
+  "non_teaching",
+
+  // Legacy compatibility.
+  "faculty",
+  "personnel"
+];
+
+
 function generalUserRole(
   role
 ) {
 
+  return GENERAL_USER_ROLE_VALUES.includes(
+    String(
+      role ||
+      ""
+    ).trim()
+  );
+}
+
+
+function teachingUserRole(
+  role
+) {
+
   return [
-    "student",
-    "faculty",
+    "teaching",
+    "faculty"
+  ].includes(
+    String(
+      role ||
+      ""
+    ).trim()
+  );
+}
+
+
+function nonTeachingUserRole(
+  role
+) {
+
+  return [
+    "non_teaching",
     "personnel"
-  ].includes(role);
+  ].includes(
+    String(
+      role ||
+      ""
+    ).trim()
+  );
+}
+
+
+function systemRoleLabel(
+  role
+) {
+
+  const cleanRole =
+    String(
+      role ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  if (
+    cleanRole ===
+    "student"
+  ) {
+
+    return "Student";
+  }
+
+
+  if (
+    teachingUserRole(
+      cleanRole
+    )
+  ) {
+
+    return "Teaching";
+  }
+
+
+  if (
+    nonTeachingUserRole(
+      cleanRole
+    )
+  ) {
+
+    return "Non-teaching";
+  }
+
+
+  if (
+    cleanRole ===
+    "counselor"
+  ) {
+
+    return "Counselor";
+  }
+
+
+  if (
+    cleanRole ===
+    "super_admin"
+  ) {
+
+    return "Super Admin";
+  }
+
+
+  return role ||
+    "—";
 }
 
 
@@ -6083,7 +7032,7 @@ function Consultations() {
   // Use the most recent counseling request that contains an
   // assigned counselor as the user's current counselor source.
   // This avoids exposing private counselingProfiles notes to
-  // Student / Faculty / Personnel accounts.
+  // Student / Teaching / Non-teaching accounts.
   const currentCounselorAssignment =
     rows.find(
       row =>
@@ -8065,7 +9014,7 @@ function Referrals() {
           subtitle={
             isCounselor
               ? "Referrals specifically assigned to you."
-              : "Faculty and personnel may refer someone who may benefit from guidance support."
+              : "Teaching and Non-teaching users may refer someone who may benefit from guidance support."
           }
         />
 
@@ -8092,7 +9041,7 @@ function Referrals() {
           subtitle={
             isCounselor
               ? "Referrals specifically assigned to you."
-              : "Faculty and personnel may refer someone who may benefit from guidance support."
+              : "Teaching and Non-teaching users may refer someone who may benefit from guidance support."
           }
         />
 
@@ -8211,7 +9160,7 @@ function Referrals() {
                       <small>
                         Referred by:
                         {" "}
-                        {row.referrerName || "Faculty / Personnel"}
+                        {row.referrerName || "Teaching / Non-teaching"}
                       </small>
 
                     </article>
@@ -8247,7 +9196,7 @@ function Referrals() {
 
         title="Referral"
 
-        subtitle="Faculty and personnel may refer someone who may benefit from guidance support."
+        subtitle="Teaching and Non-teaching users may refer someone who may benefit from guidance support."
 
       />
 
@@ -8313,11 +9262,11 @@ function Referrals() {
               </option>
 
               <option>
-                Faculty
+                Teaching
               </option>
 
               <option>
-                Personnel
+                Non-teaching
               </option>
 
             </select>
@@ -8555,7 +9504,7 @@ function Referrals() {
 
 // ======================================================
 // RATINGS & FEEDBACK
-// STUDENT / FACULTY / PERSONNEL
+// STUDENT / TEACHING / NON-TEACHING
 // ======================================================
 
 function Feedback() {
@@ -8564,11 +9513,8 @@ function Feedback() {
     useAuth();
 
 
-  const allowedRoles = [
-    "student",
-    "faculty",
-    "personnel"
-  ];
+  const allowedRoles =
+    GENERAL_USER_ROLE_VALUES;
 
 
   const [rating, setRating] =
@@ -9190,11 +10136,8 @@ function Profile() {
     updateProfile
   } = useAuth();
 
-  const allowedRoles = [
-    "student",
-    "faculty",
-    "personnel"
-  ];
+  const allowedRoles =
+    GENERAL_USER_ROLE_VALUES;
 
   const [form, setForm] =
     useState({
@@ -9472,17 +10415,9 @@ function Profile() {
           <div className="profile-role-badge">
 
             {
-              user.role ===
-              "student"
-
-                ? "Student"
-
-                : user.role ===
-                  "faculty"
-
-                  ? "Faculty"
-
-                  : "Personnel"
+              systemRoleLabel(
+                user.role
+              )
             }
 
           </div>
@@ -9530,17 +10465,9 @@ function Profile() {
 
               <input
                 value={
-                  user.role ===
-                  "student"
-
-                    ? "Student"
-
-                    : user.role ===
-                      "faculty"
-
-                      ? "Faculty"
-
-                      : "Personnel"
+                  systemRoleLabel(
+                    user.role
+                  )
                 }
                 readOnly
               />
@@ -10028,11 +10955,9 @@ function UserProfilesContent({
             .trim()
             .toLowerCase();
 
-        return [
-          "student",
-          "faculty",
-          "personnel"
-        ].includes(role);
+        return generalUserRole(
+          role
+        );
       }
     );
 
@@ -10190,10 +11115,10 @@ function UserProfilesContent({
 
 
   function displayRole(role) {
-    if (role === "student") return "Student";
-    if (role === "faculty") return "Faculty";
-    if (role === "personnel") return "Personnel";
-    return role || "—";
+
+    return systemRoleLabel(
+      role
+    );
   }
 
 
@@ -10628,7 +11553,16 @@ function UserNotificationsContent({
           subtitle="Updates from your MindTrack activity."
         />
 
-        <section className="panel">
+        <section
+          className="panel"
+          style={{
+            width: "100%",
+            maxWidth: "950px",
+            boxSizing: "border-box",
+            marginLeft: "auto",
+            marginRight: "auto"
+          }}
+        >
           <Empty
             text="Loading notifications..."
           />
@@ -10647,7 +11581,16 @@ function UserNotificationsContent({
           subtitle="Updates from your MindTrack activity."
         />
 
-        <div className="error-box">
+        <div
+          className="error-box"
+          style={{
+            width: "100%",
+            maxWidth: "950px",
+            boxSizing: "border-box",
+            marginLeft: "auto",
+            marginRight: "auto"
+          }}
+        >
           {allRows.error}
         </div>
       </>
@@ -10672,7 +11615,16 @@ function UserNotificationsContent({
       />
 
 
-      <section className="panel notification-panel">
+      <section
+        className="panel notification-panel"
+        style={{
+          width: "100%",
+          maxWidth: "950px",
+          boxSizing: "border-box",
+          marginLeft: "auto",
+          marginRight: "auto"
+        }}
+      >
 
         <div className="notification-panel-heading">
 
@@ -12329,6 +13281,12 @@ function Cases() {
   ] = useState(false);
 
 
+  const [
+    allowingEarlyReassessment,
+    setAllowingEarlyReassessment
+  ] = useState(false);
+
+
   const assessmentStatuses = [
     "For review",
     "Counseling is recommended",
@@ -12548,10 +13506,106 @@ function Cases() {
       }
 
 
-      await updateRecord(
-        "assessments",
-        selected.id,
-        assessmentUpdate
+      const assessmentRef =
+        doc(
+          db,
+          "assessments",
+          selected.id
+        );
+
+
+      const lockRef =
+        doc(
+          db,
+          "assessmentLocks",
+          selected.ownerId
+        );
+
+
+      await runTransaction(
+        db,
+
+        async transaction => {
+
+          const assessmentSnapshot =
+            await transaction.get(
+              assessmentRef
+            );
+
+
+          const lockSnapshot =
+            await transaction.get(
+              lockRef
+            );
+
+
+          if (!assessmentSnapshot.exists()) {
+
+            throw new Error(
+              "The selected psychological assessment no longer exists."
+            );
+          }
+
+
+          if (!lockSnapshot.exists()) {
+
+            throw new Error(
+              "This user's assessment eligibility record is missing. Run the assessment-lock migration first."
+            );
+          }
+
+
+          const storedAssessment =
+            assessmentSnapshot.data();
+
+
+          const storedLock =
+            lockSnapshot.data();
+
+
+          transaction.update(
+            assessmentRef,
+            {
+              ...assessmentUpdate,
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          const statusChanged =
+            storedAssessment.status !==
+            statusDraft;
+
+
+          if (
+            statusChanged &&
+            storedLock.latestAssessmentId ===
+              selected.id
+          ) {
+
+            transaction.update(
+              lockRef,
+              {
+                status:
+                  statusDraft,
+
+                concludedAt:
+                  statusDraft ===
+                    "Concluded"
+                    ? serverTimestamp()
+                    : null,
+
+                earlyReassessmentAllowed:
+                  false,
+
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+          }
+        }
       );
 
 
@@ -12678,6 +13732,118 @@ function Cases() {
     } finally {
 
       setSavingCase(false);
+    }
+  }
+
+
+  async function allowEarlyReassessment() {
+
+    if (
+      !selected ||
+      selected.status !==
+        "Concluded"
+    ) {
+
+      return;
+    }
+
+
+    try {
+
+      setAllowingEarlyReassessment(
+        true
+      );
+
+
+      const lockRef =
+        doc(
+          db,
+          "assessmentLocks",
+          selected.ownerId
+        );
+
+
+      await runTransaction(
+        db,
+
+        async transaction => {
+
+          const lockSnapshot =
+            await transaction.get(
+              lockRef
+            );
+
+
+          if (!lockSnapshot.exists()) {
+
+            throw new Error(
+              "This user's assessment eligibility record is missing. Run the assessment-lock migration first."
+            );
+          }
+
+
+          const lockData =
+            lockSnapshot.data();
+
+
+          if (
+            lockData.latestAssessmentId !==
+              selected.id
+          ) {
+
+            throw new Error(
+              "Early reassessment can only be enabled from the user's latest concluded assessment."
+            );
+          }
+
+
+          if (
+            lockData.status !==
+              "Concluded"
+          ) {
+
+            throw new Error(
+              "The latest assessment must be concluded before early reassessment can be enabled."
+            );
+          }
+
+
+          transaction.update(
+            lockRef,
+            {
+              earlyReassessmentAllowed:
+                true,
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+        }
+      );
+
+
+      alert(
+        "Early reassessment has been enabled. The user may now take one new psychological assessment before the 14-day cooldown ends."
+      );
+
+    } catch (overrideError) {
+
+      console.error(
+        "Unable to enable early reassessment:",
+        overrideError
+      );
+
+
+      alert(
+        overrideError?.message ||
+        "Unable to enable early reassessment."
+      );
+
+    } finally {
+
+      setAllowingEarlyReassessment(
+        false
+      );
     }
   }
 
@@ -13866,6 +15032,44 @@ function Cases() {
                   />
 
                 </label>
+
+
+                {selected.status ===
+                  "Concluded" && (
+
+                  <div className="notice">
+
+                    <strong>
+                      Reassessment cooldown
+                    </strong>
+
+                    <p>
+                      After conclusion, MindTrack normally requires 14 days
+                      before this user can submit another psychological assessment.
+                      Use the button below only when an earlier reassessment is
+                      clinically or operationally necessary.
+                    </p>
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={
+                        allowingEarlyReassessment
+                      }
+                      onClick={
+                        allowEarlyReassessment
+                      }
+                    >
+                      {
+                        allowingEarlyReassessment
+                          ? "Enabling..."
+                          : "Allow early reassessment"
+                      }
+                    </button>
+
+                  </div>
+
+                )}
 
 
                 <div className="review-request-modal-actions">
@@ -16181,6 +17385,14 @@ function Schedule() {
     useNavigate();
 
 
+  const [
+    scheduleFilter,
+    setScheduleFilter
+  ] = useState(
+    "Upcoming"
+  );
+
+
   const isSuperAdmin =
     user.role ===
     "super_admin";
@@ -16213,6 +17425,52 @@ function Schedule() {
     );
 
 
+  const pendingTransferRows =
+    useRows(
+      "transferRequests",
+      isSuperAdmin
+        ? {
+            status:
+              "Pending approval"
+          }
+        : {
+            status:
+              "Pending approval"
+          }
+    );
+
+
+  const incomingTransferRequests =
+    isSuperAdmin
+      ? []
+      : pendingTransferRows.filter(
+          row =>
+            row.requestedById !==
+            user.id
+        );
+
+
+  const outgoingTransferRequests =
+    isSuperAdmin
+      ? []
+      : pendingTransferRows.filter(
+          row =>
+            row.requestedById ===
+            user.id
+        );
+
+
+  const pendingTransferByConsultation =
+    new Map(
+      pendingTransferRows.map(
+        row => [
+          row.consultationId,
+          row
+        ]
+      )
+    );
+
+
   const activeDepartmentRows =
     isSuperAdmin
       ? departmentRows
@@ -16233,40 +17491,692 @@ function Schedule() {
         );
 
 
-  const appointments =
-    [...rows]
-      .filter(
-        row =>
-          row.date &&
-          row.time
-      )
-      .sort(
-        (a, b) => {
+  const todayKey =
+    useMemo(
+      () => {
 
-          const dateDifference =
-            counselingAppointmentSortValue(
-              a
-            ) -
-            counselingAppointmentSortValue(
-              b
-            );
+        const now =
+          new Date();
 
 
-          if (dateDifference !== 0) {
-
-            return dateDifference;
-          }
+        const year =
+          now.getFullYear();
 
 
-          return String(
-            a.ownerName || ""
-          ).localeCompare(
-            String(
-              b.ownerName || ""
-            )
+        const month =
+          String(
+            now.getMonth() + 1
+          ).padStart(
+            2,
+            "0"
           );
-        }
+
+
+        const day =
+          String(
+            now.getDate()
+          ).padStart(
+            2,
+            "0"
+          );
+
+
+        return `${year}-${month}-${day}`;
+      },
+      []
+    );
+
+
+  const appointments =
+    useMemo(
+      () =>
+        [...rows]
+          .filter(
+            row =>
+              row.date &&
+              row.time
+          )
+          .sort(
+            (a, b) => {
+
+              const dateDifference =
+                counselingAppointmentSortValue(
+                  a
+                ) -
+                counselingAppointmentSortValue(
+                  b
+                );
+
+
+              if (
+                dateDifference !==
+                0
+              ) {
+
+                return dateDifference;
+              }
+
+
+              return String(
+                a.ownerName || ""
+              ).localeCompare(
+                String(
+                  b.ownerName || ""
+                )
+              );
+            }
+          ),
+      [rows]
+    );
+
+
+  function normalizedStatus(
+    row
+  ) {
+
+    return String(
+      row?.status ||
+      "For review"
+    ).trim();
+  }
+
+
+  function isPendingAppointment(
+    row
+  ) {
+
+    const status =
+      normalizedStatus(
+        row
       );
+
+
+    return (
+      status ===
+        "Pending approval" ||
+      status ===
+        "For review"
+    );
+  }
+
+
+  function isScheduledAppointment(
+    row
+  ) {
+
+    return (
+      normalizedStatus(
+        row
+      ) ===
+      "Schedule for counseling"
+    );
+  }
+
+
+  function isConcludedAppointment(
+    row
+  ) {
+
+    return (
+      normalizedStatus(
+        row
+      ) ===
+      "Concluded"
+    );
+  }
+
+
+  function isOutcomeAppointment(
+    row
+  ) {
+
+    const status =
+      normalizedStatus(
+        row
+      );
+
+
+    return [
+      "Follow up is recommended",
+      "Counseling is optional",
+      "For referral"
+    ].includes(
+      status
+    );
+  }
+
+
+  function isOperationalAppointment(
+    row
+  ) {
+
+    return (
+      isPendingAppointment(
+        row
+      ) ||
+      isScheduledAppointment(
+        row
+      )
+    );
+  }
+
+
+  function pendingTransferFor(
+    row
+  ) {
+
+    return (
+      pendingTransferByConsultation.get(
+        row.id
+      ) ||
+      null
+    );
+  }
+
+
+  function canTransferFromSchedule(
+    row
+  ) {
+
+    if (
+      isSuperAdmin ||
+      user.role !==
+        "counselor" ||
+      !isScheduledAppointment(
+        row
+      ) ||
+      !row.date ||
+      !row.time ||
+      appointmentHasStarted(
+        row
+      ) ||
+      pendingTransferFor(
+        row
+      )
+    ) {
+
+      return false;
+    }
+
+
+    return (
+      !row.assignedCounselorId ||
+      row.assignedCounselorId ===
+        user.id
+    );
+  }
+
+
+  function isTransferRelatedAppointment(
+    row
+  ) {
+
+    return Boolean(
+      pendingTransferFor(
+        row
+      ) ||
+      row.transferStatus ||
+      row.transferredFromCounselorId ||
+      canTransferFromSchedule(
+        row
+      )
+    );
+  }
+
+
+  function isTodayAppointment(
+    row
+  ) {
+
+    return (
+      row.date ===
+      todayKey
+    );
+  }
+
+
+  function isUpcomingAppointment(
+    row
+  ) {
+
+    return (
+      row.date >=
+        todayKey &&
+      isOperationalAppointment(
+        row
+      )
+    );
+  }
+
+
+  const scheduleCounts =
+    useMemo(
+      () => ({
+        today:
+          appointments.filter(
+            row =>
+              isTodayAppointment(
+                row
+              ) &&
+              isOperationalAppointment(
+                row
+              )
+          ).length,
+
+        pending:
+          appointments.filter(
+            row =>
+              row.date >=
+                todayKey &&
+              isPendingAppointment(
+                row
+              )
+          ).length,
+
+        scheduled:
+          appointments.filter(
+            row =>
+              row.date >=
+                todayKey &&
+              isScheduledAppointment(
+                row
+              )
+          ).length,
+
+        upcoming:
+          appointments.filter(
+            isUpcomingAppointment
+          ).length,
+
+        transfers:
+          appointments.filter(
+            isTransferRelatedAppointment
+          ).length
+      }),
+      [
+        appointments,
+        todayKey
+      ]
+    );
+
+
+  const visibleAppointments =
+    useMemo(
+      () =>
+        appointments.filter(
+          row => {
+
+            if (
+              scheduleFilter ===
+              "Today"
+            ) {
+
+              return (
+                isTodayAppointment(
+                  row
+                ) &&
+                isOperationalAppointment(
+                  row
+                )
+              );
+            }
+
+
+            if (
+              scheduleFilter ===
+              "Upcoming"
+            ) {
+
+              return isUpcomingAppointment(
+                row
+              );
+            }
+
+
+            if (
+              scheduleFilter ===
+              "Pending"
+            ) {
+
+              return isPendingAppointment(
+                row
+              );
+            }
+
+
+            if (
+              scheduleFilter ===
+              "Scheduled"
+            ) {
+
+              return isScheduledAppointment(
+                row
+              );
+            }
+
+
+            if (
+              scheduleFilter ===
+              "Completed"
+            ) {
+
+              return isConcludedAppointment(
+                row
+              );
+            }
+
+
+            if (
+              scheduleFilter ===
+              "Outcomes"
+            ) {
+
+              return isOutcomeAppointment(
+                row
+              );
+            }
+
+
+            if (
+              scheduleFilter ===
+              "Transfers"
+            ) {
+
+              return isTransferRelatedAppointment(
+                row
+              );
+            }
+
+
+            return true;
+          }
+        ),
+      [
+        appointments,
+        scheduleFilter,
+        todayKey
+      ]
+    );
+
+
+  const groupedAppointments =
+    useMemo(
+      () => {
+
+        const groups =
+          new Map();
+
+
+        visibleAppointments.forEach(
+          row => {
+
+            const key =
+              row.date;
+
+
+            if (
+              !groups.has(
+                key
+              )
+            ) {
+
+              groups.set(
+                key,
+                []
+              );
+            }
+
+
+            groups
+              .get(
+                key
+              )
+              .push(
+                row
+              );
+          }
+        );
+
+
+        return Array.from(
+          groups.entries()
+        ).map(
+          ([date, items]) => ({
+            date,
+            items
+          })
+        );
+      },
+      [
+        visibleAppointments
+      ]
+    );
+
+
+  const duplicateOperationalSlots =
+    useMemo(
+      () => {
+
+        const counts =
+          new Map();
+
+
+        appointments
+          .filter(
+            row =>
+              row.date >=
+                todayKey &&
+              isOperationalAppointment(
+                row
+              )
+          )
+          .forEach(
+            row => {
+
+              const key =
+                `${row.date}|${row.time}`;
+
+
+              counts.set(
+                key,
+                (
+                  counts.get(
+                    key
+                  ) ||
+                  0
+                ) + 1
+              );
+            }
+          );
+
+
+        return new Set(
+          Array.from(
+            counts.entries()
+          )
+            .filter(
+              ([, count]) =>
+                count > 1
+            )
+            .map(
+              ([key]) =>
+                key
+            )
+        );
+      },
+      [
+        appointments,
+        todayKey
+      ]
+    );
+
+
+  function formatScheduleDate(
+    dateText
+  ) {
+
+    const parsed =
+      new Date(
+        `${dateText}T00:00:00`
+      );
+
+
+    if (
+      Number.isNaN(
+        parsed.getTime()
+      )
+    ) {
+
+      return dateText;
+    }
+
+
+    return parsed
+      .toLocaleDateString(
+        "en-PH",
+        {
+          weekday:
+            "long",
+
+          month:
+            "long",
+
+          day:
+            "numeric",
+
+          year:
+            "numeric"
+        }
+      )
+      .toUpperCase();
+  }
+
+
+  function statusAppearance(
+    status
+  ) {
+
+    if (
+      status ===
+      "Schedule for counseling"
+    ) {
+
+      return {
+        background:
+          "#e8f7ee",
+
+        color:
+          "#166534",
+
+        border:
+          "1px solid #bbf7d0"
+      };
+    }
+
+
+    if (
+      status ===
+      "Pending approval" ||
+      status ===
+      "For review"
+    ) {
+
+      return {
+        background:
+          "#fff7e6",
+
+        color:
+          "#92400e",
+
+        border:
+          "1px solid #fde68a"
+      };
+    }
+
+
+    if (
+      status ===
+      "Follow up is recommended"
+    ) {
+
+      return {
+        background:
+          "#fff1f2",
+
+        color:
+          "#9f1239",
+
+        border:
+          "1px solid #fecdd3"
+      };
+    }
+
+
+    if (
+      status ===
+      "For referral"
+    ) {
+
+      return {
+        background:
+          "#f3e8ff",
+
+        color:
+          "#6b21a8",
+
+        border:
+          "1px solid #e9d5ff"
+      };
+    }
+
+
+    if (
+      status ===
+      "Counseling is optional"
+    ) {
+
+      return {
+        background:
+          "#eef2ff",
+
+        color:
+          "#3730a3",
+
+        border:
+          "1px solid #c7d2fe"
+      };
+    }
+
+
+    if (
+      status ===
+      "Concluded"
+    ) {
+
+      return {
+        background:
+          "#f1f5f9",
+
+        color:
+          "#475569",
+
+        border:
+          "1px solid #cbd5e1"
+      };
+    }
+
+
+    return {
+      background:
+        "#eef2ff",
+
+      color:
+        "#1e3a8a",
+
+      border:
+        "1px solid #c7d2fe"
+    };
+  }
 
 
   function openAppointment(
@@ -16297,7 +18207,10 @@ function Schedule() {
       ...(
         isSuperAdmin
           ? []
-          : [transferredAssignedRows]
+          : [
+              transferredAssignedRows,
+              pendingTransferRows
+            ]
       )
     );
 
@@ -16308,18 +18221,23 @@ function Schedule() {
       ...(
         isSuperAdmin
           ? []
-          : [transferredAssignedRows]
+          : [
+              transferredAssignedRows,
+              pendingTransferRows
+            ]
       )
     );
 
 
-  if (scheduleLoading) {
+  if (
+    scheduleLoading
+  ) {
 
     return (
       <>
         <PageTitle
           title="Counselor Schedule"
-          subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
+          subtitle="Upcoming counseling activity is grouped by date and time."
         />
 
         <section className="panel">
@@ -16332,13 +18250,15 @@ function Schedule() {
   }
 
 
-  if (scheduleError) {
+  if (
+    scheduleError
+  ) {
 
     return (
       <>
         <PageTitle
           title="Counselor Schedule"
-          subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
+          subtitle="Upcoming counseling activity is grouped by date and time."
         />
 
         <div className="error-box">
@@ -16349,6 +18269,18 @@ function Schedule() {
   }
 
 
+  const filterOptions = [
+    "Upcoming",
+    "Today",
+    "Pending",
+    "Scheduled",
+    "Transfers",
+    "Outcomes",
+    "Completed",
+    "All"
+  ];
+
+
   return (
 
     <>
@@ -16357,129 +18289,949 @@ function Schedule() {
 
         title="Counselor Schedule"
 
-        subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
+        subtitle="Upcoming counseling activity is grouped by date and time. Completed and outcome records are separated from the default schedule."
 
       />
 
 
-      <section className="panel">
+      <section
+        className="panel"
+        style={{
+          maxWidth:
+            "1180px",
 
-        <div className="schedule-grid">
+          marginLeft:
+            "auto",
+
+          marginRight:
+            "auto"
+        }}
+      >
+
+        <div
+          style={{
+            display:
+              "grid",
+
+            gridTemplateColumns:
+              "repeat(5, minmax(0, 1fr))",
+
+            gap:
+              "12px",
+
+            marginBottom:
+              "18px"
+          }}
+          className="schedule-summary-grid"
+        >
+
+          {[
+            {
+              label:
+                "Today",
+
+              value:
+                scheduleCounts.today
+            },
+
+            {
+              label:
+                "Pending",
+
+              value:
+                scheduleCounts.pending
+            },
+
+            {
+              label:
+                "Scheduled",
+
+              value:
+                scheduleCounts.scheduled
+            },
+
+            {
+              label:
+                "Upcoming",
+
+              value:
+                scheduleCounts.upcoming
+            },
+
+            {
+              label:
+                "Transfers",
+
+              value:
+                scheduleCounts.transfers
+            }
+          ].map(
+            item => (
+
+              <div
+                key={
+                  item.label
+                }
+                style={{
+                  border:
+                    "1px solid #d7e0ee",
+
+                  borderRadius:
+                    "14px",
+
+                  padding:
+                    "14px 16px",
+
+                  background:
+                    "#ffffff"
+                }}
+              >
+
+                <div
+                  style={{
+                    fontSize:
+                      "0.82rem",
+
+                    color:
+                      "#64748b",
+
+                    marginBottom:
+                      "4px"
+                  }}
+                >
+                  {item.label}
+                </div>
+
+                <strong
+                  style={{
+                    fontSize:
+                      "1.35rem"
+                  }}
+                >
+                  {item.value}
+                </strong>
+
+              </div>
+
+            )
+          )}
+
+        </div>
 
 
-          {appointments.length === 0
+        <div
+          style={{
+            display:
+              "flex",
+
+            flexWrap:
+              "wrap",
+
+            gap:
+              "8px",
+
+            alignItems:
+              "center",
+
+            marginBottom:
+              "18px"
+          }}
+        >
+
+          {filterOptions.map(
+            option => {
+
+              const selected =
+                scheduleFilter ===
+                option;
+
+
+              return (
+
+                <button
+                  type="button"
+                  key={
+                    option
+                  }
+                  onClick={
+                    () =>
+                      setScheduleFilter(
+                        option
+                      )
+                  }
+                  style={{
+                    border:
+                      selected
+                        ? "1px solid #1d4ed8"
+                        : "1px solid #d7e0ee",
+
+                    background:
+                      selected
+                        ? "#1d4ed8"
+                        : "#ffffff",
+
+                    color:
+                      selected
+                        ? "#ffffff"
+                        : "#334155",
+
+                    borderRadius:
+                      "999px",
+
+                    padding:
+                      "8px 14px",
+
+                    fontWeight:
+                      700,
+
+                    cursor:
+                      "pointer"
+                  }}
+                >
+                  {option}
+                </button>
+
+              );
+            }
+          )}
+
+        </div>
+
+
+        {!isSuperAdmin && (
+
+          <div
+            className="notice"
+            style={{
+              marginBottom:
+                "18px",
+
+              display:
+                "flex",
+
+              alignItems:
+                "center",
+
+              justifyContent:
+                "space-between",
+
+              gap:
+                "14px",
+
+              flexWrap:
+                "wrap"
+            }}
+          >
+
+            <div>
+
+              <strong>
+                Counselor transfer tools
+              </strong>
+
+              <div
+                style={{
+                  marginTop:
+                    "4px"
+                }}
+              >
+                Scheduled sessions assigned to you can still be transferred
+                before the appointment starts. Cards will show
+                {" "}
+                <strong>
+                  Transfer available
+                </strong>
+                {" "}
+                or
+                {" "}
+                <strong>
+                  Transfer awaiting approval
+                </strong>
+                {" "}
+                when applicable.
+              </div>
+
+            </div>
+
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={
+                () =>
+                  navigate(
+                    "/dashboard"
+                  )
+              }
+            >
+              {
+                incomingTransferRequests.length >
+                0
+                  ? `Incoming transfer requests (${incomingTransferRequests.length})`
+                  : "View transfer requests"
+              }
+            </button>
+
+          </div>
+
+        )}
+
+
+        {
+          duplicateOperationalSlots.size >
+          0
+        && (
+
+          <div
+            className="notice"
+            style={{
+              marginBottom:
+                "18px"
+            }}
+          >
+
+            <strong>
+              Schedule check:
+            </strong>
+            {" "}
+            MindTrack detected
+            {" "}
+            {
+              duplicateOperationalSlots.size
+            }
+            {" "}
+            active date/time
+            {
+              duplicateOperationalSlots.size ===
+              1
+                ? " slot"
+                : " slots"
+            }
+            {" "}
+            with more than one pending or scheduled request.
+            Review the highlighted appointments to make sure there is no counselor conflict.
+
+          </div>
+
+        )}
+
+
+        {
+          visibleAppointments.length ===
+          0
 
             ? (
 
               <Empty
-                text="No appointments yet."
+                text={
+                  scheduleFilter ===
+                  "Upcoming"
+
+                    ? "No upcoming counseling appointments."
+
+                    : scheduleFilter ===
+                        "Transfers"
+
+                      ? "No transfer-related counseling requests."
+
+                      : `No ${scheduleFilter.toLowerCase()} appointments.`
+                }
               />
 
             )
 
-            : appointments.map(
-                row => (
+            : groupedAppointments.map(
+                group => (
 
-                  <button
-
-                    type="button"
-
-                    className="schedule-card schedule-card-button"
-
+                  <section
                     key={
-                      row.id
+                      group.date
                     }
-
-                    onClick={
-                      () =>
-                        openAppointment(
-                          row
-                        )
-                    }
-
-                    title="Open counseling request"
-
+                    style={{
+                      marginBottom:
+                        "24px"
+                    }}
                   >
 
-                    <Calendar />
+                    <div
+                      style={{
+                        display:
+                          "flex",
 
+                        alignItems:
+                          "center",
 
-                    <div>
+                        gap:
+                          "12px",
 
-                      <strong>
+                        marginBottom:
+                          "12px"
+                      }}
+                    >
 
+                      <strong
+                        style={{
+                          fontSize:
+                            "0.9rem",
+
+                          letterSpacing:
+                            "0.035em",
+
+                          color:
+                            "#334155",
+
+                          whiteSpace:
+                            "nowrap"
+                        }}
+                      >
                         {
-                          row.date
+                          formatScheduleDate(
+                            group.date
+                          )
                         }
-
-                        {" — "}
-
-                        {
-                          row.time
-                        }
-
                       </strong>
 
 
-                      <p>
+                      <div
+                        style={{
+                          height:
+                            "1px",
 
-                        {
-                          row.ownerName ||
-                          "User"
-                        }
+                          background:
+                            "#dbe3ef",
 
-                        {row.program && (
-                          <>
-                            {" · "}
-                            {row.program}
-                          </>
-                        )}
-
-                        {row.mode && (
-                          <>
-                            {" · "}
-                            {row.mode}
-                          </>
-                        )}
-
-                      </p>
-
-
-                      <div className="schedule-card-footer">
-
-                        <span className="status">
-
-                          {
-                            row.status ||
-                            "For review"
-                          }
-
-                        </span>
-
-
-                        <span className="schedule-open-hint">
-                          Open request
-                        </span>
-
-                      </div>
+                          flex:
+                            1
+                        }}
+                      />
 
                     </div>
 
-                  </button>
+
+                    <div
+                      style={{
+                        display:
+                          "grid",
+
+                        gridTemplateColumns:
+                          "repeat(2, minmax(0, 1fr))",
+
+                        gap:
+                          "12px"
+                      }}
+                      className="schedule-organized-grid"
+                    >
+
+                      {group.items.map(
+                        row => {
+
+                          const status =
+                            normalizedStatus(
+                              row
+                            );
+
+
+                          const appearance =
+                            statusAppearance(
+                              status
+                            );
+
+
+                          const slotKey =
+                            `${row.date}|${row.time}`;
+
+
+                          const hasPossibleConflict =
+                            duplicateOperationalSlots.has(
+                              slotKey
+                            ) &&
+                            isOperationalAppointment(
+                              row
+                            );
+
+
+                          const pendingTransfer =
+                            pendingTransferFor(
+                              row
+                            );
+
+
+                          const transferAvailable =
+                            canTransferFromSchedule(
+                              row
+                            );
+
+
+                          const transferredToCurrentCounselor =
+                            Boolean(
+                              row.transferredFromCounselorId &&
+                              row.assignedCounselorId ===
+                                user.id
+                            );
+
+
+                          return (
+
+                            <button
+                              type="button"
+                              className="schedule-card-button"
+                              key={
+                                row.id
+                              }
+                              onClick={
+                                () =>
+                                  openAppointment(
+                                    row
+                                  )
+                              }
+                              title="Open counseling request"
+                              style={{
+                                width:
+                                  "100%",
+
+                                minHeight:
+                                  "150px",
+
+                                display:
+                                  "grid",
+
+                                gridTemplateColumns:
+                                  "44px minmax(0, 1fr)",
+
+                                gap:
+                                  "12px",
+
+                                textAlign:
+                                  "left",
+
+                                border:
+                                  hasPossibleConflict
+                                    ? "1px solid #f59e0b"
+                                    : "1px solid #d7e0ee",
+
+                                borderRadius:
+                                  "14px",
+
+                                background:
+                                  "#ffffff",
+
+                                padding:
+                                  "16px",
+
+                                cursor:
+                                  "pointer",
+
+                                boxShadow:
+                                  "0 1px 2px rgba(15, 23, 42, 0.03)"
+                              }}
+                            >
+
+                              <div
+                                style={{
+                                  width:
+                                    "40px",
+
+                                  height:
+                                    "40px",
+
+                                  borderRadius:
+                                    "12px",
+
+                                  background:
+                                    "#eef4ff",
+
+                                  display:
+                                    "grid",
+
+                                  placeItems:
+                                    "center",
+
+                                  color:
+                                    "#1d4ed8"
+                                }}
+                              >
+                                <Calendar
+                                  size={
+                                    20
+                                  }
+                                />
+                              </div>
+
+
+                              <div
+                                style={{
+                                  minWidth:
+                                    0,
+
+                                  display:
+                                    "flex",
+
+                                  flexDirection:
+                                    "column",
+
+                                  height:
+                                    "100%"
+                                }}
+                              >
+
+                                <div
+                                  style={{
+                                    display:
+                                      "flex",
+
+                                    justifyContent:
+                                      "space-between",
+
+                                    gap:
+                                      "12px",
+
+                                    alignItems:
+                                      "flex-start"
+                                  }}
+                                >
+
+                                  <strong
+                                    style={{
+                                      fontSize:
+                                        "1rem",
+
+                                      color:
+                                        "#0f172a"
+                                    }}
+                                  >
+                                    {
+                                      row.time
+                                    }
+                                  </strong>
+
+
+                                  {hasPossibleConflict && (
+
+                                    <span
+                                      style={{
+                                        fontSize:
+                                          "0.72rem",
+
+                                        fontWeight:
+                                          800,
+
+                                        color:
+                                          "#92400e",
+
+                                        background:
+                                          "#fff7e6",
+
+                                        border:
+                                          "1px solid #fde68a",
+
+                                        padding:
+                                          "4px 7px",
+
+                                        borderRadius:
+                                          "999px",
+
+                                        whiteSpace:
+                                          "nowrap"
+                                      }}
+                                    >
+                                      Check conflict
+                                    </span>
+
+                                  )}
+
+                                </div>
+
+
+                                <div
+                                  style={{
+                                    marginTop:
+                                      "8px",
+
+                                    fontWeight:
+                                      700,
+
+                                    color:
+                                      "#1e293b"
+                                  }}
+                                >
+                                  {
+                                    row.ownerName ||
+                                    "User"
+                                  }
+                                </div>
+
+
+                                <div
+                                  style={{
+                                    marginTop:
+                                      "3px",
+
+                                    color:
+                                      "#64748b",
+
+                                    lineHeight:
+                                      1.4
+                                  }}
+                                >
+
+                                  {
+                                    row.program ||
+                                    row.department ||
+                                    "Program not specified"
+                                  }
+
+                                  {row.mode && (
+                                    <>
+                                      {" · "}
+                                      {row.mode}
+                                    </>
+                                  )}
+
+                                </div>
+
+
+                                {
+                                  (
+                                    pendingTransfer ||
+                                    transferAvailable ||
+                                    transferredToCurrentCounselor
+                                  ) && (
+
+                                    <div
+                                      style={{
+                                        display:
+                                          "flex",
+
+                                        flexWrap:
+                                          "wrap",
+
+                                        gap:
+                                          "6px",
+
+                                        marginTop:
+                                          "10px"
+                                      }}
+                                    >
+
+                                      {pendingTransfer && (
+
+                                        <span
+                                          style={{
+                                            background:
+                                              "#fff7e6",
+
+                                            color:
+                                              "#92400e",
+
+                                            border:
+                                              "1px solid #fde68a",
+
+                                            borderRadius:
+                                              "999px",
+
+                                            padding:
+                                              "4px 8px",
+
+                                            fontSize:
+                                              "0.72rem",
+
+                                            fontWeight:
+                                              800
+                                          }}
+                                        >
+                                          Transfer awaiting approval
+                                        </span>
+
+                                      )}
+
+
+                                      {transferAvailable && (
+
+                                        <span
+                                          style={{
+                                            background:
+                                              "#eef2ff",
+
+                                            color:
+                                              "#3730a3",
+
+                                            border:
+                                              "1px solid #c7d2fe",
+
+                                            borderRadius:
+                                              "999px",
+
+                                            padding:
+                                              "4px 8px",
+
+                                            fontSize:
+                                              "0.72rem",
+
+                                            fontWeight:
+                                              800
+                                          }}
+                                        >
+                                          Transfer available
+                                        </span>
+
+                                      )}
+
+
+                                      {transferredToCurrentCounselor && (
+
+                                        <span
+                                          style={{
+                                            background:
+                                              "#ecfdf5",
+
+                                            color:
+                                              "#166534",
+
+                                            border:
+                                              "1px solid #bbf7d0",
+
+                                            borderRadius:
+                                              "999px",
+
+                                            padding:
+                                              "4px 8px",
+
+                                            fontSize:
+                                              "0.72rem",
+
+                                            fontWeight:
+                                              800
+                                          }}
+                                        >
+                                          Transferred to you
+                                        </span>
+
+                                      )}
+
+                                    </div>
+
+                                  )
+                                }
+
+
+                                <div
+                                  style={{
+                                    display:
+                                      "flex",
+
+                                    justifyContent:
+                                      "space-between",
+
+                                    alignItems:
+                                      "center",
+
+                                    gap:
+                                      "10px",
+
+                                    flexWrap:
+                                      "wrap",
+
+                                    marginTop:
+                                      "auto",
+
+                                    paddingTop:
+                                      "14px"
+                                  }}
+                                >
+
+                                  <span
+                                    style={{
+                                      ...appearance,
+
+                                      display:
+                                        "inline-flex",
+
+                                      alignItems:
+                                        "center",
+
+                                      borderRadius:
+                                        "999px",
+
+                                      padding:
+                                        "5px 9px",
+
+                                      fontSize:
+                                        "0.75rem",
+
+                                      fontWeight:
+                                        700
+                                    }}
+                                  >
+                                    {status}
+                                  </span>
+
+
+                                  <span
+                                    style={{
+                                      fontSize:
+                                        "0.8rem",
+
+                                      fontWeight:
+                                        800,
+
+                                      color:
+                                        "#1d4ed8"
+                                    }}
+                                  >
+                                    {
+                                      pendingTransfer
+                                        ? "View transfer"
+                                        : transferAvailable
+                                          ? "Open to transfer"
+                                          : "Open request"
+                                    }
+                                  </span>
+
+                                </div>
+
+                              </div>
+
+                            </button>
+
+                          );
+                        }
+                      )}
+
+                    </div>
+
+                  </section>
 
                 )
               )
-          }
-
-        </div>
+        }
 
       </section>
+
+
+      <style>
+        {`
+          @media (max-width: 900px) {
+            .schedule-summary-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            .schedule-organized-grid {
+              grid-template-columns: minmax(0, 1fr) !important;
+            }
+          }
+
+          @media (max-width: 560px) {
+            .schedule-summary-grid {
+              grid-template-columns: minmax(0, 1fr) !important;
+            }
+          }
+        `}
+      </style>
 
     </>
 
   );
 }
-
 
 // ======================================================
 // ACCOUNT MANAGEMENT
@@ -16499,7 +19251,7 @@ function Accounts() {
       <>
         <PageTitle
           title="Account Management"
-          subtitle="Super Admin overview of students, faculty, personnel, counselors, and administrators."
+          subtitle="Super Admin overview of Student, Teaching, Non-teaching, Counselor, and Super Admin accounts."
         />
 
         <section className="panel">
@@ -16518,7 +19270,7 @@ function Accounts() {
       <>
         <PageTitle
           title="Account Management"
-          subtitle="Super Admin overview of students, faculty, personnel, counselors, and administrators."
+          subtitle="Super Admin overview of Student, Teaching, Non-teaching, Counselor, and Super Admin accounts."
         />
 
         <div className="error-box">
@@ -16537,7 +19289,7 @@ function Accounts() {
 
         title="Account Management"
 
-        subtitle="Super Admin overview of students, faculty, personnel, counselors, and administrators."
+        subtitle="Super Admin overview of Student, Teaching, Non-teaching, Counselor, and Super Admin accounts."
 
       />
 
@@ -16599,7 +19351,9 @@ function Accounts() {
 
                     <td>
                       {
-                        account.role
+                        systemRoleLabel(
+                          account.role
+                        )
                       }
                     </td>
 
@@ -16798,7 +19552,7 @@ function FeedbackAnalytics() {
           </h2>
 
           <p>
-            Summary of feedback submitted by Student, Faculty, and Personnel users.
+            Summary of feedback submitted by Student, Teaching, and Non-teaching users.
           </p>
 
         </div>
@@ -17049,10 +19803,11 @@ function FeedbackAnalytics() {
                                     }
                                   </td>
 
-                                  <td className="capitalize-text">
+                                  <td>
                                     {
-                                      item.role ||
-                                      "—"
+                                      systemRoleLabel(
+                                        item.role
+                                      )
                                     }
                                   </td>
 
@@ -17145,7 +19900,7 @@ function Reports() {
     "super_admin";
 
 
-  const filters =
+  const analyticsFilters =
     isSuperAdmin
       ? {}
       : {
@@ -17154,33 +19909,28 @@ function Reports() {
         };
 
 
-  const referralFilters =
-    isSuperAdmin
-      ? {}
-      : {
-          assignedCounselorId:
-            user.id
-        };
-
-
   const assessments =
     useRows(
       "assessments",
-      filters
+      analyticsFilters
     );
 
 
   const consultations =
     useRows(
       "consultations",
-      filters
+      analyticsFilters
     );
 
 
-  const referrals =
+  // Gender is stored in users/{uid}, while assessment and
+  // consultation records primarily store department/program.
+  // Join the records by ownerId so analytics can be grouped by sex
+  // without duplicating sensitive/private profile information.
+  const analyticsUsers =
     useRows(
-      "referrals",
-      referralFilters
+      "users",
+      analyticsFilters
     );
 
 
@@ -17188,7 +19938,7 @@ function Reports() {
     rowsAreLoading(
       assessments,
       consultations,
-      referrals
+      analyticsUsers
     );
 
 
@@ -17196,7 +19946,7 @@ function Reports() {
     firstRowsError(
       assessments,
       consultations,
-      referrals
+      analyticsUsers
     );
 
 
@@ -17206,12 +19956,12 @@ function Reports() {
       <>
         <PageTitle
           title="Reports and Analytics"
-          subtitle="Live operational totals from current records."
+          subtitle="Live assessment and counseling analytics."
         />
 
         <section className="panel">
           <Empty
-            text="Loading report data..."
+            text="Loading analytics..."
           />
         </section>
       </>
@@ -17225,184 +19975,1165 @@ function Reports() {
       <>
         <PageTitle
           title="Reports and Analytics"
-          subtitle="Live operational totals from current records."
+          subtitle="Live assessment and counseling analytics."
         />
 
         <div className="error-box">
           {reportsError}
           <br />
-          Report totals cannot be calculated until the data loads successfully.
+          Analytics cannot be calculated until all required data loads successfully.
         </div>
       </>
     );
   }
 
 
-  const counts =
-    [
-      "Low",
-      "Moderate",
-      "High",
-      "Critical"
-    ].map(
-      priority => ({
+  const priorityLevels = [
+    "Low",
+    "Moderate",
+    "High",
+    "Critical"
+  ];
 
-        priority,
 
-        count:
+  const priorityColors = {
+    Low:
+      "#168a4b",
+
+    Moderate:
+      "#c89412",
+
+    High:
+      "#dc6d13",
+
+    Critical:
+      "#bd2424"
+  };
+
+
+  const profileById =
+    new Map(
+      analyticsUsers.map(
+        profile => [
+          profile.id,
+          profile
+        ]
+      )
+    );
+
+
+  function profileForRecord(
+    row
+  ) {
+
+    return (
+      profileById.get(
+        row.ownerId
+      ) ||
+      null
+    );
+  }
+
+
+  function recordDepartment(
+    row
+  ) {
+
+    const profile =
+      profileForRecord(
+        row
+      );
+
+
+    return String(
+      row.department ||
+      profile?.department ||
+      "Not specified"
+    ).trim() ||
+    "Not specified";
+  }
+
+
+  function recordProgram(
+    row
+  ) {
+
+    const profile =
+      profileForRecord(
+        row
+      );
+
+
+    const program =
+      String(
+        row.program ||
+        profile?.program ||
+        ""
+      ).trim();
+
+
+    if (!program) {
+
+      return (
+        isSuperAdmin
+          ? `${recordDepartment(row)} — No program / N/A`
+          : "No program / N/A"
+      );
+    }
+
+
+    return (
+      isSuperAdmin
+        ? `${recordDepartment(row)} — ${program}`
+        : program
+    );
+  }
+
+
+  function recordSex(
+    row
+  ) {
+
+    const profile =
+      profileForRecord(
+        row
+      );
+
+
+    const value =
+      String(
+        profile?.gender ||
+        row.gender ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    if (value === "male") {
+      return "Male";
+    }
+
+
+    if (value === "female") {
+      return "Female";
+    }
+
+
+    return "Not specified";
+  }
+
+
+  function categorySort(
+    a,
+    b
+  ) {
+
+    if (
+      a.label ===
+      "Not specified"
+    ) {
+      return 1;
+    }
+
+
+    if (
+      b.label ===
+      "Not specified"
+    ) {
+      return -1;
+    }
+
+
+    return a.label.localeCompare(
+      b.label
+    );
+  }
+
+
+  function buildPriorityBreakdown(
+    rows,
+    categoryGetter
+  ) {
+
+    const grouped =
+      new Map();
+
+
+    rows.forEach(
+      row => {
+
+        const label =
+          categoryGetter(
+            row
+          );
+
+
+        if (
+          !grouped.has(
+            label
+          )
+        ) {
+
+          grouped.set(
+            label,
+            {
+              label,
+              Low: 0,
+              Moderate: 0,
+              High: 0,
+              Critical: 0,
+              total: 0
+            }
+          );
+        }
+
+
+        const item =
+          grouped.get(
+            label
+          );
+
+
+        if (
+          priorityLevels.includes(
+            row.priority
+          )
+        ) {
+
+          item[
+            row.priority
+          ] += 1;
+        }
+
+
+        item.total += 1;
+      }
+    );
+
+
+    return Array.from(
+      grouped.values()
+    )
+      .sort(
+        categorySort
+      );
+  }
+
+
+  function isScheduledCounseling(
+    row
+  ) {
+
+    return (
+      row.status ===
+      "Schedule for counseling"
+    );
+  }
+
+
+  function buildCounselingBreakdown(
+    rows,
+    categoryGetter
+  ) {
+
+    const grouped =
+      new Map();
+
+
+    rows.forEach(
+      row => {
+
+        const label =
+          categoryGetter(
+            row
+          );
+
+
+        if (
+          !grouped.has(
+            label
+          )
+        ) {
+
+          grouped.set(
+            label,
+            {
+              label,
+              requests: 0,
+              scheduledSessions: 0
+            }
+          );
+        }
+
+
+        const item =
+          grouped.get(
+            label
+          );
+
+
+        item.requests += 1;
+
+
+        if (
+          isScheduledCounseling(
+            row
+          )
+        ) {
+
+          item.scheduledSessions +=
+            1;
+        }
+      }
+    );
+
+
+    return Array.from(
+      grouped.values()
+    )
+      .sort(
+        categorySort
+      );
+  }
+
+
+  const priorityByCollege =
+    buildPriorityBreakdown(
+      assessments,
+      recordDepartment
+    );
+
+
+  const priorityByProgram =
+    buildPriorityBreakdown(
+      assessments,
+      recordProgram
+    );
+
+
+  const priorityBySex =
+    buildPriorityBreakdown(
+      assessments,
+      recordSex
+    );
+
+
+  const counselingByCollege =
+    buildCounselingBreakdown(
+      consultations,
+      recordDepartment
+    );
+
+
+  const counselingByProgram =
+    buildCounselingBreakdown(
+      consultations,
+      recordProgram
+    );
+
+
+  const counselingBySex =
+    buildCounselingBreakdown(
+      consultations,
+      recordSex
+    );
+
+
+  const priorityTotals =
+    priorityLevels.reduce(
+      (
+        totals,
+        priority
+      ) => {
+
+        totals[
+          priority
+        ] =
           assessments.filter(
-            assessment =>
-              assessment.priority ===
+            row =>
+              row.priority ===
               priority
-          ).length
+          ).length;
 
+
+        return totals;
+      },
+      {}
+    );
+
+
+  const scheduledSessions =
+    consultations.filter(
+      isScheduledCounseling
+    ).length;
+
+
+  const analyticsScope =
+    isSuperAdmin
+      ? "All colleges and offices"
+      : (
+          user.department ||
+          "Assigned college / office"
+        );
+
+
+  const generatedAt =
+    new Date()
+      .toLocaleString(
+        "en-PH",
+        {
+          dateStyle:
+            "medium",
+
+          timeStyle:
+            "short"
+        }
+      );
+
+
+  function AnalyticsLegend({
+    series
+  }) {
+
+    return (
+
+      <div className="analytics-legend">
+
+        {series.map(
+          item => (
+
+            <span
+              key={
+                item.key
+              }
+            >
+
+              <i
+                style={{
+                  background:
+                    item.color
+                }}
+              />
+
+              {
+                item.label
+              }
+
+            </span>
+
+          )
+        )}
+
+      </div>
+
+    );
+  }
+
+
+  function AnalyticsBarChart({
+    title,
+    subtitle,
+    rows,
+    series,
+    emptyText
+  }) {
+
+    const maxValue =
+      Math.max(
+        1,
+        ...rows.flatMap(
+          row =>
+            series.map(
+              item =>
+                Number(
+                  row[
+                    item.key
+                  ] ||
+                  0
+                )
+            )
+        )
+      );
+
+
+    return (
+
+      <section className="panel analytics-chart-panel">
+
+        <div className="analytics-chart-heading">
+
+          <div>
+
+            <h2>
+              {title}
+            </h2>
+
+            <p>
+              {subtitle}
+            </p>
+
+          </div>
+
+
+          <AnalyticsLegend
+            series={series}
+          />
+
+        </div>
+
+
+        {rows.length === 0
+
+          ? (
+
+            <Empty
+              text={emptyText}
+            />
+
+          )
+
+          : (
+
+            <div className="analytics-chart-list">
+
+              {rows.map(
+                row => (
+
+                  <div
+                    className="analytics-chart-category"
+                    key={
+                      row.label
+                    }
+                  >
+
+                    <div className="analytics-chart-category-label">
+                      {row.label}
+                    </div>
+
+
+                    <div className="analytics-chart-series">
+
+                      {series.map(
+                        item => {
+
+                          const value =
+                            Number(
+                              row[
+                                item.key
+                              ] ||
+                              0
+                            );
+
+
+                          return (
+
+                            <div
+                              className="analytics-chart-row"
+                              key={
+                                `${row.label}-${item.key}`
+                              }
+                            >
+
+                              <span className="analytics-series-name">
+                                {item.shortLabel || item.label}
+                              </span>
+
+
+                              <div className="analytics-bar-track">
+
+                                <i
+                                  className="analytics-bar-fill"
+                                  style={{
+                                    width:
+                                      `${
+                                        (
+                                          value /
+                                          maxValue
+                                        ) *
+                                        100
+                                      }%`,
+
+                                    background:
+                                      item.color
+                                  }}
+                                />
+
+                              </div>
+
+
+                              <b>
+                                {value}
+                              </b>
+
+                            </div>
+
+                          );
+                        }
+                      )}
+
+                    </div>
+
+                  </div>
+
+                )
+              )}
+
+            </div>
+
+          )
+        }
+
+      </section>
+
+    );
+  }
+
+
+  const prioritySeries =
+    priorityLevels.map(
+      priority => ({
+        key:
+          priority,
+
+        label:
+          priority,
+
+        color:
+          priorityColors[
+            priority
+          ]
       })
     );
 
 
+  const counselingSeries = [
+    {
+      key:
+        "requests",
+
+      label:
+        "Counseling requests",
+
+      shortLabel:
+        "Requests",
+
+      color:
+        "#173f8f"
+    },
+    {
+      key:
+        "scheduledSessions",
+
+      label:
+        "Scheduled counseling",
+
+      shortLabel:
+        "Scheduled",
+
+      color:
+        "#6d48b5"
+    }
+  ];
+
+
   return (
 
-    <>
+    <div className="analytics-page">
+
+      <style>
+        {`
+          .analytics-page {
+            width: 100%;
+          }
+
+          .analytics-print-header {
+            display: none;
+          }
+
+          .analytics-scope-card {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+            padding: 14px 18px;
+            border: 1px solid #dfe3eb;
+            border-radius: 14px;
+            background: #ffffff;
+          }
+
+          .analytics-scope-card strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #172033;
+          }
+
+          .analytics-scope-card span,
+          .analytics-scope-card small {
+            color: #687084;
+          }
+
+          .analytics-section-heading {
+            margin: 28px 0 10px;
+          }
+
+          .analytics-section-heading h2 {
+            margin: 0 0 5px;
+            color: #172033;
+            font-size: 22px;
+          }
+
+          .analytics-section-heading p {
+            margin: 0;
+            color: #687084;
+          }
+
+          .analytics-chart-panel {
+            break-inside: avoid;
+          }
+
+          .analytics-chart-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 18px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+          }
+
+          .analytics-chart-heading h2 {
+            margin: 0 0 5px;
+          }
+
+          .analytics-chart-heading p {
+            margin: 0;
+            color: #687084;
+            line-height: 1.45;
+          }
+
+          .analytics-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px 14px;
+          }
+
+          .analytics-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #536174;
+            font-size: 12px;
+            font-weight: 700;
+          }
+
+          .analytics-legend i {
+            width: 11px;
+            height: 11px;
+            border-radius: 3px;
+            flex: 0 0 11px;
+          }
+
+          .analytics-chart-list {
+            display: grid;
+            gap: 18px;
+          }
+
+          .analytics-chart-category {
+            display: grid;
+            grid-template-columns: minmax(170px, 260px) 1fr;
+            gap: 18px;
+            align-items: start;
+            padding: 14px 0;
+            border-bottom: 1px solid #edf0f4;
+          }
+
+          .analytics-chart-category:last-child {
+            border-bottom: 0;
+          }
+
+          .analytics-chart-category-label {
+            color: #172033;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+          }
+
+          .analytics-chart-series {
+            display: grid;
+            gap: 8px;
+          }
+
+          .analytics-chart-row {
+            display: grid;
+            grid-template-columns: 78px minmax(120px, 1fr) 36px;
+            gap: 10px;
+            align-items: center;
+          }
+
+          .analytics-series-name {
+            color: #687084;
+            font-size: 11px;
+            font-weight: 700;
+          }
+
+          .analytics-bar-track {
+            height: 14px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #edf0f5;
+          }
+
+          .analytics-bar-fill {
+            display: block;
+            min-width: 0;
+            height: 100%;
+            border-radius: 999px;
+            transition: width 180ms ease;
+          }
+
+          .analytics-chart-row b {
+            color: #172033;
+            font-size: 12px;
+            text-align: right;
+          }
+
+          .analytics-print-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 22px;
+          }
+
+          @media (max-width: 800px) {
+            .analytics-chart-category {
+              grid-template-columns: 1fr;
+              gap: 10px;
+            }
+
+            .analytics-chart-row {
+              grid-template-columns: 70px minmax(80px, 1fr) 32px;
+            }
+          }
+
+          @media print {
+            .sidebar,
+            .topbar,
+            .analytics-print-actions {
+              display: none !important;
+            }
+
+            .workspace {
+              width: 100% !important;
+              margin-left: 0 !important;
+            }
+
+            .content {
+              max-width: none !important;
+              padding: 0 !important;
+            }
+
+            .analytics-print-header {
+              display: block !important;
+              margin-bottom: 18px;
+              padding-bottom: 12px;
+              border-bottom: 2px solid #173f8f;
+            }
+
+            .analytics-print-header h1 {
+              margin: 0 0 5px;
+              font-size: 24px;
+            }
+
+            .analytics-print-header p {
+              margin: 3px 0;
+              color: #536174;
+              font-size: 11px;
+            }
+
+            .page-title {
+              display: none !important;
+            }
+
+            .analytics-scope-card,
+            .stat-card,
+            .analytics-chart-panel,
+            .feedback-analytics-panel {
+              box-shadow: none !important;
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
+
+            .analytics-chart-panel {
+              margin-top: 14px !important;
+              padding: 16px !important;
+            }
+
+            .analytics-section-heading {
+              break-after: avoid;
+              page-break-after: avoid;
+            }
+
+            .analytics-bar-fill,
+            .analytics-legend i,
+            .priority,
+            .stat-card > div {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            .analytics-chart-category {
+              grid-template-columns: 190px 1fr;
+              gap: 12px;
+              padding: 9px 0;
+            }
+
+            .analytics-chart-row {
+              grid-template-columns: 64px 1fr 28px;
+              gap: 7px;
+            }
+
+            .analytics-chart-heading {
+              margin-bottom: 12px;
+            }
+
+            .analytics-chart-heading h2 {
+              font-size: 16px;
+            }
+
+            .analytics-chart-heading p,
+            .analytics-scope-card,
+            .analytics-legend span {
+              font-size: 10px;
+            }
+          }
+        `}
+      </style>
+
+
+      <div className="analytics-print-header">
+
+        <h1>
+          MindTrack Reports and Analytics
+        </h1>
+
+        <p>
+          Scope:
+          {" "}
+          {analyticsScope}
+        </p>
+
+        <p>
+          Generated:
+          {" "}
+          {generatedAt}
+        </p>
+
+      </div>
+
 
       <PageTitle
 
         title="Reports and Analytics"
 
-        subtitle="Live operational totals from current records."
+        subtitle="Assessment priority and counseling analytics grouped by college, program, and sex."
 
       />
 
 
+      <div className="analytics-scope-card">
+
+        <div>
+
+          <strong>
+            Analytics scope
+          </strong>
+
+          <span>
+            {analyticsScope}
+          </span>
+
+        </div>
+
+
+        <small>
+          Live Firestore data · Generated {generatedAt}
+        </small>
+
+      </div>
+
+
       <div className="stat-grid">
 
-
         <Stat
-
-          title="Assessments"
-
+          title="Assessment cases"
           value={
             assessments.length
           }
-
           icon={
             <ClipboardList />
           }
-
         />
 
 
         <Stat
-
-          title="Consultations"
-
+          title="Counseling requests"
           value={
             consultations.length
           }
-
           icon={
             <Calendar />
           }
-
         />
 
 
         <Stat
-
-          title="Referrals"
-
+          title="Scheduled counseling"
           value={
-            referrals.length
+            scheduledSessions
           }
-
           icon={
-            <UserPlus />
+            <Clock3 />
           }
-
         />
 
 
         <Stat
-
-          title="Reviewed cases"
-
+          title="Critical priority"
           value={
-            assessments.filter(
-              assessment =>
-                assessment.status &&
-                assessment.status !==
-                "For review"
-            ).length
+            priorityTotals.Critical ||
+            0
           }
+          icon={
+            <AlertTriangle />
+          }
+          danger
+        />
 
+
+        <Stat
+          title="High priority"
+          value={
+            priorityTotals.High ||
+            0
+          }
+          icon={
+            <Activity />
+          }
+          warning
+        />
+
+
+        <Stat
+          title="Moderate priority"
+          value={
+            priorityTotals.Moderate ||
+            0
+          }
+          icon={
+            <ClipboardList />
+          }
+          warning
+        />
+
+
+        <Stat
+          title="Low priority"
+          value={
+            priorityTotals.Low ||
+            0
+          }
           icon={
             <CheckCircle2 />
           }
-
         />
 
       </div>
 
 
-      <section className="panel">
+      <div className="analytics-section-heading">
 
         <h2>
-          Priority breakdown
+          Assessment Case Analytics
         </h2>
 
+        <p>
+          Priority levels are counted from psychological assessment cases.
+        </p>
 
-        <div className="bar-list">
-
-
-          {counts.map(
-            item => (
-
-              <div
-                key={
-                  item.priority
-                }
-              >
-
-                <span>
-                  {
-                    item.priority
-                  }
-                </span>
+      </div>
 
 
-                <div className="bar">
-
-                  <i
-                    style={{
-                      width:
-                        `${
-                          assessments.length
-
-                            ? (
-                                item.count /
-                                assessments.length
-                              ) * 100
-
-                            : 0
-                        }%`
-                    }}
-                  />
-
-                </div>
+      <AnalyticsBarChart
+        title="Assessment priorities by college / office"
+        subtitle="Low, Moderate, High, and Critical assessment cases for each college or office."
+        rows={priorityByCollege}
+        series={prioritySeries}
+        emptyText="No assessment cases are available for college-level analytics."
+      />
 
 
-                <b>
-                  {
-                    item.count
-                  }
-                </b>
+      <AnalyticsBarChart
+        title="Assessment priorities by program"
+        subtitle="Priority distribution for each academic program. Accounts without a program are grouped as No program / N/A."
+        rows={priorityByProgram}
+        series={prioritySeries}
+        emptyText="No assessment cases are available for program-level analytics."
+      />
 
-              </div>
 
-            )
-          )}
+      <AnalyticsBarChart
+        title="Assessment priorities by sex"
+        subtitle="Priority distribution using the Male/Female value stored in the user's public account profile."
+        rows={priorityBySex}
+        series={prioritySeries}
+        emptyText="No assessment cases are available for sex-level analytics."
+      />
 
-        </div>
 
+      <div className="analytics-section-heading">
+
+        <h2>
+          Counseling Analytics
+        </h2>
+
+        <p>
+          Requests include every counseling request record. Scheduled counseling counts records currently marked Schedule for counseling.
+        </p>
+
+      </div>
+
+
+      <AnalyticsBarChart
+        title="Counseling by college / office"
+        subtitle="Total counseling requests and scheduled counseling records for each college or office."
+        rows={counselingByCollege}
+        series={counselingSeries}
+        emptyText="No counseling records are available for college-level analytics."
+      />
+
+
+      <AnalyticsBarChart
+        title="Counseling by program"
+        subtitle="Counseling requests and scheduled counseling records grouped by academic program."
+        rows={counselingByProgram}
+        series={counselingSeries}
+        emptyText="No counseling records are available for program-level analytics."
+      />
+
+
+      <AnalyticsBarChart
+        title="Counseling by sex"
+        subtitle="Counseling requests and scheduled counseling records grouped by Male/Female account profile value."
+        rows={counselingBySex}
+        series={counselingSeries}
+        emptyText="No counseling records are available for sex-level analytics."
+      />
+
+
+      <section className="panel analytics-print-actions">
 
         <button
 
@@ -17414,9 +21145,7 @@ function Reports() {
           }
 
         >
-
-          Print report
-
+          Print analytics
         </button>
 
       </section>
@@ -17426,7 +21155,7 @@ function Reports() {
         <FeedbackAnalytics />
       )}
 
-    </>
+    </div>
 
   );
 }
@@ -18187,7 +21916,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={["student", "faculty", "personnel"]}
+                      allowedRoles={GENERAL_USER_ROLE_VALUES}
                     >
                       <Assessment />
                     </RoleProtected>
@@ -18202,7 +21931,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={["student", "faculty", "personnel"]}
+                      allowedRoles={GENERAL_USER_ROLE_VALUES}
                     >
                       <Monitoring />
                     </RoleProtected>
@@ -18228,7 +21957,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={["student", "faculty", "personnel"]}
+                      allowedRoles={GENERAL_USER_ROLE_VALUES}
                     >
                       <Consultations />
                     </RoleProtected>
@@ -18243,7 +21972,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={["faculty", "personnel", "counselor"]}
+                      allowedRoles={[...REFERRAL_USER_ROLE_VALUES, "counselor"]}
                     >
                       <Referrals />
                     </RoleProtected>
@@ -18257,7 +21986,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={["student", "faculty", "personnel"]}
+                      allowedRoles={GENERAL_USER_ROLE_VALUES}
                     >
                       <Feedback />
                     </RoleProtected>
@@ -18297,7 +22026,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={["student", "faculty", "personnel"]}
+                      allowedRoles={GENERAL_USER_ROLE_VALUES}
                     >
                       <History />
                     </RoleProtected>

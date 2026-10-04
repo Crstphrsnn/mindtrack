@@ -115,6 +115,17 @@ const GENERAL_USER_ROLES = [
 ];
 
 
+const REGISTRATION_USER_ROLES = [
+
+  "student",
+
+  "teaching",
+
+  "non_teaching"
+
+];
+
+
 
 
 
@@ -676,7 +687,7 @@ export function AuthProvider({ children }) {
 
 
     const allowedRoles =
-      GENERAL_USER_ROLES;
+      REGISTRATION_USER_ROLES;
 
 
 
@@ -1069,87 +1080,235 @@ export function AuthProvider({ children }) {
         credential.user;
 
 
-      // Resolve the counselor only after Firebase Authentication creates
-      // the temporary signed-in user. Firestore rules allow counselorDirectory
-      // reads for signed-in users, so registration does not need to expose
-      // counselor assignment fields in App.jsx.
+      // Teaching and Non-teaching users may choose a preferred counselor.
+      // Student registration sends only the selected college/office and uses
+      // the department-based fallback below. counselorDirectory remains the
+      // source of truth for every counselor assignment.
       let resolvedAssignedCounselorId = "";
       let resolvedAssignedCounselorName = "";
       let resolvedAssignedCounselorDepartment = "";
 
       try {
 
-        const directorySnapshot =
-          await getDocs(
-            query(
-              collection(
-                db,
-                "counselorDirectory"
-              ),
-              where(
-                "department",
-                "==",
-                cleanDepartment
-              )
-            )
-          );
+        if (
+          cleanAssignedCounselorId
+        ) {
 
-        const activeCounselors =
-          directorySnapshot.docs
-            .map(item => ({
-              id: item.id,
-              ...item.data()
-            }))
-            .filter(counselor =>
-              counselor.active === true &&
-              String(
-                counselor.counselorId ||
-                counselor.id ||
-                ""
-              ).trim() &&
-              String(
-                counselor.name || ""
-              ).trim() &&
-              String(
-                counselor.department || ""
-              ).trim() ===
-                cleanDepartment
+          const counselorSnapshot =
+            await getDoc(
+              doc(
+                db,
+                "counselorDirectory",
+                cleanAssignedCounselorId
+              )
             );
 
-        if (
-          activeCounselors.length === 0
-        ) {
-          throw new Error(
-            `No active Guidance Counselor is configured for ${cleanDepartment}. Ask the Super Admin to activate the counselor in counselorDirectory first.`
-          );
+
+          if (
+            !counselorSnapshot.exists()
+          ) {
+
+            throw new Error(
+              "The selected Guidance Counselor no longer exists. Please return to registration and choose another counselor."
+            );
+          }
+
+
+          const assignedCounselor = {
+            id:
+              counselorSnapshot.id,
+
+            ...counselorSnapshot.data()
+          };
+
+
+          const directoryCounselorId =
+            String(
+              assignedCounselor.counselorId ||
+              assignedCounselor.id ||
+              ""
+            ).trim();
+
+
+          const directoryCounselorName =
+            String(
+              assignedCounselor.name ||
+              ""
+            ).trim();
+
+
+          const directoryCounselorDepartment =
+            String(
+              assignedCounselor.department ||
+              ""
+            ).trim();
+
+
+          if (
+            assignedCounselor.active !==
+            true ||
+            !directoryCounselorId ||
+            !directoryCounselorName ||
+            !directoryCounselorDepartment
+          ) {
+
+            throw new Error(
+              "The selected Guidance Counselor is not currently available for registration."
+            );
+          }
+
+
+          if (
+            directoryCounselorId !==
+            cleanAssignedCounselorId
+          ) {
+
+            throw new Error(
+              "The selected Guidance Counselor record is invalid."
+            );
+          }
+
+
+          if (
+            cleanDepartment !==
+            directoryCounselorDepartment
+          ) {
+
+            throw new Error(
+              "The selected Guidance Counselor does not match the assigned college or office."
+            );
+          }
+
+
+          if (
+            cleanAssignedCounselorName &&
+            cleanAssignedCounselorName !==
+              directoryCounselorName
+          ) {
+
+            throw new Error(
+              "The selected Guidance Counselor name does not match the counselor directory."
+            );
+          }
+
+
+          if (
+            cleanAssignedCounselorDepartment &&
+            cleanAssignedCounselorDepartment !==
+              directoryCounselorDepartment
+          ) {
+
+            throw new Error(
+              "The selected Guidance Counselor department does not match the counselor directory."
+            );
+          }
+
+
+          resolvedAssignedCounselorId =
+            directoryCounselorId;
+
+          resolvedAssignedCounselorName =
+            directoryCounselorName;
+
+          resolvedAssignedCounselorDepartment =
+            directoryCounselorDepartment;
+
+        } else {
+
+          // Student registration (and older compatible callers) sends the
+          // department without a counselor ID. Resolve exactly one active
+          // counselor for that college/office after Firebase Auth signs in.
+          const directorySnapshot =
+            await getDocs(
+              query(
+                collection(
+                  db,
+                  "counselorDirectory"
+                ),
+                where(
+                  "department",
+                  "==",
+                  cleanDepartment
+                )
+              )
+            );
+
+
+          const activeCounselors =
+            directorySnapshot.docs
+              .map(
+                item => ({
+                  id:
+                    item.id,
+
+                  ...item.data()
+                })
+              )
+              .filter(
+                counselor =>
+                  counselor.active ===
+                    true &&
+                  String(
+                    counselor.counselorId ||
+                    counselor.id ||
+                    ""
+                  ).trim() &&
+                  String(
+                    counselor.name ||
+                    ""
+                  ).trim() &&
+                  String(
+                    counselor.department ||
+                    ""
+                  ).trim() ===
+                    cleanDepartment
+              );
+
+
+          if (
+            activeCounselors.length ===
+            0
+          ) {
+
+            throw new Error(
+              `No active Guidance Counselor is configured for ${cleanDepartment}. Ask the Super Admin to activate a counselor first.`
+            );
+          }
+
+
+          if (
+            activeCounselors.length >
+            1
+          ) {
+
+            throw new Error(
+              `More than one active Guidance Counselor is configured for ${cleanDepartment}. Student registration requires exactly one active counselor for the selected college or office. Ask the Super Admin to correct counselorDirectory.`
+            );
+          }
+
+
+          const assignedCounselor =
+            activeCounselors[0];
+
+
+          resolvedAssignedCounselorId =
+            String(
+              assignedCounselor.counselorId ||
+              assignedCounselor.id
+            ).trim();
+
+
+          resolvedAssignedCounselorName =
+            String(
+              assignedCounselor.name
+            ).trim();
+
+
+          resolvedAssignedCounselorDepartment =
+            String(
+              assignedCounselor.department
+            ).trim();
         }
-
-        if (
-          activeCounselors.length > 1
-        ) {
-          throw new Error(
-            `More than one active Guidance Counselor is configured for ${cleanDepartment}. Keep only one active counselor for that college/office before registering users.`
-          );
-        }
-
-        const assignedCounselor =
-          activeCounselors[0];
-
-        resolvedAssignedCounselorId =
-          String(
-            assignedCounselor.counselorId ||
-            assignedCounselor.id
-          ).trim();
-
-        resolvedAssignedCounselorName =
-          String(
-            assignedCounselor.name
-          ).trim();
-
-        resolvedAssignedCounselorDepartment =
-          String(
-            assignedCounselor.department
-          ).trim();
 
       } catch (directoryError) {
 
@@ -1228,6 +1387,37 @@ export function AuthProvider({ children }) {
           ),
           publicProfile
         );
+
+        batch.set(
+          doc(
+            db,
+            "assessmentLocks",
+            firebaseUser.uid
+          ),
+          {
+            ownerId:
+              firebaseUser.uid,
+
+            department:
+              cleanDepartment,
+
+            latestAssessmentId:
+              "",
+
+            status:
+              "Eligible",
+
+            concludedAt:
+              null,
+
+            earlyReassessmentAllowed:
+              false,
+
+            updatedAt:
+              serverTimestamp()
+          }
+        );
+
 
         batch.set(
           doc(
@@ -1398,7 +1588,7 @@ export function AuthProvider({ children }) {
 
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
-        "Profile editing is only available to Student, Faculty, and Personnel accounts."
+        "Profile editing is only available to Student, Teaching, and Non-teaching accounts."
       );
     }
 
