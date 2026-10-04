@@ -2465,9 +2465,18 @@ function useRows(
   const [rows, setRows] =
     useState([]);
 
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
 
   useEffect(
     () => {
+
+      setLoading(true);
+      setError("");
 
       const constraints = [];
 
@@ -2515,6 +2524,18 @@ function useRows(
             "status",
             "==",
             filters.status
+          )
+        );
+      }
+
+
+      if (filters.requestedById) {
+
+        constraints.push(
+          where(
+            "requestedById",
+            "==",
+            filters.requestedById
           )
         );
       }
@@ -2648,20 +2669,48 @@ function useRows(
             setRows(
               incomingRows
             );
+
+            setError("");
+            setLoading(false);
           },
 
-          error => {
+          firestoreError => {
 
-            // Keep Firestore listener errors contained inside
-            // this hook instead of leaving an uncaught snapshot
-            // listener error in React.
             console.error(
               `Unable to load ${name}:`,
-              error
+              firestoreError
             );
 
 
-            setRows([]);
+            if (
+              firestoreError?.code ===
+              "permission-denied"
+            ) {
+
+              setError(
+                `You do not have permission to load ${name}.`
+              );
+
+            } else if (
+              firestoreError?.code ===
+              "unavailable"
+            ) {
+
+              setError(
+                "Unable to connect to Firebase. Check your internet connection and try again."
+              );
+
+            } else {
+
+              setError(
+                `Unable to load ${name}. Please try again.`
+              );
+            }
+
+
+            // Keep the most recently loaded rows instead of replacing
+            // a Firestore failure with an artificial empty result.
+            setLoading(false);
           }
         );
 
@@ -2676,6 +2725,7 @@ function useRows(
       filters.department,
       filters.role,
       filters.status,
+      filters.requestedById,
       filters.assignedCounselorId,
       filters.counselorId,
       filters.active
@@ -2683,7 +2733,49 @@ function useRows(
   );
 
 
-  return rows;
+  // Return an Array so all existing .map(), .filter(), .find(),
+  // .length, and spread usages keep working. The extra properties
+  // expose the Firestore loading/error state to each page.
+  const result =
+    [...rows];
+
+  result.loading =
+    loading;
+
+  result.error =
+    error;
+
+  return result;
+}
+
+
+function rowsAreLoading(
+  ...sources
+) {
+
+  return sources.some(
+    source =>
+      Boolean(
+        source?.loading
+      )
+  );
+}
+
+
+function firstRowsError(
+  ...sources
+) {
+
+  return (
+    sources
+      .map(
+        source =>
+          source?.error ||
+          ""
+      )
+      .find(Boolean) ||
+    ""
+  );
 }
 
 
@@ -2853,26 +2945,55 @@ function Dashboard() {
     );
 
 
-  const pendingTransferRequests =
+  const pendingTransferRows =
     useRows(
       "transferRequests",
       {
         status:
           "Pending approval"
       }
-    )
-      .filter(
-        row =>
-          isCounselor &&
-          row.requestedById !==
-            user.id
-      );
+    );
+
+
+  const pendingTransferRequests =
+    pendingTransferRows.filter(
+      row =>
+        isCounselor &&
+        row.requestedById !==
+          user.id
+    );
 
 
   const [
     approvingTransferId,
     setApprovingTransferId
   ] = useState("");
+
+
+  const dashboardLoading =
+    rowsAreLoading(
+      assessments,
+      consultations,
+      referrals,
+      ...(
+        isCounselor
+          ? [pendingTransferRows]
+          : []
+      )
+    );
+
+
+  const dashboardError =
+    firstRowsError(
+      assessments,
+      consultations,
+      referrals,
+      ...(
+        isCounselor
+          ? [pendingTransferRows]
+          : []
+      )
+    );
 
 
   async function approveTransfer(
@@ -3390,6 +3511,64 @@ function Dashboard() {
         ""
       );
     }
+  }
+
+
+  if (
+    (
+      isCounselor ||
+      isSuperAdmin
+    ) &&
+    dashboardLoading
+  ) {
+
+    return (
+      <>
+        <PageTitle
+          title={
+            isSuperAdmin
+              ? "Super Admin Dashboard"
+              : "Counselor Dashboard"
+          }
+          subtitle="Live case monitoring and counseling operations"
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading dashboard data..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (
+    (
+      isCounselor ||
+      isSuperAdmin
+    ) &&
+    dashboardError
+  ) {
+
+    return (
+      <>
+        <PageTitle
+          title={
+            isSuperAdmin
+              ? "Super Admin Dashboard"
+              : "Counselor Dashboard"
+          }
+          subtitle="Live case monitoring and counseling operations"
+        />
+
+        <div className="error-box">
+          {dashboardError}
+          <br />
+          Dashboard totals are unavailable until the data loads successfully.
+        </div>
+      </>
+    );
   }
 
 
@@ -6876,6 +7055,60 @@ function Consultations() {
   }
 
 
+  const consultationsLoading =
+    rowsAreLoading(
+      rows,
+      departmentCounselors,
+      counselorScheduleSlots
+    );
+
+
+  const consultationsError =
+    firstRowsError(
+      rows,
+      departmentCounselors,
+      counselorScheduleSlots
+    );
+
+
+  if (consultationsLoading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Counseling Requests"
+          subtitle="Request counseling and track approval or rescheduling in real time."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading counseling information..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (consultationsError) {
+
+    return (
+      <>
+        <PageTitle
+          title="Counseling Requests"
+          subtitle="Request counseling and track approval or rescheduling in real time."
+        />
+
+        <div className="error-box">
+          {consultationsError}
+          <br />
+          Counseling availability and requests cannot be shown safely until the data loads successfully.
+        </div>
+      </>
+    );
+  }
+
+
   return (
 
     <>
@@ -7671,22 +7904,56 @@ function Referrals() {
 
     e.preventDefault();
 
-    const assignedCounselor =
-      counselorDirectory.find(
+    if (
+      !COLLEGE_OPTIONS.includes(
+        form.department
+      )
+    ) {
+
+      alert(
+        "Please select a valid college or office."
+      );
+
+      return;
+    }
+
+
+    const matchingCounselors =
+      counselorDirectory.filter(
         counselor =>
           counselor.department ===
             form.department &&
-          counselor.active !== false
-      ) ||
-      null;
+          counselor.active ===
+            true
+      );
 
 
-    if (!assignedCounselor) {
+    if (
+      matchingCounselors.length === 0
+    ) {
+
       alert(
         "No active Guidance Counselor is configured for the selected college/office."
       );
+
       return;
     }
+
+
+    if (
+      matchingCounselors.length > 1
+    ) {
+
+      alert(
+        "More than one active Guidance Counselor is configured for this college/office. Please contact the Super Admin before submitting the referral."
+      );
+
+      return;
+    }
+
+
+    const assignedCounselor =
+      matchingCounselors[0];
 
 
     await addRecord(
@@ -7757,6 +8024,58 @@ function Referrals() {
         row.referrerId ===
         user.id
     );
+
+
+  const referralsLoading =
+    rowsAreLoading(
+      rows,
+      counselorDirectory
+    );
+
+
+  const referralsError =
+    firstRowsError(
+      rows,
+      counselorDirectory
+    );
+
+
+  if (referralsLoading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Referral"
+          subtitle="Faculty and personnel may refer someone who may benefit from guidance support."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading referral information..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (referralsError) {
+
+    return (
+      <>
+        <PageTitle
+          title="Referral"
+          subtitle="Faculty and personnel may refer someone who may benefit from guidance support."
+        />
+
+        <div className="error-box">
+          {referralsError}
+          <br />
+          Referrals cannot be submitted or displayed until the data loads successfully.
+        </div>
+      </>
+    );
+  }
 
 
   return (
@@ -7849,7 +8168,7 @@ function Referrals() {
 
             College / Office
 
-            <input
+            <select
 
               required
 
@@ -7866,7 +8185,30 @@ function Referrals() {
                   })
               }
 
-            />
+            >
+
+              <option
+                value=""
+                disabled
+              >
+                Select college / office
+              </option>
+
+
+              {COLLEGE_OPTIONS.map(
+                college => (
+
+                  <option
+                    key={college}
+                    value={college}
+                  >
+                    {college}
+                  </option>
+
+                )
+              )}
+
+            </select>
 
           </label>
 
@@ -8095,6 +8437,9 @@ function Feedback() {
   const [historyLoading, setHistoryLoading] =
     useState(true);
 
+  const [historyError, setHistoryError] =
+    useState("");
+
 
   useEffect(
     () => {
@@ -8146,6 +8491,7 @@ function Feedback() {
 
 
             setHistory(rows);
+            setHistoryError("");
             setHistoryLoading(false);
 
           },
@@ -8157,7 +8503,16 @@ function Feedback() {
               err
             );
 
-            setHistory([]);
+            setHistoryError(
+              err?.code ===
+              "permission-denied"
+                ? "You do not have permission to load your feedback history."
+                : (
+                    err?.message ||
+                    "Unable to load your feedback history."
+                  )
+            );
+
             setHistoryLoading(false);
 
           }
@@ -8510,6 +8865,16 @@ function Feedback() {
               />
 
             )
+
+            : historyError
+
+              ? (
+
+                <div className="error-box">
+                  {historyError}
+                </div>
+
+              )
 
             : history.length === 0
 
@@ -10094,6 +10459,42 @@ function UserNotificationsContent({
   }
 
 
+  if (allRows.loading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Notifications"
+          subtitle="Updates from your MindTrack activity."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading notifications..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (allRows.error) {
+
+    return (
+      <>
+        <PageTitle
+          title="Notifications"
+          subtitle="Updates from your MindTrack activity."
+        />
+
+        <div className="error-box">
+          {allRows.error}
+        </div>
+      </>
+    );
+  }
+
+
   return (
 
     <>
@@ -10457,6 +10858,42 @@ function UserMonitoringContent({
       notificationAssessment
     ]
   );
+
+
+  if (assessments.loading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Mental Health Monitoring"
+          subtitle="Your current monitoring state and trend are based only on assessments reviewed by a Guidance Counselor."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading monitoring data..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (assessments.error) {
+
+    return (
+      <>
+        <PageTitle
+          title="Mental Health Monitoring"
+          subtitle="Your current monitoring state and trend are based only on assessments reviewed by a Guidance Counselor."
+        />
+
+        <div className="error-box">
+          {assessments.error}
+        </div>
+      </>
+    );
+  }
 
 
   return (
@@ -11292,6 +11729,56 @@ function History() {
           user.id
       }
     );
+
+
+  const historyLoading =
+    rowsAreLoading(
+      assessments,
+      consultations
+    );
+
+
+  const historyError =
+    firstRowsError(
+      assessments,
+      consultations
+    );
+
+
+  if (historyLoading) {
+
+    return (
+      <>
+        <PageTitle
+          title="History"
+          subtitle="Your own assessment and counseling request records."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading history..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (historyError) {
+
+    return (
+      <>
+        <PageTitle
+          title="History"
+          subtitle="Your own assessment and counseling request records."
+        />
+
+        <div className="error-box">
+          {historyError}
+        </div>
+      </>
+    );
+  }
 
 
   return (
@@ -12158,6 +12645,50 @@ function Cases() {
 
       </div>
 
+    );
+  }
+
+
+  if (rows.loading) {
+
+    return (
+      <>
+        <PageTitle
+          title={
+            isSuperAdmin
+              ? "All Psychological Assessment Cases"
+              : "Psychological Assessment Cases"
+          }
+          subtitle="One account is shown per user. Open Review to see the user's complete assessment history and manage individual assessment records."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading assessment cases..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (rows.error) {
+
+    return (
+      <>
+        <PageTitle
+          title={
+            isSuperAdmin
+              ? "All Psychological Assessment Cases"
+              : "Psychological Assessment Cases"
+          }
+          subtitle="One account is shown per user. Open Review to see the user's complete assessment history and manage individual assessment records."
+        />
+
+        <div className="error-box">
+          {rows.error}
+        </div>
+      </>
     );
   }
 
@@ -13368,7 +13899,13 @@ function CounselingRequestsManagement() {
 
   const transferRequests =
     useRows(
-      "transferRequests"
+      "transferRequests",
+      isSuperAdmin
+        ? {}
+        : {
+            requestedById:
+              user.id
+          }
     );
 
 
@@ -14647,6 +15184,71 @@ function CounselingRequestsManagement() {
   }
 
 
+  const requestManagementSources =
+    isSuperAdmin
+      ? [
+          departmentConsultations,
+          assessmentRows,
+          counselors,
+          transferRequests
+        ]
+      : [
+          departmentConsultations,
+          assignedConsultations,
+          assessmentRows,
+          counselors,
+          transferRequests
+        ];
+
+
+  const requestManagementLoading =
+    rowsAreLoading(
+      ...requestManagementSources
+    );
+
+
+  const requestManagementError =
+    firstRowsError(
+      ...requestManagementSources
+    );
+
+
+  if (requestManagementLoading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Counseling Requests"
+          subtitle="Review, update, and manage counseling requests."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading counseling requests..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (requestManagementError) {
+
+    return (
+      <>
+        <PageTitle
+          title="Counseling Requests"
+          subtitle="Review, update, and manage counseling requests."
+        />
+
+        <div className="error-box">
+          {requestManagementError}
+        </div>
+      </>
+    );
+  }
+
+
   return (
 
     <>
@@ -15529,6 +16131,64 @@ function Schedule() {
   }
 
 
+  const scheduleLoading =
+    rowsAreLoading(
+      departmentRows,
+      ...(
+        isSuperAdmin
+          ? []
+          : [transferredAssignedRows]
+      )
+    );
+
+
+  const scheduleError =
+    firstRowsError(
+      departmentRows,
+      ...(
+        isSuperAdmin
+          ? []
+          : [transferredAssignedRows]
+      )
+    );
+
+
+  if (scheduleLoading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Counselor Schedule"
+          subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading counselor schedule..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (scheduleError) {
+
+    return (
+      <>
+        <PageTitle
+          title="Counselor Schedule"
+          subtitle="Appointments are arranged from earliest to latest. Click an appointment to open its counseling request."
+        />
+
+        <div className="error-box">
+          {scheduleError}
+        </div>
+      </>
+    );
+  }
+
+
   return (
 
     <>
@@ -15671,6 +16331,42 @@ function Accounts() {
     useRows(
       "users"
     );
+
+
+  if (users.loading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Account Management"
+          subtitle="Super Admin overview of students, faculty, personnel, counselors, and administrators."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading accounts..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (users.error) {
+
+    return (
+      <>
+        <PageTitle
+          title="Account Management"
+          subtitle="Super Admin overview of students, faculty, personnel, counselors, and administrators."
+        />
+
+        <div className="error-box">
+          {users.error}
+        </div>
+      </>
+    );
+  }
 
 
   return (
@@ -16326,6 +17022,60 @@ function Reports() {
       "referrals",
       referralFilters
     );
+
+
+  const reportsLoading =
+    rowsAreLoading(
+      assessments,
+      consultations,
+      referrals
+    );
+
+
+  const reportsError =
+    firstRowsError(
+      assessments,
+      consultations,
+      referrals
+    );
+
+
+  if (reportsLoading) {
+
+    return (
+      <>
+        <PageTitle
+          title="Reports and Analytics"
+          subtitle="Live operational totals from current records."
+        />
+
+        <section className="panel">
+          <Empty
+            text="Loading report data..."
+          />
+        </section>
+      </>
+    );
+  }
+
+
+  if (reportsError) {
+
+    return (
+      <>
+        <PageTitle
+          title="Reports and Analytics"
+          subtitle="Live operational totals from current records."
+        />
+
+        <div className="error-box">
+          {reportsError}
+          <br />
+          Report totals cannot be calculated until the data loads successfully.
+        </div>
+      </>
+    );
+  }
 
 
   const counts =
