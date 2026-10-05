@@ -9621,6 +9621,19 @@ function Referrals() {
     "super_admin";
 
 
+  const canSubmitReferral =
+    [
+      "teaching",
+      "non_teaching",
+
+      // Legacy compatibility while older user records are migrated.
+      "faculty",
+      "personnel"
+    ].includes(
+      user.role
+    );
+
+
   const referralStatusOptions = [
     "Received",
     "Under review",
@@ -9657,6 +9670,24 @@ function Referrals() {
   const [
     referralUpdateError,
     setReferralUpdateError
+  ] = useState("");
+
+
+  const [
+    submittingReferral,
+    setSubmittingReferral
+  ] = useState(false);
+
+
+  const [
+    referralSubmitMessage,
+    setReferralSubmitMessage
+  ] = useState("");
+
+
+  const [
+    referralSubmitError,
+    setReferralSubmitError
   ] = useState("");
 
 
@@ -9741,10 +9772,21 @@ function Referrals() {
 
     if (
       isCounselor ||
-      isSuperAdmin
+      isSuperAdmin ||
+      !canSubmitReferral
     ) {
+
+      alert(
+        "Only Teaching and Non-teaching users may submit referrals."
+      );
+
       return;
     }
+
+
+    setReferralSubmitMessage("");
+
+    setReferralSubmitError("");
 
 
     if (
@@ -9753,7 +9795,7 @@ function Referrals() {
       )
     ) {
 
-      alert(
+      setReferralSubmitError(
         "Please select a valid college or office."
       );
 
@@ -9775,7 +9817,7 @@ function Referrals() {
       matchingCounselors.length === 0
     ) {
 
-      alert(
+      setReferralSubmitError(
         "No active Guidance Counselor is configured for the selected college/office."
       );
 
@@ -9787,7 +9829,7 @@ function Referrals() {
       matchingCounselors.length > 1
     ) {
 
-      alert(
+      setReferralSubmitError(
         "More than one active Guidance Counselor is configured for this college/office. Please contact the Super Admin before submitting the referral."
       );
 
@@ -9799,67 +9841,118 @@ function Referrals() {
       matchingCounselors[0];
 
 
-    await addRecord(
-      "referrals",
-      {
-
-        ...form,
-
-        ownerId:
-          user.id,
-
-        referrerId:
-          user.id,
-
-        referrerName:
-          user.name,
-
-        referrerRole:
-          user.role,
-
-        assignedCounselorId:
-          assignedCounselor.counselorId ||
-          assignedCounselor.id,
-
-        assignedCounselorName:
-          assignedCounselor.name ||
-          "Guidance Counselor",
-
-        assignedCounselorDepartment:
-          assignedCounselor.department ||
-          form.department,
-
-        status:
-          "Received"
-
-      }
-    );
+    const confirmed =
+      window.confirm(
+        `Submit this referral?\n\nReferred person: ${form.personName}\nCollege / Office: ${form.department}\nAssigned counselor: ${assignedCounselor.name || "Guidance Counselor"}\n\nThe assigned counselor will receive the referral. You will be notified whenever the counselor changes its status.`
+      );
 
 
-    setForm({
+    if (!confirmed) {
+      return;
+    }
 
-      personName:
-        "",
 
-      personType:
-        "Student",
+    try {
 
-      department:
-        "",
+      setSubmittingReferral(
+        true
+      );
 
-      reason:
-        "",
 
-      urgency:
-        "Routine",
+      await addRecord(
+        "referrals",
+        {
 
-      contact:
-        ""
+          ...form,
 
-    });
+          ownerId:
+            user.id,
 
+          referrerId:
+            user.id,
+
+          referrerName:
+            user.name,
+
+          referrerRole:
+            user.role,
+
+          assignedCounselorId:
+            assignedCounselor.counselorId ||
+            assignedCounselor.id,
+
+          assignedCounselorName:
+            assignedCounselor.name ||
+            "Guidance Counselor",
+
+          assignedCounselorDepartment:
+            assignedCounselor.department ||
+            form.department,
+
+          status:
+            "Received"
+
+        }
+      );
+
+
+      setForm({
+
+        personName:
+          "",
+
+        personType:
+          "Student",
+
+        department:
+          "",
+
+        reason:
+          "",
+
+        urgency:
+          "Routine",
+
+        contact:
+          ""
+
+      });
+
+
+      setReferralSubmitMessage(
+        `Referral submitted successfully. ${assignedCounselor.name || "The assigned Guidance Counselor"} will review it. You will receive a notification whenever the referral status changes.`
+      );
+
+
+      setReferralSubmitError("");
+
+    } catch (error) {
+
+      console.error(
+        "Unable to submit referral:",
+        error
+      );
+
+
+      setReferralSubmitError(
+        error?.code ===
+          "permission-denied"
+
+          ? "You do not have permission to submit this referral. Make sure you are signed in as a Teaching or Non-teaching user with a verified institutional email."
+
+          : (
+              error?.message ||
+              "Unable to submit the referral."
+            )
+      );
+
+    } finally {
+
+      setSubmittingReferral(
+        false
+      );
+    }
   }
-
 
   async function saveReferralUpdate(
     row
@@ -10716,6 +10809,36 @@ function Referrals() {
       />
 
 
+      {referralSubmitMessage && (
+
+        <div
+          className="success-box"
+          style={{
+            marginBottom:
+              "16px"
+          }}
+        >
+          {referralSubmitMessage}
+        </div>
+
+      )}
+
+
+      {referralSubmitError && (
+
+        <div
+          className="error-box"
+          style={{
+            marginBottom:
+              "16px"
+          }}
+        >
+          {referralSubmitError}
+        </div>
+
+      )}
+
+
       <div className="two-column">
 
 
@@ -10924,9 +11047,19 @@ function Referrals() {
           </label>
 
 
-          <button className="primary-button">
+          <button
+            className="primary-button"
+            disabled={
+              submittingReferral ||
+              !canSubmitReferral
+            }
+          >
 
-            Submit referral
+            {
+              submittingReferral
+                ? "Submitting referral..."
+                : "Submit referral"
+            }
 
           </button>
 
@@ -10938,6 +11071,20 @@ function Referrals() {
           <h2>
             Referral status
           </h2>
+
+
+          <p
+            style={{
+              marginTop:
+                "-4px",
+
+              color:
+                "#667085"
+            }}
+          >
+            MindTrack will notify you whenever the assigned counselor changes
+            the status of a referral you submitted.
+          </p>
 
 
           {own.length === 0
