@@ -735,7 +735,8 @@ td {
 }
 
 th {
-  background: #DECA57;
+  /* Ice Blue from the provided color reference */
+  background: #94C6F7;
   color: #111827;
 }
 
@@ -5218,6 +5219,82 @@ th {
 
   .superadmin-cleanup-actions,
   .superadmin-cleanup-actions .danger-button {
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   FINAL SUPER ADMIN CLEANUP BUTTON ALIGNMENT
+===================================================== */
+
+.superadmin-cleanup-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: stretch;
+  gap: 16px;
+}
+
+.superadmin-cleanup-zone > div:first-child {
+  min-width: 0;
+}
+
+.superadmin-cleanup-zone p {
+  max-width: none;
+}
+
+.superadmin-cleanup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.superadmin-cleanup-delete-button {
+  min-width: 92px;
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.superadmin-cleanup-zone > .superadmin-cleanup-delete-button {
+  justify-self: end;
+}
+
+.review-request-modal-actions {
+  align-items: center;
+}
+
+.review-request-modal-actions .primary-button,
+.review-request-modal-actions .secondary-button {
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  .superadmin-cleanup-zone {
+    grid-template-columns: 1fr;
+  }
+
+  .superadmin-cleanup-zone > .superadmin-cleanup-delete-button,
+  .superadmin-cleanup-actions {
+    justify-self: start;
+  }
+
+  .superadmin-cleanup-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .superadmin-cleanup-actions {
+    width: 100%;
+  }
+
+  .superadmin-cleanup-delete-button {
     width: 100%;
   }
 }

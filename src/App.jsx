@@ -9621,6 +9621,45 @@ function Referrals() {
     "super_admin";
 
 
+  const referralStatusOptions = [
+    "Received",
+    "Under review",
+    "Contacted",
+    "In progress",
+    "Completed"
+  ];
+
+
+  const [
+    referralStatusDrafts,
+    setReferralStatusDrafts
+  ] = useState({});
+
+
+  const [
+    referralRemarksDrafts,
+    setReferralRemarksDrafts
+  ] = useState({});
+
+
+  const [
+    savingReferralId,
+    setSavingReferralId
+  ] = useState("");
+
+
+  const [
+    referralUpdateMessage,
+    setReferralUpdateMessage
+  ] = useState("");
+
+
+  const [
+    referralUpdateError,
+    setReferralUpdateError
+  ] = useState("");
+
+
   const rows =
     useRows(
       "referrals",
@@ -9819,6 +9858,249 @@ function Referrals() {
 
     });
 
+  }
+
+
+  async function saveReferralUpdate(
+    row
+  ) {
+
+    if (
+      !isCounselor ||
+      !row?.id
+    ) {
+
+      return;
+    }
+
+
+    const currentStatus =
+      row.status ||
+      "Received";
+
+
+    const nextStatus =
+      referralStatusDrafts[
+        row.id
+      ] ??
+      currentStatus;
+
+
+    const nextRemarks =
+      String(
+        referralRemarksDrafts[
+          row.id
+        ] ??
+        row.counselorRemarks ??
+        ""
+      ).trim();
+
+
+    if (
+      !referralStatusOptions.includes(
+        nextStatus
+      )
+    ) {
+
+      alert(
+        "Please select a valid referral status."
+      );
+
+      return;
+    }
+
+
+    const statusChanged =
+      nextStatus !==
+      currentStatus;
+
+
+    const remarksChanged =
+      nextRemarks !==
+      String(
+        row.counselorRemarks ||
+        ""
+      ).trim();
+
+
+    if (
+      !statusChanged &&
+      !remarksChanged
+    ) {
+
+      setReferralUpdateMessage(
+        "No referral changes to save."
+      );
+
+      setReferralUpdateError("");
+
+      return;
+    }
+
+
+    try {
+
+      setSavingReferralId(
+        row.id
+      );
+
+      setReferralUpdateMessage("");
+
+      setReferralUpdateError("");
+
+
+      const batch =
+        writeBatch(
+          db
+        );
+
+
+      const referralRef =
+        doc(
+          db,
+          "referrals",
+          row.id
+        );
+
+
+      batch.update(
+        referralRef,
+        {
+          status:
+            nextStatus,
+
+          counselorRemarks:
+            nextRemarks,
+
+          updatedById:
+            user.id,
+
+          updatedByName:
+            user.name ||
+            "Guidance Counselor",
+
+          updatedAt:
+            serverTimestamp()
+        }
+      );
+
+
+      if (
+        statusChanged &&
+        row.referrerId
+      ) {
+
+        const notificationRef =
+          doc(
+            collection(
+              db,
+              "notifications"
+            )
+          );
+
+
+        batch.set(
+          notificationRef,
+          {
+            ownerId:
+              row.referrerId,
+
+            title:
+              "Referral status updated",
+
+            message:
+              `The referral for ${row.personName || "the referred person"} is now "${nextStatus}".`,
+
+            notificationType:
+              "referral_status",
+
+            senderRole:
+              "counselor",
+
+            senderId:
+              user.id,
+
+            senderName:
+              user.name ||
+              "Guidance Counselor",
+
+            targetPath:
+              "/referrals",
+
+            sourceType:
+              "referral",
+
+            sourceId:
+              row.id,
+
+            referralStatus:
+              nextStatus,
+
+            read:
+              false,
+
+            createdAt:
+              serverTimestamp()
+          }
+        );
+      }
+
+
+      await batch.commit();
+
+
+      setReferralStatusDrafts(
+        current => ({
+          ...current,
+
+          [row.id]:
+            nextStatus
+        })
+      );
+
+
+      setReferralRemarksDrafts(
+        current => ({
+          ...current,
+
+          [row.id]:
+            nextRemarks
+        })
+      );
+
+
+      setReferralUpdateMessage(
+        statusChanged
+          ? "Referral status updated. The referrer was notified."
+          : "Referral counselor remarks updated."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to update referral:",
+        error
+      );
+
+
+      setReferralUpdateError(
+        error?.code ===
+          "permission-denied"
+
+          ? "You do not have permission to update this referral."
+
+          : (
+              error?.message ||
+              "Unable to update the referral."
+            )
+      );
+
+    } finally {
+
+      setSavingReferralId(
+        ""
+      );
+    }
   }
 
 
@@ -10134,6 +10416,36 @@ function Referrals() {
           </h2>
 
 
+          {referralUpdateMessage && (
+
+            <div
+              className="success-box"
+              style={{
+                marginBottom:
+                  "14px"
+              }}
+            >
+              {referralUpdateMessage}
+            </div>
+
+          )}
+
+
+          {referralUpdateError && (
+
+            <div
+              className="error-box"
+              style={{
+                marginBottom:
+                  "14px"
+              }}
+            >
+              {referralUpdateError}
+            </div>
+
+          )}
+
+
           {rows.length === 0
 
             ? (
@@ -10225,6 +10537,146 @@ function Referrals() {
                         {" "}
                         {row.referrerName || "Teaching / Non-teaching"}
                       </small>
+
+
+                      <div
+                        style={{
+                          marginTop:
+                            "16px",
+
+                          paddingTop:
+                            "14px",
+
+                          borderTop:
+                            "1px solid #e2e8f0"
+                        }}
+                      >
+
+                        <label
+                          style={{
+                            marginBottom:
+                              "10px"
+                          }}
+                        >
+                          Referral status
+
+                          <select
+                            value={
+                              referralStatusDrafts[
+                                row.id
+                              ] ??
+                              row.status ??
+                              "Received"
+                            }
+                            disabled={
+                              savingReferralId ===
+                              row.id
+                            }
+                            onChange={
+                              event =>
+                                setReferralStatusDrafts(
+                                  current => ({
+                                    ...current,
+
+                                    [row.id]:
+                                      event.target.value
+                                  })
+                                )
+                            }
+                          >
+
+                            {referralStatusOptions.map(
+                              status => (
+
+                                <option
+                                  key={status}
+                                  value={status}
+                                >
+                                  {status}
+                                </option>
+
+                              )
+                            )}
+
+                          </select>
+
+                        </label>
+
+
+                        <label
+                          style={{
+                            marginBottom:
+                              "10px"
+                          }}
+                        >
+                          Counselor remarks
+                          <span
+                            className="optional-text"
+                            style={{
+                              display:
+                                "block",
+
+                              marginBottom:
+                                "6px"
+                            }}
+                          >
+                            Internal referral documentation. The referrer is
+                            notified only when the status changes.
+                          </span>
+
+                          <textarea
+                            rows="3"
+                            value={
+                              referralRemarksDrafts[
+                                row.id
+                              ] ??
+                              row.counselorRemarks ??
+                              ""
+                            }
+                            disabled={
+                              savingReferralId ===
+                              row.id
+                            }
+                            onChange={
+                              event =>
+                                setReferralRemarksDrafts(
+                                  current => ({
+                                    ...current,
+
+                                    [row.id]:
+                                      event.target.value
+                                  })
+                                )
+                            }
+                            placeholder="Add referral review notes."
+                          />
+
+                        </label>
+
+
+                        <button
+                          type="button"
+                          className="primary-button"
+                          disabled={
+                            savingReferralId ===
+                            row.id
+                          }
+                          onClick={
+                            () =>
+                              saveReferralUpdate(
+                                row
+                              )
+                          }
+                        >
+                          {
+                            savingReferralId ===
+                              row.id
+                              ? "Saving..."
+                              : "Save referral update"
+                          }
+                        </button>
+
+                      </div>
 
                     </article>
 
@@ -10548,6 +11000,27 @@ function Referrals() {
                       Private assessment and counseling notes are not shown to the referrer.
 
                     </small>
+
+
+                    {row.updatedByName && (
+
+                      <small
+                        style={{
+                          display:
+                            "block",
+
+                          marginTop:
+                            "6px"
+                        }}
+                      >
+                        Last updated by:
+                        {" "}
+                        {
+                          row.updatedByName
+                        }
+                      </small>
+
+                    )}
 
                   </article>
 
@@ -16695,7 +17168,8 @@ function Cases() {
 
                     <button
                       type="button"
-                      className="danger-button"
+                      className="danger-button superadmin-cleanup-delete-button"
+                      title="Delete assessment"
                       disabled={
                         deletingAssessmentId ===
                         selected.id
@@ -16708,7 +17182,7 @@ function Cases() {
                         deletingAssessmentId ===
                           selected.id
                           ? "Deleting assessment..."
-                          : "Delete test / erroneous assessment"
+                          : "Delete"
                       }
                     </button>
 
@@ -20622,7 +21096,8 @@ function CounselingRequestsManagement() {
 
                       <button
                         type="button"
-                        className="danger-button danger-button-outline"
+                        className="danger-button danger-button-outline superadmin-cleanup-delete-button"
+                        title="Delete pending transfer request"
                         disabled={
                           deletingTransferId ===
                           transferRequestForConsultation(
@@ -20644,7 +21119,7 @@ function CounselingRequestsManagement() {
                               selected.id
                             )?.id
                             ? "Deleting transfer..."
-                            : "Delete pending transfer request"
+                            : "Delete"
                         }
                       </button>
 
@@ -20664,7 +21139,8 @@ function CounselingRequestsManagement() {
 
                     <button
                       type="button"
-                      className="danger-button"
+                      className="danger-button superadmin-cleanup-delete-button"
+                      title="Delete counseling request"
                       disabled={
                         deletingCounselingId ===
                         selected.id ||
@@ -20682,7 +21158,7 @@ function CounselingRequestsManagement() {
                         deletingCounselingId ===
                           selected.id
                           ? "Deleting counseling request..."
-                          : "Delete test / erroneous counseling request"
+                          : "Delete"
                       }
                     </button>
 
