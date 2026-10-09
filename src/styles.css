@@ -5299,3 +5299,547 @@ th {
   }
 }
 
+/* =====================================================
+   PAGED PSYCHOLOGICAL ASSESSMENT
+   Google-Forms-like section flow
+===================================================== */
+
+.assessment-page-shell {
+  width: 100%;
+  max-width: 950px;
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.assessment-simple-guide.assessment-page-shell {
+  margin-bottom: 18px;
+}
+
+.assessment-sticky-progress.assessment-page-shell {
+  position: sticky;
+  top: 72px;
+  z-index: 30;
+  overflow: hidden;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10);
+}
+
+.assessment-page-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.assessment-page-progress-heading > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.assessment-page-progress-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #536174;
+  font-size: 13px;
+}
+
+.assessment-page-progress-meta strong {
+  color: #132f73;
+  font-size: 1rem;
+}
+
+.assessment-page-progress-track {
+  display: block;
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ebf2;
+}
+
+.assessment-page-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #173f8f;
+  transition: width 180ms ease;
+}
+
+.assessment-page-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.assessment-page-step {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 7px;
+  border: 1px solid #dbe2ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-page-step.current {
+  border-color: #173f8f;
+  background: #edf3ff;
+  color: #173f8f;
+}
+
+.assessment-page-step.complete {
+  border-color: #b8d9c5;
+  background: #eefaf2;
+  color: #247047;
+}
+
+.assessment-page-step.current.complete {
+  border-color: #173f8f;
+  background: #edf3ff;
+  color: #173f8f;
+}
+
+.assessment-page-step-number {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8edf5;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.assessment-page-step.current .assessment-page-step-number {
+  background: #173f8f;
+  color: #fff;
+}
+
+.assessment-page-step.complete:not(.current) .assessment-page-step-number {
+  background: #2f855a;
+  color: #fff;
+}
+
+.assessment-paged-form {
+  display: block;
+}
+
+.assessment-page-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.assessment-page-indicator strong {
+  color: #173f8f;
+}
+
+.assessment-page-card {
+  width: 100%;
+  max-width: 950px;
+  margin: 0 auto;
+  animation: assessment-page-enter 160ms ease-out;
+}
+
+@keyframes assessment-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.assessment-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e4e8ef;
+}
+
+.assessment-page-actions-end {
+  justify-content: flex-end;
+}
+
+.assessment-page-actions .primary-button,
+.assessment-page-actions .secondary-button {
+  min-width: 150px;
+}
+
+.assessment-page-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 22px;
+}
+
+.assessment-page-review-item {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dbe2ec;
+  border-radius: 12px;
+  background: #f8fafc;
+  text-align: left;
+  color: #334155;
+  cursor: pointer;
+}
+
+.assessment-page-review-item:hover {
+  border-color: #9db5d7;
+  background: #f3f7fd;
+}
+
+.assessment-page-review-item.complete {
+  border-color: #b8d9c5;
+  background: #f2fbf5;
+}
+
+.assessment-page-review-item span,
+.assessment-page-review-item strong,
+.assessment-page-review-item small {
+  display: block;
+}
+
+.assessment-page-review-item span {
+  margin-bottom: 3px;
+  color: #173f8f;
+  font-weight: 800;
+}
+
+.assessment-page-review-item strong {
+  margin-bottom: 3px;
+}
+
+.assessment-page-review-item small {
+  color: #667085;
+}
+
+/* Choice helper remains visible, but without the old "Simple meaning:" label. */
+.assessment-choice-helper {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+@media (max-width: 800px) {
+  .assessment-page-stepper {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-page-step {
+    justify-content: flex-start;
+  }
+
+  .assessment-page-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .assessment-sticky-progress.assessment-page-shell {
+    top: 62px;
+    padding: 14px;
+  }
+
+  .assessment-page-progress-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .assessment-page-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .assessment-page-actions .primary-button,
+  .assessment-page-actions .secondary-button {
+    width: 100%;
+  }
+
+  .assessment-page-actions-end {
+    flex-direction: column;
+  }
+}
+
+/* =====================================================
+   COUNSELING WORKFLOW V2
+   Grouped requests / targeted transfers / session history
+===================================================== */
+
+.counseling-request-list-heading,
+.counseling-request-user-view-header,
+.profile-session-note-heading,
+.profile-recent-session-note-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.counseling-request-list-heading h2,
+.counseling-request-user-view-header h2 {
+  margin-bottom: 5px;
+}
+
+.counseling-request-list-heading p,
+.counseling-request-user-view-header p {
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.counseling-request-user-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.counseling-request-user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.counseling-request-user-main {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.counseling-request-user-main > strong {
+  color: #172033;
+  font-size: 1rem;
+}
+
+.counseling-request-user-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: #667085;
+  font-size: 0.88rem;
+}
+
+.counseling-request-user-card .secondary-button {
+  flex-shrink: 0;
+}
+
+.counseling-request-user-view {
+  border-color: #cddbf0;
+  background: #fbfdff;
+}
+
+.counseling-request-user-view-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #173f8f;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.counseling-request-user-request-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.counseling-request-user-request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.counseling-request-user-request-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.counseling-request-user-request-card small {
+  color: #667085;
+}
+
+.counseling-request-user-request-card .primary-button {
+  flex-shrink: 0;
+}
+
+.counselor-transfer-target-panel {
+  display: grid;
+  gap: 8px;
+  width: min(420px, 100%);
+}
+
+.counselor-transfer-target-panel label {
+  margin: 0;
+}
+
+.counselor-transfer-target-panel select {
+  width: 100%;
+}
+
+.profile-session-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.profile-session-history-button {
+  appearance: none;
+  border: 1px solid #cfd8e6;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.profile-session-history-button:hover {
+  border-color: #7898c8;
+  background: #f3f7fd;
+}
+
+.profile-session-history-button.selected {
+  border-color: #173f8f;
+  background: #edf3ff;
+  color: #173f8f;
+}
+
+.profile-session-note-view {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #dbe4f1;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.profile-session-note-heading {
+  margin-bottom: 14px;
+}
+
+.profile-session-note-heading strong {
+  color: #172033;
+}
+
+.profile-session-note-heading span {
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.profile-session-note-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-session-note-field {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.profile-session-note-field > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #173f8f;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.profile-session-note-field p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.profile-recent-session-note-banner {
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #cfe0f7;
+  border-radius: 12px;
+  background: #eef6ff;
+}
+
+.profile-recent-session-note-banner strong {
+  color: #173f8f;
+}
+
+.profile-recent-session-note-banner span {
+  color: #475569;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .counseling-request-list-heading,
+  .counseling-request-user-view-header,
+  .profile-session-note-heading,
+  .profile-recent-session-note-banner {
+    flex-direction: column;
+  }
+
+  .counseling-request-user-card,
+  .counseling-request-user-request-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .counseling-request-user-card .secondary-button,
+  .counseling-request-user-request-card .primary-button {
+    width: 100%;
+  }
+
+  .profile-session-note-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

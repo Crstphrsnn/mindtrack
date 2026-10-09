@@ -8,16 +8,12 @@ import {
   Calendar,
   Clock3,
   FileText,
-  Save,
   X
 } from "lucide-react";
 
 import {
-  deleteField,
   doc,
-  onSnapshot,
-  serverTimestamp,
-  setDoc
+  onSnapshot
 } from "firebase/firestore";
 
 import { db } from "../services/firebase";
@@ -169,6 +165,199 @@ function formatTimestamp(value) {
 }
 
 
+function normalizeCounselingStatus(
+  status
+) {
+
+  const value =
+    String(
+      status ||
+      ""
+    ).trim();
+
+
+  if (
+    value ===
+    "Schedule for counseling"
+  ) {
+
+    return "Scheduled for counseling";
+  }
+
+
+  if (
+    value ===
+    "Follow up is recommended"
+  ) {
+
+    return "Follow up Counseling is recommended";
+  }
+
+
+  if (
+    value ===
+    "Concluded"
+  ) {
+
+    return "Terminated";
+  }
+
+
+  return value;
+}
+
+
+function recordTimestampMillis(
+  value
+) {
+
+  if (!value) {
+    return 0;
+  }
+
+
+  if (
+    typeof value.toMillis ===
+    "function"
+  ) {
+
+    return value.toMillis();
+  }
+
+
+  if (
+    typeof value.seconds ===
+    "number"
+  ) {
+
+    return value.seconds *
+      1000;
+  }
+
+
+  const parsed =
+    new Date(
+      value
+    ).getTime();
+
+
+  return Number.isNaN(
+    parsed
+  )
+    ? 0
+    : parsed;
+}
+
+
+function consultationSortValue(
+  row
+) {
+
+  if (
+    row?.date
+  ) {
+
+    const timeText =
+      String(
+        row.time ||
+        ""
+      ).trim();
+
+
+    const match =
+      timeText.match(
+        /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+      );
+
+
+    if (match) {
+
+      let hours =
+        Number(
+          match[1]
+        );
+
+
+      const minutes =
+        Number(
+          match[2]
+        );
+
+
+      const period =
+        match[3]
+          .toUpperCase();
+
+
+      if (
+        period ===
+          "PM" &&
+        hours !==
+          12
+      ) {
+
+        hours +=
+          12;
+      }
+
+
+      if (
+        period ===
+          "AM" &&
+        hours ===
+          12
+      ) {
+
+        hours =
+          0;
+      }
+
+
+      const date =
+        new Date(
+          `${row.date}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`
+        );
+
+
+      if (
+        !Number.isNaN(
+          date.getTime()
+        )
+      ) {
+
+        return date.getTime();
+      }
+    }
+
+
+    const dateOnly =
+      new Date(
+        `${row.date}T00:00:00`
+      );
+
+
+    if (
+      !Number.isNaN(
+        dateOnly.getTime()
+      )
+    ) {
+
+      return dateOnly.getTime();
+    }
+  }
+
+
+  return (
+    recordTimestampMillis(
+      row?.updatedAt
+    ) ||
+    recordTimestampMillis(
+      row?.createdAt
+    )
+  );
+}
+
+
 export default function UserProfileFullScreen({
   profile,
   currentUser,
@@ -262,9 +451,196 @@ export default function UserProfileFullScreen({
 
 
   const [
+    sessionNotes,
+    setSessionNotes
+  ] = useState([]);
+
+
+  const [
+    sessionNotesError,
+    setSessionNotesError
+  ] = useState("");
+
+
+  const [
+    selectedHistorySessionId,
+    setSelectedHistorySessionId
+  ] = useState("");
+
+
+  const [
     counselingProfile,
     setCounselingProfile
   ] = useState(null);
+
+
+  useEffect(
+    () => {
+
+      if (
+        !profile?.id ||
+        !currentUser?.id
+      ) {
+
+        setSessionNotes([]);
+        setSessionNotesError("");
+
+        return undefined;
+      }
+
+
+      const consultationIds =
+        Array.from(
+          new Set(
+            consultations
+              .map(
+                row =>
+                  row.id
+              )
+              .filter(Boolean)
+          )
+        );
+
+
+      if (
+        consultationIds.length ===
+        0
+      ) {
+
+        setSessionNotes([]);
+        setSessionNotesError("");
+
+        return undefined;
+      }
+
+
+      let active =
+        true;
+
+
+      const notesById =
+        new Map();
+
+
+      setSessionNotesError("");
+
+
+      const unsubscribers =
+        consultationIds.map(
+          consultationId => {
+
+            const noteRef =
+              doc(
+                db,
+                "counselingSessionNotes",
+                consultationId
+              );
+
+
+            return onSnapshot(
+              noteRef,
+
+              snapshot => {
+
+                if (!active) {
+                  return;
+                }
+
+
+                if (
+                  snapshot.exists()
+                ) {
+
+                  notesById.set(
+                    consultationId,
+                    {
+                      id:
+                        snapshot.id,
+                      ...snapshot.data()
+                    }
+                  );
+
+                } else {
+
+                  notesById.delete(
+                    consultationId
+                  );
+                }
+
+
+                setSessionNotes(
+                  Array.from(
+                    notesById.values()
+                  )
+                );
+              },
+
+              error => {
+
+                if (!active) {
+                  return;
+                }
+
+
+                console.error(
+                  `Unable to load counseling session notes for ${consultationId}:`,
+                  error
+                );
+
+
+                notesById.delete(
+                  consultationId
+                );
+
+
+                setSessionNotes(
+                  Array.from(
+                    notesById.values()
+                  )
+                );
+
+
+                setSessionNotesError(
+                  error?.code ===
+                    "permission-denied"
+                    ? "Some counseling session notes could not be loaded because the current Firestore rules do not allow this counselor to read them."
+                    : (
+                        error?.message ||
+                        "Unable to load some counseling session notes."
+                      )
+                );
+              }
+            );
+          }
+        );
+
+
+      return () => {
+
+        active =
+          false;
+
+
+        unsubscribers.forEach(
+          unsubscribe => {
+
+            try {
+              unsubscribe();
+            } catch {
+              // Ignore listener cleanup errors.
+            }
+          }
+        );
+      };
+
+    },
+
+    [
+      profile?.id,
+      currentUser?.id,
+      consultations
+    ]
+  );
 
 
   const [
@@ -309,24 +685,6 @@ export default function UserProfileFullScreen({
   ] = useState(true);
 
 
-  const [
-    notesSaving,
-    setNotesSaving
-  ] = useState(false);
-
-
-  const [
-    notesMessage,
-    setNotesMessage
-  ] = useState("");
-
-
-  const [
-    notesError,
-    setNotesError
-  ] = useState("");
-
-
   useEffect(
     () => {
 
@@ -336,7 +694,6 @@ export default function UserProfileFullScreen({
 
 
       setNotesLoading(true);
-      setNotesError("");
 
 
       const noteRef =
@@ -368,61 +725,19 @@ export default function UserProfileFullScreen({
             );
 
 
-            const legacyNotes =
-              data?.notes ||
-              "";
-
-
-            setCaseHistoryDraft(
-              data?.caseHistory ||
-              legacyNotes
-            );
-
-
-            setSessionSummaryDraft(
-              data?.counselingSessionSummary ||
-              ""
-            );
-
-
-            setObservationDraft(
-              data?.counselorObservation ||
-              ""
-            );
-
-
-            setRecommendationsDraft(
-              data?.recommendations ||
-              ""
-            );
-
-
             setNotesLoading(false);
           },
 
           error => {
 
             console.error(
-              "Unable to load counselor notes:",
+              "Unable to load counseling profile:",
               error
             );
 
 
             setCounselingProfile(
               null
-            );
-
-
-            setNotesError(
-              error?.code ===
-              "permission-denied"
-
-                ? "You do not have permission to view counselor notes for this user."
-
-                : (
-                    error?.message ||
-                    "Unable to load counselor notes."
-                  )
             );
 
 
@@ -659,15 +974,6 @@ export default function UserProfileFullScreen({
     );
 
 
-  const canEditCounselorNotes =
-    isSuperAdmin ||
-    isCurrentAssignedCounselor ||
-    (
-      isSameDepartmentCounselor &&
-      !assignedCounselorId
-    );
-
-
   const assignedCounselorLabel =
     counselingProfile
       ?.assignedCounselorName
@@ -708,6 +1014,7 @@ export default function UserProfileFullScreen({
           .filter(
             row =>
               [
+                "Scheduled for counseling",
                 "Schedule for counseling",
                 "Approved",
                 "Rescheduled"
@@ -736,153 +1043,269 @@ export default function UserProfileFullScreen({
     );
 
 
-  async function saveNotes() {
+  const terminatedSessions =
+    useMemo(
+      () =>
+        consultations
+          .filter(
+            row =>
+              normalizeCounselingStatus(
+                row.status
+              ) ===
+              "Terminated"
+          )
+          .sort(
+            (
+              first,
+              second
+            ) => {
 
-    if (!canEditCounselorNotes) {
-      return;
-    }
-
-
-    try {
-
-      setNotesSaving(true);
-      setNotesMessage("");
-      setNotesError("");
-
-
-      const noteRef =
-        doc(
-          db,
-          "counselingProfiles",
-          profile.id
-        );
-
-
-      const counselorId =
-        counselingProfile
-          ?.assignedCounselorId
-
-        || (
-          currentUser.role ===
-          "counselor"
-            ? currentUser.id
-            : ""
-        );
+              const firstSessionNumber =
+                Number(
+                  first.sessionNumber ||
+                  0
+                ) ||
+                0;
 
 
-      const counselorName =
-        counselingProfile
-          ?.assignedCounselorName
-
-        || (
-          currentUser.role ===
-          "counselor"
-            ? currentUser.name
-            : ""
-        );
+              const secondSessionNumber =
+                Number(
+                  second.sessionNumber ||
+                  0
+                ) ||
+                0;
 
 
-      await setDoc(
-        noteRef,
-        {
-          ownerId:
-            profile.id,
+              if (
+                firstSessionNumber &&
+                secondSessionNumber &&
+                firstSessionNumber !==
+                  secondSessionNumber
+              ) {
 
-          ownerName:
-            profile.name ||
-            "",
+                return (
+                  secondSessionNumber -
+                  firstSessionNumber
+                );
+              }
 
-          department:
-            profile.department ||
-            "",
 
-          assignedCounselorId:
-            counselorId,
+              return (
+                consultationSortValue(
+                  second
+                ) -
+                consultationSortValue(
+                  first
+                )
+              );
+            }
+          ),
+      [
+        consultations
+      ]
+    );
 
-          assignedCounselorName:
-            counselorName,
 
-          assignedCounselorDepartment:
-            counselingProfile
-              ?.assignedCounselorDepartment
-            || (
-              currentUser.role ===
-                "counselor"
-                ? currentUser.department || ""
-                : ""
-            ),
+  const notesByConsultationId =
+    useMemo(
+      () =>
+        new Map(
+          sessionNotes.map(
+            note => [
+              note.consultationId ||
+              note.id,
+              note
+            ]
+          )
+        ),
+      [
+        sessionNotes
+      ]
+    );
 
-          previousCounselorIds:
-            counselingProfile
-              ?.previousCounselorIds ||
-            [],
 
-          previousCounselorNames:
-            counselingProfile
-              ?.previousCounselorNames ||
-            [],
+  const consultationsById =
+    useMemo(
+      () =>
+        new Map(
+          consultations.map(
+            row => [
+              row.id,
+              row
+            ]
+          )
+        ),
+      [
+        consultations
+      ]
+    );
 
-          caseHistory:
-            caseHistoryDraft.trim(),
 
-          counselingSessionSummary:
-            sessionSummaryDraft.trim(),
+  const latestSessionNote =
+    useMemo(
+      () =>
+        [...sessionNotes]
+          .sort(
+            (
+              first,
+              second
+            ) => {
 
-          counselorObservation:
-            observationDraft.trim(),
+              const firstSession =
+                consultationsById.get(
+                  first.consultationId ||
+                  first.id
+                );
 
-          recommendations:
-            recommendationsDraft.trim(),
 
-          notes:
-            deleteField(),
+              const secondSession =
+                consultationsById.get(
+                  second.consultationId ||
+                  second.id
+                );
 
-          updatedById:
-            currentUser.id,
 
-          updatedByName:
-            currentUser.name ||
-            currentUser.email ||
-            "Authorized user",
+              const firstSessionNumber =
+                Number(
+                  firstSession
+                    ?.sessionNumber ||
+                  0
+                ) ||
+                0;
 
-          updatedAt:
-            serverTimestamp()
-        },
-        {
-          merge: true
-        }
+
+              const secondSessionNumber =
+                Number(
+                  secondSession
+                    ?.sessionNumber ||
+                  0
+                ) ||
+                0;
+
+
+              if (
+                firstSessionNumber &&
+                secondSessionNumber &&
+                firstSessionNumber !==
+                  secondSessionNumber
+              ) {
+
+                return (
+                  secondSessionNumber -
+                  firstSessionNumber
+                );
+              }
+
+
+              const firstSessionTime =
+                consultationSortValue(
+                  firstSession ||
+                  {}
+                );
+
+
+              const secondSessionTime =
+                consultationSortValue(
+                  secondSession ||
+                  {}
+                );
+
+
+              if (
+                firstSessionTime !==
+                secondSessionTime
+              ) {
+
+                return (
+                  secondSessionTime -
+                  firstSessionTime
+                );
+              }
+
+
+              return (
+                recordTimestampMillis(
+                  second.updatedAt ||
+                  second.createdAt
+                ) -
+                recordTimestampMillis(
+                  first.updatedAt ||
+                  first.createdAt
+                )
+              );
+            }
+          )[0] ||
+        null,
+      [
+        sessionNotes,
+        consultationsById
+      ]
+    );
+
+
+  const latestSessionForNote =
+    latestSessionNote
+      ? consultationsById.get(
+          latestSessionNote.consultationId ||
+          latestSessionNote.id
+        ) ||
+        null
+      : null;
+
+
+  const selectedHistorySession =
+    terminatedSessions.find(
+      row =>
+        row.id ===
+        selectedHistorySessionId
+    ) ||
+    null;
+
+
+  const selectedHistoryNote =
+    selectedHistorySession
+      ? notesByConsultationId.get(
+          selectedHistorySession.id
+        ) ||
+        null
+      : null;
+
+
+  useEffect(
+    () => {
+
+      setCaseHistoryDraft(
+        latestSessionNote
+          ?.caseHistory ||
+        ""
       );
 
 
-      setNotesMessage(
-        "Counselor notes saved successfully."
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Unable to save counselor notes:",
-        error
+      setSessionSummaryDraft(
+        latestSessionNote
+          ?.counselingSessionSummary ||
+        ""
       );
 
 
-      setNotesError(
-        error?.code ===
-        "permission-denied"
-
-          ? "You are not allowed to edit the counselor notes for this user."
-
-          : (
-              error?.message ||
-              "Unable to save counselor notes."
-            )
+      setObservationDraft(
+        latestSessionNote
+          ?.counselorObservation ||
+        ""
       );
 
-    } finally {
 
-      setNotesSaving(false);
-    }
-  }
+      setRecommendationsDraft(
+        latestSessionNote
+          ?.recommendedActions ||
+        ""
+      );
+
+    },
+    [
+      latestSessionNote
+    ]
+  );
 
 
   return (
@@ -1480,7 +1903,7 @@ export default function UserProfileFullScreen({
                 </h3>
 
                 <p>
-                  Shows the user's submitted counseling requests from newest to oldest.
+                  Terminated counseling sessions are shown from most recent to oldest. Select a session number to view that session's private counseling notes.
                 </p>
 
               </div>
@@ -1492,101 +1915,174 @@ export default function UserProfileFullScreen({
             </div>
 
 
-            {consultations.length === 0
+            {terminatedSessions.length === 0
 
               ? (
 
                 <div className="user-profile-empty">
-                  No counseling request history.
+                  No terminated counseling sessions yet.
                 </div>
 
               )
 
               : (
 
-                <div className="profile-history-list">
+                <>
 
-                  {consultations.map(
-                    row => (
+                  <div className="profile-session-history-list">
 
-                      <article
-                        key={row.id}
-                        className="profile-history-card"
-                      >
+                    {terminatedSessions.map(
+                      (
+                        row,
+                        index
+                      ) => {
 
-                        <div className="profile-history-card-top">
+                        const sessionNumber =
+                          Number(
+                            row.sessionNumber ||
+                            0
+                          ) ||
+                          (
+                            terminatedSessions.length -
+                            index
+                          );
 
-                          <strong>
-                            {
-                              row.category ||
-                              "Counseling request"
+
+                        return (
+
+                          <button
+                            type="button"
+                            key={
+                              row.id
                             }
-                          </strong>
-
-                          <span className="status">
-                            {
-                              row.status ||
-                              "Pending approval"
+                            className={
+                              selectedHistorySessionId ===
+                                row.id
+                                ? "profile-session-history-button selected"
+                                : "profile-session-history-button"
                             }
-                          </span>
-
-                        </div>
-
-
-                        <p>
-                          {
-                            formatDate(
-                              row.date
-                            )
-                          }
-                          {" · "}
-                          {
-                            row.time ||
-                            "No time"
-                          }
-
-                          {row.mode && (
-                            <>
-                              {" · "}
-                              {row.mode}
-                            </>
-                          )}
-                        </p>
-
-
-                        {row.message && (
-
-                          <small>
-                            <b>
-                              Details:
-                            </b>
+                            onClick={
+                              () =>
+                                setSelectedHistorySessionId(
+                                  current =>
+                                    current ===
+                                      row.id
+                                      ? ""
+                                      : row.id
+                                )
+                            }
+                          >
+                            Session
                             {" "}
-                            {row.message}
-                          </small>
+                            {sessionNumber}
+                          </button>
 
-                        )}
+                        );
+                      }
+                    )}
+
+                  </div>
 
 
-                        {row.counselorRemarks && (
+                  {selectedHistorySession && (
 
-                          <small>
-                            <b>
-                              Counselor remarks:
-                            </b>
-                            {" "}
-                            {
-                              row.counselorRemarks
-                            }
-                          </small>
+                    <div className="profile-session-note-view">
 
-                        )}
+                      <div className="profile-session-note-heading">
 
-                      </article>
+                        <strong>
+                          Session
+                          {" "}
+                          {
+                            selectedHistorySession.sessionNumber ||
+                            "—"
+                          }
+                          {" "}
+                          Counseling Notes
+                        </strong>
 
-                    )
+                        <span>
+                          Counselor-only documentation
+                        </span>
+
+                      </div>
+
+
+                      {selectedHistoryNote
+
+                        ? (
+
+                          <div className="profile-session-note-grid">
+
+                            <div className="profile-session-note-field">
+                              <span>
+                                Case History
+                              </span>
+                              <p>
+                                {
+                                  selectedHistoryNote.caseHistory ||
+                                  "No case history recorded for this session."
+                                }
+                              </p>
+                            </div>
+
+
+                            <div className="profile-session-note-field">
+                              <span>
+                                Summary of Counseling Session
+                              </span>
+                              <p>
+                                {
+                                  selectedHistoryNote.counselingSessionSummary ||
+                                  "No counseling session summary recorded."
+                                }
+                              </p>
+                            </div>
+
+
+                            <div className="profile-session-note-field">
+                              <span>
+                                Counselor's Observation
+                              </span>
+                              <p>
+                                {
+                                  selectedHistoryNote.counselorObservation ||
+                                  "No counselor observation recorded."
+                                }
+                              </p>
+                            </div>
+
+
+                            <div className="profile-session-note-field">
+                              <span>
+                                Recommended Actions
+                              </span>
+                              <p>
+                                {
+                                  selectedHistoryNote.recommendedActions ||
+                                  "No recommended actions recorded."
+                                }
+                              </p>
+                            </div>
+
+                          </div>
+
+                        )
+
+                        : (
+
+                          <div className="user-profile-empty">
+                            No private counseling notes were saved for this session.
+                          </div>
+
+                        )
+                      }
+
+                    </div>
+
                   )}
 
-                </div>
+                </>
 
               )
             }
@@ -1595,6 +2091,13 @@ export default function UserProfileFullScreen({
 
 
           <section className="user-profile-modal-card counseling-notes-card">
+
+            {sessionNotesError && (
+              <div className="error-box">
+                {sessionNotesError}
+              </div>
+            )}
+
 
             <div className="user-profile-section-title">
 
@@ -1605,7 +2108,7 @@ export default function UserProfileFullScreen({
                 </h3>
 
                 <p>
-                  Structured private case notes. Only the assigned counselor or Super Admin can edit this section.
+                  These notes come from the user's most recent counseling session with saved private notes. Use Counseling Request History above to open notes from earlier terminated sessions.
                 </p>
 
               </div>
@@ -1627,122 +2130,133 @@ export default function UserProfileFullScreen({
 
               )
 
-              : (
+              : !latestSessionNote
 
-                <>
+                ? (
 
-                  <div className="counselor-notes-grid">
-
-                    <label className="counselor-note-field">
-                      <span>Case History</span>
-                      <textarea
-                        rows="6"
-                        value={caseHistoryDraft}
-                        readOnly={!canEditCounselorNotes}
-                        onChange={event => setCaseHistoryDraft(event.target.value)}
-                        placeholder={
-                          canEditCounselorNotes
-                            ? "Record relevant case background, previous concerns, and important case developments."
-                            : "Only the assigned counselor or Super Admin can edit this field."
-                        }
-                      />
-                    </label>
-
-                    <label className="counselor-note-field">
-                      <span>Counseling Session Summary</span>
-                      <textarea
-                        rows="6"
-                        value={sessionSummaryDraft}
-                        readOnly={!canEditCounselorNotes}
-                        onChange={event => setSessionSummaryDraft(event.target.value)}
-                        placeholder={
-                          canEditCounselorNotes
-                            ? "Summarize the important topics, concerns, and outcomes discussed during counseling."
-                            : "Only the assigned counselor or Super Admin can edit this field."
-                        }
-                      />
-                    </label>
-
-                    <label className="counselor-note-field">
-                      <span>Counselor's Observation</span>
-                      <textarea
-                        rows="6"
-                        value={observationDraft}
-                        readOnly={!canEditCounselorNotes}
-                        onChange={event => setObservationDraft(event.target.value)}
-                        placeholder={
-                          canEditCounselorNotes
-                            ? "Record relevant professional observations from the counseling interaction."
-                            : "Only the assigned counselor or Super Admin can edit this field."
-                        }
-                      />
-                    </label>
-
-                    <label className="counselor-note-field">
-                      <span>Recommendations</span>
-                      <textarea
-                        rows="6"
-                        value={recommendationsDraft}
-                        readOnly={!canEditCounselorNotes}
-                        onChange={event => setRecommendationsDraft(event.target.value)}
-                        placeholder={
-                          canEditCounselorNotes
-                            ? "Record follow-up steps, support recommendations, or other counselor guidance."
-                            : "Only the assigned counselor or Super Admin can edit this field."
-                        }
-                      />
-                    </label>
-
+                  <div className="user-profile-empty">
+                    No private counseling notes are available from a completed counseling session yet.
                   </div>
 
-                  <div className="counseling-notes-meta">
-                    <span>
-                      Assigned counselor:{" "}
-                      <strong>{assignedCounselorLabel}</strong>
-                    </span>
+                )
 
-                    <span>
-                      Last updated:{" "}
-                      <strong>{formatTimestamp(counselingProfile?.updatedAt)}</strong>
-                    </span>
-                  </div>
+                : (
 
-                  {notesMessage && (
-                    <div className="success-box">
-                      {notesMessage}
+                  <>
+
+                    <div className="profile-recent-session-note-banner">
+
+                      <strong>
+                        Most recent counseling session
+                      </strong>
+
+                      <span>
+                        Session
+                        {" "}
+                        {
+                          latestSessionForNote
+                            ?.sessionNumber ||
+                          "—"
+                        }
+                      </span>
+
                     </div>
-                  )}
 
-                  {notesError && (
-                    <div className="error-box">
-                      {notesError}
+
+                    <div className="counselor-notes-grid">
+
+                      <label className="counselor-note-field">
+                        <span>
+                          Case History
+                        </span>
+
+                        <textarea
+                          rows="6"
+                          value={
+                            caseHistoryDraft
+                          }
+                          readOnly
+                        />
+                      </label>
+
+
+                      <label className="counselor-note-field">
+                        <span>
+                          Summary of Counseling Session
+                        </span>
+
+                        <textarea
+                          rows="6"
+                          value={
+                            sessionSummaryDraft
+                          }
+                          readOnly
+                        />
+                      </label>
+
+
+                      <label className="counselor-note-field">
+                        <span>
+                          Counselor's Observation
+                        </span>
+
+                        <textarea
+                          rows="6"
+                          value={
+                            observationDraft
+                          }
+                          readOnly
+                        />
+                      </label>
+
+
+                      <label className="counselor-note-field">
+                        <span>
+                          Recommended Actions
+                        </span>
+
+                        <textarea
+                          rows="6"
+                          value={
+                            recommendationsDraft
+                          }
+                          readOnly
+                        />
+                      </label>
+
                     </div>
-                  )}
 
-                  {canEditCounselorNotes
-                    ? (
-                      <button
-                        type="button"
-                        className="primary-button counseling-notes-save"
-                        disabled={notesSaving}
-                        onClick={saveNotes}
-                      >
-                        <Save size={18} />
-                        {notesSaving ? "Saving..." : "Save Counselor Notes"}
-                      </button>
-                    )
-                    : (
-                      <div className="profile-note">
-                        {isPreviousAssignedCounselor
-                          ? "Counselor notes are read-only because this user was transferred to another assigned counselor. Your access is retained for documentation."
-                          : "Counselor notes are locked because another counselor is assigned to this user. Super Admin can still edit them."}
-                      </div>
-                    )
-                  }
 
-                </>
+                    <div className="counseling-notes-meta">
 
-              )
+                      <span>
+                        Last documented by:
+                        {" "}
+                        <strong>
+                          {
+                            latestSessionNote.updatedByName ||
+                            assignedCounselorLabel
+                          }
+                        </strong>
+                      </span>
+
+                      <span>
+                        Last updated:
+                        {" "}
+                        <strong>
+                          {
+                            formatTimestamp(
+                              latestSessionNote.updatedAt
+                            )
+                          }
+                        </strong>
+                      </span>
+
+                    </div>
+
+                  </>
+
+                )
             }
 
           </section>

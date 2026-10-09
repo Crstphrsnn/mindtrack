@@ -2952,6 +2952,18 @@ function useRows(
       }
 
 
+      if (filters.targetCounselorId) {
+
+        constraints.push(
+          where(
+            "targetCounselorId",
+            "==",
+            filters.targetCounselorId
+          )
+        );
+      }
+
+
       if (filters.assignedCounselorId) {
 
         constraints.push(
@@ -3137,6 +3149,7 @@ function useRows(
       filters.role,
       filters.status,
       filters.requestedById,
+      filters.targetCounselorId,
       filters.assignedCounselorId,
       filters.counselorId,
       filters.active
@@ -3405,10 +3418,23 @@ function Dashboard() {
   const pendingTransferRows =
     useRows(
       "transferRequests",
-      {
-        status:
-          "Pending approval"
-      }
+      isCounselor
+        ? {
+            targetCounselorId:
+              user.id,
+
+            status:
+              "Pending approval"
+          }
+        : isSuperAdmin
+          ? {
+              status:
+                "Pending approval"
+            }
+          : {
+              ownerId:
+                "__NO_ACCESS__"
+            }
     );
 
 
@@ -3435,6 +3461,10 @@ function Dashboard() {
     pendingTransferRows.filter(
       row =>
         isCounselor &&
+        row.status ===
+          "Pending approval" &&
+        row.targetCounselorId ===
+          user.id &&
         row.requestedById !==
           user.id
     );
@@ -3554,27 +3584,15 @@ function Dashboard() {
     if (
       transfer.status !==
         "Pending approval" ||
+      transfer.targetCounselorId !==
+        user.id ||
       unavailableTransferIds.has(
         transfer.id
       )
     ) {
 
       alert(
-        "This transfer request has already been accepted or is no longer available."
-      );
-
-      return;
-    }
-
-
-    if (
-      appointmentHasStarted(
-        transfer
-      )
-    ) {
-
-      alert(
-        "This counseling schedule has already started or passed. The transfer can no longer be accepted."
+        "This transfer request is not assigned to you, has already been accepted, or is no longer available."
       );
 
       return;
@@ -3583,9 +3601,10 @@ function Dashboard() {
 
     if (
       !window.confirm(
-        `Approve the counselor transfer for ${transfer.ownerName || "this user"}? You will become the assigned counselor for this scheduled counseling request.`
+        `Accept the counselor transfer for ${transfer.ownerName || "this user"}? You will become the assigned counselor for this counseling case.`
       )
     ) {
+
       return;
     }
 
@@ -3634,11 +3653,18 @@ function Dashboard() {
 
       await runTransaction(
         db,
+
         async transaction => {
 
           const transferSnap =
             await transaction.get(
               transferRef
+            );
+
+
+          const consultationSnap =
+            await transaction.get(
+              consultationRef
             );
 
 
@@ -3648,9 +3674,22 @@ function Dashboard() {
             );
 
 
-          if (!transferSnap.exists()) {
+          if (
+            !transferSnap.exists()
+          ) {
+
             throw new Error(
               "This transfer request no longer exists."
+            );
+          }
+
+
+          if (
+            !consultationSnap.exists()
+          ) {
+
+            throw new Error(
+              "The counseling request linked to this transfer no longer exists."
             );
           }
 
@@ -3659,16 +3698,39 @@ function Dashboard() {
             transferSnap.data();
 
 
+          const currentConsultation =
+            consultationSnap.data();
+
+
           if (
-            current.scheduledAt &&
-            typeof current.scheduledAt.toMillis ===
-              "function" &&
-            Date.now() >=
-              current.scheduledAt.toMillis()
+            current.status !==
+              "Pending approval"
           ) {
 
             throw new Error(
-              "This counseling schedule has already started or passed. The transfer can no longer be accepted."
+              "This transfer request has already been handled."
+            );
+          }
+
+
+          if (
+            current.targetCounselorId !==
+              user.id
+          ) {
+
+            throw new Error(
+              "This transfer request was assigned to another Guidance Counselor."
+            );
+          }
+
+
+          if (
+            current.requestedById ===
+              user.id
+          ) {
+
+            throw new Error(
+              "The requesting counselor cannot accept their own transfer request."
             );
           }
 
@@ -3711,32 +3773,40 @@ function Dashboard() {
             );
 
 
+          const hasActiveScheduledSession =
+            counselingRequestIsScheduled(
+              currentConsultation.status
+            ) &&
+            Boolean(
+              currentConsultation.date &&
+              currentConsultation.time
+            );
+
+
           const oldSlotRef =
-            current.requestedById &&
-            current.date &&
-            current.time
+            hasActiveScheduledSession &&
+            current.requestedById
               ? doc(
                   db,
                   "counselingScheduleSlots",
                   counselingSlotDocumentId(
                     current.requestedById,
-                    current.date,
-                    current.time
+                    currentConsultation.date,
+                    currentConsultation.time
                   )
                 )
               : null;
 
 
           const newSlotRef =
-            current.date &&
-            current.time
+            hasActiveScheduledSession
               ? doc(
                   db,
                   "counselingScheduleSlots",
                   counselingSlotDocumentId(
                     user.id,
-                    current.date,
-                    current.time
+                    currentConsultation.date,
+                    currentConsultation.time
                   )
                 )
               : null;
@@ -3780,27 +3850,7 @@ function Dashboard() {
           ) {
 
             throw new Error(
-              "You already have another counseling session at this date and time. The transfer cannot be accepted until the schedule conflict is resolved."
-            );
-          }
-
-
-          if (
-            current.status !==
-            "Pending approval"
-          ) {
-            throw new Error(
-              "This transfer request has already been handled by another counselor."
-            );
-          }
-
-
-          if (
-            current.requestedById ===
-            user.id
-          ) {
-            throw new Error(
-              "The requesting counselor cannot approve their own transfer request."
+              "The selected counselor already has another counseling session at this date and time. The transfer cannot be accepted until the schedule conflict is resolved."
             );
           }
 
@@ -4011,10 +4061,10 @@ function Dashboard() {
                   user.id,
 
                 date:
-                  current.date,
+                  currentConsultation.date,
 
                 time:
-                  current.time,
+                  currentConsultation.time,
 
                 consultationId:
                   current.consultationId,
@@ -4048,16 +4098,6 @@ function Dashboard() {
       );
 
 
-      const otherCounselors =
-        counselorAccounts.filter(
-          counselor =>
-            counselor.id !==
-              user.id &&
-            counselor.id !==
-              transfer.requestedById
-        );
-
-
       await Promise.allSettled([
         addRecord(
           "notifications",
@@ -4069,7 +4109,7 @@ function Dashboard() {
               "Counselor transfer approved",
 
             message:
-              `${user.name || "A Guidance Counselor"} approved the transfer and is now assigned to your scheduled counseling request. Your counseling schedule remains available in MindTrack.`,
+              `${user.name || "The selected Guidance Counselor"} accepted the transfer and is now assigned to your counseling case.`,
 
             notificationType:
               "counselor_transfer_update",
@@ -4111,7 +4151,7 @@ function Dashboard() {
               "Counselor transfer accepted",
 
             message:
-              `${user.name || "Another counselor"} accepted the transfer for ${transfer.ownerName || "the user"}. The original transfer record remains available for documentation.`,
+              `${user.name || "The selected counselor"} accepted the transfer for ${transfer.ownerName || "the user"}.`,
 
             notificationType:
               "transfer_status",
@@ -4138,48 +4178,6 @@ function Dashboard() {
             read:
               false
           }
-        ),
-
-        ...otherCounselors.map(
-          counselor =>
-            addRecord(
-              "notifications",
-              {
-                ownerId:
-                  counselor.id,
-
-                title:
-                  "Transfer request already accepted",
-
-                message:
-                  `${user.name || "Another counselor"} accepted the transfer for ${transfer.ownerName || "the user"}. No further action is needed.`,
-
-                notificationType:
-                  "transfer_status",
-
-                senderRole:
-                  "counselor",
-
-                senderId:
-                  user.id,
-
-                senderName:
-                  user.name ||
-                  "Guidance Counselor",
-
-                targetPath:
-                  "/dashboard",
-
-                sourceType:
-                  "transfer",
-
-                sourceId:
-                  transfer.id,
-
-                read:
-                  false
-              }
-            )
         )
       ]);
 
@@ -4204,7 +4202,7 @@ function Dashboard() {
 
 
       alert(
-        `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you for the scheduled counseling request.`
+        `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you.`
       );
 
     } catch (error) {
@@ -4228,6 +4226,9 @@ function Dashboard() {
         ) ||
         errorMessage.includes(
           "no longer exists"
+        ) ||
+        errorMessage.includes(
+          "assigned to another"
         ) ||
         errorMessage.includes(
           "Missing or insufficient permissions"
@@ -4262,7 +4263,8 @@ function Dashboard() {
 
 
         alert(
-          "This transfer request has already been accepted by another counselor and is no longer available."
+          error?.message ||
+          "This transfer request is no longer available."
         );
 
       } else {
@@ -4456,7 +4458,7 @@ function Dashboard() {
                 </h2>
 
                 <p>
-                  These scheduled counseling cases are waiting for another counselor to accept the transfer.
+                  These counseling cases were assigned to you by another counselor and are waiting for your acceptance.
                 </p>
 
               </div>
@@ -4707,14 +4709,10 @@ function Assessment() {
     useState(null);
 
 
-  const assessmentHistory =
-    useRows(
-      "assessments",
-      {
-        ownerId:
-          user.id
-      }
-    );
+  const [
+    assessmentPageIndex,
+    setAssessmentPageIndex
+  ] = useState(0);
 
 
   const assessmentLocks =
@@ -4732,18 +4730,16 @@ function Assessment() {
     null;
 
 
-  const latestAssessment =
-    assessmentHistory[0] ||
-    null;
-
-
   const activeAssessment =
-    assessmentHistory.find(
-      row =>
-        row.status !==
+    Boolean(
+      assessmentLock &&
+      ![
+        "Eligible",
         "Concluded"
-    ) ||
-    null;
+      ].includes(
+        assessmentLock.status
+      )
+    );
 
 
   const ASSESSMENT_COOLDOWN_DAYS =
@@ -4810,17 +4806,7 @@ function Assessment() {
           assessmentLock.concludedAt
         )
 
-      : (
-          latestAssessment?.status ===
-            "Concluded"
-
-            ? assessmentTimestampMillis(
-                latestAssessment.updatedAt ||
-                latestAssessment.createdAt
-              )
-
-            : 0
-        );
+      : 0;
 
 
   const nextAssessmentAtMillis =
@@ -4835,7 +4821,7 @@ function Assessment() {
   const cooldownBlocked =
     Boolean(
       !activeAssessment &&
-      latestAssessment?.status ===
+      assessmentLock?.status ===
         "Concluded" &&
       (
         !nextAssessmentAtMillis ||
@@ -4847,14 +4833,12 @@ function Assessment() {
 
   const assessmentEligibilityLoading =
     rowsAreLoading(
-      assessmentHistory,
       assessmentLocks
     );
 
 
   const assessmentEligibilityError =
     firstRowsError(
-      assessmentHistory,
       assessmentLocks
     );
 
@@ -4925,6 +4909,251 @@ function Assessment() {
         [questionId]:
           value
       })
+    );
+  }
+
+
+  const assessmentPages = [
+    {
+      code:
+        "WHO-5",
+
+      title:
+        WHO5_TITLE,
+
+      description:
+        "Think about the last two weeks. For each statement, choose the answer that is closest to how often you felt that way.",
+
+      questions:
+        who5Questions,
+
+      choices:
+        who5Choices
+    },
+
+    {
+      code:
+        "PHQ-9",
+
+      title:
+        PHQ9_TITLE,
+
+      description:
+        "Think about the last 2 weeks. For each problem below, choose how often it bothered you.",
+
+      questions:
+        phq9Questions,
+
+      choices:
+        phq9Choices
+    },
+
+    {
+      code:
+        "GAD-7",
+
+      title:
+        GAD7_TITLE,
+
+      description:
+        "Think about the last 2 weeks. For each problem below, choose how often it bothered you.",
+
+      questions:
+        gad7Questions,
+
+      choices:
+        gad7Choices
+    },
+
+    {
+      code:
+        "DASS-21",
+
+      title:
+        DASS21_TITLE,
+
+      description:
+        "Think about the past week. Read each statement and choose the answer that best shows how much it applied to you.",
+
+      questions:
+        dass21Questions,
+
+      choices:
+        dass21Choices
+    },
+
+    {
+      code:
+        "Review",
+
+      title:
+        "Review and Submit",
+
+      description:
+        "Review the completion of all four screening tools, add optional notes if needed, then submit your psychological assessment.",
+
+      questions:
+        null,
+
+      choices:
+        null
+    }
+  ];
+
+
+  const assessmentPageCount =
+    assessmentPages.length;
+
+
+  const currentAssessmentPage =
+    assessmentPages[
+      assessmentPageIndex
+    ];
+
+
+  function assessmentPageAnsweredCount(
+    questions
+  ) {
+
+    if (
+      !Array.isArray(
+        questions
+      )
+    ) {
+
+      return 0;
+    }
+
+
+    return questions.filter(
+      question =>
+        answers[
+          question.id
+        ] !== undefined
+    ).length;
+  }
+
+
+  function assessmentPageComplete(
+    questions
+  ) {
+
+    return Boolean(
+      Array.isArray(
+        questions
+      ) &&
+      questions.length > 0 &&
+      assessmentPageAnsweredCount(
+        questions
+      ) ===
+        questions.length
+    );
+  }
+
+
+  function moveAssessmentPage(
+    nextPageIndex
+  ) {
+
+    const safePageIndex =
+      Math.min(
+        assessmentPageCount - 1,
+        Math.max(
+          0,
+          nextPageIndex
+        )
+      );
+
+
+    setAssessmentPageIndex(
+      safePageIndex
+    );
+
+
+    window.requestAnimationFrame(
+      () =>
+        window.scrollTo({
+          top:
+            0,
+
+          behavior:
+            "smooth"
+        })
+    );
+  }
+
+
+  function goToPreviousAssessmentPage() {
+
+    moveAssessmentPage(
+      assessmentPageIndex - 1
+    );
+  }
+
+
+  function goToNextAssessmentPage() {
+
+    if (
+      !currentAssessmentPage
+        ?.questions
+    ) {
+
+      return;
+    }
+
+
+    if (
+      !assessmentPageComplete(
+        currentAssessmentPage.questions
+      )
+    ) {
+
+      const answered =
+        assessmentPageAnsweredCount(
+          currentAssessmentPage.questions
+        );
+
+
+      alert(
+        `Please answer all questions in ${currentAssessmentPage.code} before continuing. ${answered} of ${currentAssessmentPage.questions.length} answered.`
+      );
+
+      return;
+    }
+
+
+    if (
+      currentAssessmentPage.code ===
+        "PHQ-9"
+    ) {
+
+      const phqHasProblems =
+        phq9Questions.some(
+          question =>
+            Number(
+              answers[
+                question.id
+              ] ?? 0
+            ) > 0
+        );
+
+
+      if (
+        phqHasProblems &&
+        !phq9Difficulty
+      ) {
+
+        alert(
+          "Please answer the PHQ-9 difficulty question before continuing."
+        );
+
+        return;
+      }
+    }
+
+
+    moveAssessmentPage(
+      assessmentPageIndex + 1
     );
   }
 
@@ -5051,8 +5280,6 @@ function Assessment() {
                     {choice.helper && (
 
                       <small className="assessment-choice-helper">
-                        Simple meaning:
-                        {" "}
                         {choice.helper}
                       </small>
 
@@ -5208,6 +5435,14 @@ function Assessment() {
         );
 
 
+      const userViewRef =
+        doc(
+          db,
+          "assessmentUserViews",
+          assessmentRef.id
+        );
+
+
       await runTransaction(
         db,
 
@@ -5302,6 +5537,62 @@ function Assessment() {
           );
 
 
+          transaction.set(
+            userViewRef,
+            {
+              assessmentId:
+                assessmentRef.id,
+
+              ownerId:
+                user.id,
+
+              ownerName:
+                user.name,
+
+              role:
+                user.role,
+
+              department:
+                user.department,
+
+              program:
+                user.program ||
+                "",
+
+              priority:
+                result.priority,
+
+              recommendation:
+                result.recommendation ||
+                "",
+
+              status:
+                "For review",
+
+              counselorRemarks:
+                "",
+
+              reviewed:
+                false,
+
+              reviewedById:
+                "",
+
+              reviewedByName:
+                "",
+
+              reviewedByRole:
+                "",
+
+              createdAt:
+                serverTimestamp(),
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
           transaction.update(
             lockRef,
             {
@@ -5325,9 +5616,16 @@ function Assessment() {
       );
 
 
-      setSaved(
-        result
-      );
+      setSaved({
+        priority:
+          result.priority,
+
+        recommendation:
+          result.recommendation,
+
+        safetyFlag:
+          result.safetyFlag
+      });
 
     } catch (assessmentError) {
 
@@ -5572,21 +5870,13 @@ function Assessment() {
 
         title="Psychological Assessment"
 
-        subtitle="Complete all four screening tools. Your progress is shown while you answer, while individual test scores remain hidden from this page."
+        subtitle="Complete the screening tools one section at a time. Only one assessment section is shown per page to keep the process clear and easy to follow."
 
       />
 
 
       <div
-        className="assessment-simple-guide"
-        style={{
-          width: "100%",
-          maxWidth: "950px",
-          boxSizing: "border-box",
-          marginLeft: "auto",
-          marginRight: "auto",
-          marginBottom: "18px"
-        }}
+        className="assessment-simple-guide assessment-page-shell"
       >
 
         <strong>
@@ -5594,53 +5884,25 @@ function Assessment() {
         </strong>
 
         <p>
-          Read each statement, think about the time period shown in that section,
-          then choose the answer that best matches your experience.
-          Each answer keeps the original response wording, with a simpler meaning
-          shown underneath to make the choices easier to understand.
+          Read each statement, think about the time period shown for the
+          current assessment, then choose the answer that best matches your
+          experience. A short hint may appear underneath some choices to make
+          the response easier to understand.
         </p>
 
       </div>
 
 
       <section
-        className="panel assessment-sticky-progress"
+        className="panel assessment-sticky-progress assessment-page-shell"
         aria-label="Assessment progress"
-        style={{
-          position: "sticky",
-          top: "72px",
-          zIndex: 30,
-          width: "100%",
-          maxWidth: "950px",
-          boxSizing: "border-box",
-          overflow: "hidden",
-          padding: "16px 20px",
-          marginLeft: "auto",
-          marginRight: "auto",
-          marginBottom: "18px",
-          boxShadow:
-            "0 8px 24px rgba(15, 23, 42, 0.10)"
-        }}
       >
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "12px",
-            flexWrap: "wrap",
-            marginBottom: "10px"
-          }}
-        >
+        <div className="assessment-page-progress-heading">
 
           <div>
 
-            <strong
-              style={{
-                display: "block"
-              }}
-            >
+            <strong>
               Assessment Progress
             </strong>
 
@@ -5657,14 +5919,23 @@ function Assessment() {
           </div>
 
 
-          <strong
-            style={{
-              color: "#132f73",
-              fontSize: "1rem"
-            }}
-          >
-            {assessmentProgress}%
-          </strong>
+          <div className="assessment-page-progress-meta">
+
+            <span>
+              Section
+              {" "}
+              {assessmentPageIndex + 1}
+              {" "}
+              of
+              {" "}
+              {assessmentPageCount}
+            </span>
+
+            <strong>
+              {assessmentProgress}%
+            </strong>
+
+          </div>
 
         </div>
 
@@ -5675,20 +5946,11 @@ function Assessment() {
           aria-valuemax={100}
           aria-valuenow={assessmentProgress}
           aria-label="Overall psychological assessment completion"
-          style={{
-            display: "block",
-            width: "100%",
-            maxWidth: "100%",
-            minWidth: 0,
-            boxSizing: "border-box",
-            height: "10px",
-            borderRadius: "999px",
-            overflow: "hidden",
-            background: "#e7ebf2"
-          }}
+          className="assessment-page-progress-track"
         >
 
           <div
+            className="assessment-page-progress-fill"
             style={{
               width:
                 `${Math.min(
@@ -5697,15 +5959,89 @@ function Assessment() {
                     0,
                     assessmentProgress
                   )
-                )}%`,
-              maxWidth: "100%",
-              height: "100%",
-              borderRadius: "999px",
-              background: "#173f8f",
-              transition:
-                "width 180ms ease"
+                )}%`
             }}
           />
+
+        </div>
+
+
+        <div
+          className="assessment-page-stepper"
+          aria-label="Psychological assessment sections"
+        >
+
+          {assessmentPages.map(
+            (
+              page,
+              index
+            ) => {
+
+              const isCurrent =
+                index ===
+                assessmentPageIndex;
+
+
+              const isReview =
+                page.code ===
+                "Review";
+
+
+              const isComplete =
+                isReview
+                  ? assessmentProgress ===
+                    100
+                  : assessmentPageComplete(
+                      page.questions
+                    );
+
+
+              return (
+
+                <div
+                  key={
+                    page.code
+                  }
+                  className={
+                    [
+                      "assessment-page-step",
+
+                      isCurrent
+                        ? "current"
+                        : "",
+
+                      isComplete
+                        ? "complete"
+                        : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  }
+                  aria-current={
+                    isCurrent
+                      ? "step"
+                      : undefined
+                  }
+                >
+
+                  <span className="assessment-page-step-number">
+                    {
+                      isComplete &&
+                      !isCurrent
+                        ? "✓"
+                        : index + 1
+                    }
+                  </span>
+
+                  <span className="assessment-page-step-label">
+                    {page.code}
+                  </span>
+
+                </div>
+
+              );
+            }
+          )}
 
         </div>
 
@@ -5713,323 +6049,557 @@ function Assessment() {
 
 
       <form
-        className="assessment-form standardized-assessment-form"
+        className="assessment-form standardized-assessment-form assessment-page-shell assessment-paged-form"
         onSubmit={submit}
-        style={{
-          width: "100%",
-          maxWidth: "950px",
-          marginLeft: "auto",
-          marginRight: "auto"
-        }}
       >
 
-
-        <section className="panel assessment-instrument-card">
-
-          <div className="assessment-instrument-heading">
-
-            <div>
-
-              <span className="assessment-instrument-code">
-                WHO-5
-              </span>
-
-              <h2>
-                {WHO5_TITLE}
-              </h2>
-
-            </div>
-
-          </div>
-
-
-          <p className="assessment-instructions">
-
-            Think about the last two weeks. For each statement,
-            choose the answer that is closest to how often you felt that way.
-
-          </p>
-
-
-          {
-            renderInstrumentQuestions(
-              who5Questions,
-              who5Choices
-            )
-          }
-
-
-          <div className="assessment-source-note">
-
-            Source: World Health Organization. The World Health
-            Organization-Five Well-Being Index (WHO-5), 2024.
-            License: CC BY-NC-SA 3.0 IGO.
-
-            <br />
-            <br />
-
-            MindTrack keeps the detailed result for authorized
-            counselor review rather than displaying the score here.
-
-          </div>
-
-        </section>
-
-
-        <section className="panel assessment-instrument-card">
-
-          <div className="assessment-instrument-heading">
-
-            <div>
-
-              <span className="assessment-instrument-code">
-                PHQ-9
-              </span>
-
-              <h2>
-                {PHQ9_TITLE}
-              </h2>
-
-            </div>
-
-          </div>
-
-
-          <p className="assessment-instructions">
-
-            Think about the last 2 weeks. For each problem below,
-            choose how often it bothered you.
-
-          </p>
-
-
-          {
-            renderInstrumentQuestions(
-              phq9Questions,
-              phq9Choices
-            )
-          }
-
-
-          <label className="assessment-difficulty-field">
-
-            If you checked any problems, how difficult have these
-            problems made it for you to do your work, take care of
-            things at home, or get along with other people?
-
-            <small className="assessment-field-helper">
-              Choose the answer that best describes how much the problems
-              affected your usual daily activities.
-            </small>
-
-            <select
-
-              value={
-                phq9Difficulty
-              }
-
-              onChange={
-                event =>
-                  setPhq9Difficulty(
-                    event.target.value
-                  )
-              }
-
-            >
-
-              <option value="">
-                Choose an answer
-              </option>
-
-
-              {phq9DifficultyChoices.map(
-                option => (
-
-                  <option
-                    key={option}
-                    value={option}
-                  >
-                    {
-                      phqDifficultyDisplay(
-                        option
-                      )
-                    }
-                  </option>
-
-                )
-              )}
-
-            </select>
-
-          </label>
-
-
-          <div className="assessment-source-note">
-
-            The PHQ-9 response set and functional difficulty response
-            are recorded for authorized counselor review.
-
-            <br />
-            <br />
-
-            Individual scoring details are intentionally not displayed
-            while the user is completing the assessment.
-
-          </div>
-
-        </section>
-
-
-        <section className="panel assessment-instrument-card">
-
-          <div className="assessment-instrument-heading">
-
-            <div>
-
-              <span className="assessment-instrument-code">
-                GAD-7
-              </span>
-
-              <h2>
-                {GAD7_TITLE}
-              </h2>
-
-            </div>
-
-          </div>
-
-
-          <p className="assessment-instructions">
-
-            Think about the last 2 weeks. For each problem below,
-            choose how often it bothered you.
-
-          </p>
-
-
-          {
-            renderInstrumentQuestions(
-              gad7Questions,
-              gad7Choices
-            )
-          }
-
-
-          <div className="assessment-source-note">
-
-            The GAD-7 responses are recorded for authorized
-            counselor review and monitoring.
-
-            <br />
-            <br />
-
-            Individual scoring details are intentionally not displayed
-            while the user is completing the assessment.
-
-          </div>
-
-        </section>
-
-
-        <section className="panel assessment-instrument-card">
-
-          <div className="assessment-instrument-heading">
-
-            <div>
-
-              <span className="assessment-instrument-code">
-                DASS-21
-              </span>
-
-              <h2>
-                {DASS21_TITLE}
-              </h2>
-
-            </div>
-
-          </div>
-
-
-          <p className="assessment-instructions">
-
-            Think about the past week. Read each statement and choose
-            the answer that best shows how much it applied to you.
-
-          </p>
-
-
-          {
-            renderInstrumentQuestions(
-              dass21Questions,
-              dass21Choices
-            )
-          }
-
-
-          <div className="assessment-source-note">
-
-            DASS-21 covers depression, anxiety, and stress response areas.
-            MindTrack records the responses for authorized counselor review.
-
-            <br />
-            <br />
-
-            Individual scoring details are intentionally not displayed
-            while the user is completing the assessment.
-
-          </div>
-
-        </section>
-
-
-        <section className="panel assessment-final-section">
-
-          <label>
-
-            Additional notes
+        <div
+          className="assessment-page-indicator"
+          aria-live="polite"
+        >
+
+          <span>
+            Section
             {" "}
+            {assessmentPageIndex + 1}
+            {" "}
+            of
+            {" "}
+            {assessmentPageCount}
+          </span>
 
-            <span className="optional-text">
-              (Optional)
-            </span>
+          <strong>
+            {currentAssessmentPage.code}
+          </strong>
+
+        </div>
 
 
-            <textarea
+        {assessmentPageIndex === 0 && (
 
-              value={notes}
+          <section className="panel assessment-instrument-card assessment-page-card">
 
-              onChange={
-                e =>
-                  setNotes(
-                    e.target.value
+            <div className="assessment-instrument-heading">
+
+              <div>
+
+                <span className="assessment-instrument-code">
+                  WHO-5
+                </span>
+
+                <h2>
+                  {WHO5_TITLE}
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <p className="assessment-instructions">
+              {assessmentPages[0].description}
+            </p>
+
+
+            {
+              renderInstrumentQuestions(
+                who5Questions,
+                who5Choices
+              )
+            }
+
+
+            <div className="assessment-source-note">
+
+              Source: World Health Organization. The World Health
+              Organization-Five Well-Being Index (WHO-5), 2024.
+              License: CC BY-NC-SA 3.0 IGO.
+
+              <br />
+              <br />
+
+              MindTrack keeps the detailed result for authorized
+              counselor review rather than displaying the score here.
+
+            </div>
+
+
+            <div className="assessment-page-actions assessment-page-actions-end">
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={
+                  goToNextAssessmentPage
+                }
+              >
+                Next: PHQ-9
+              </button>
+
+            </div>
+
+          </section>
+
+        )}
+
+
+        {assessmentPageIndex === 1 && (
+
+          <section className="panel assessment-instrument-card assessment-page-card">
+
+            <div className="assessment-instrument-heading">
+
+              <div>
+
+                <span className="assessment-instrument-code">
+                  PHQ-9
+                </span>
+
+                <h2>
+                  {PHQ9_TITLE}
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <p className="assessment-instructions">
+              {assessmentPages[1].description}
+            </p>
+
+
+            {
+              renderInstrumentQuestions(
+                phq9Questions,
+                phq9Choices
+              )
+            }
+
+
+            <label className="assessment-difficulty-field">
+
+              If you checked any problems, how difficult have these
+              problems made it for you to do your work, take care of
+              things at home, or get along with other people?
+
+              <small className="assessment-field-helper">
+                Choose the answer that best describes how much the problems
+                affected your usual daily activities.
+              </small>
+
+              <select
+
+                value={
+                  phq9Difficulty
+                }
+
+                onChange={
+                  event =>
+                    setPhq9Difficulty(
+                      event.target.value
+                    )
+                }
+
+              >
+
+                <option value="">
+                  Choose an answer
+                </option>
+
+
+                {phq9DifficultyChoices.map(
+                  option => (
+
+                    <option
+                      key={option}
+                      value={option}
+                    >
+                      {
+                        phqDifficultyDisplay(
+                          option
+                        )
+                      }
+                    </option>
+
                   )
+                )}
+
+              </select>
+
+            </label>
+
+
+            <div className="assessment-source-note">
+
+              The PHQ-9 response set and functional difficulty response
+              are recorded for authorized counselor review.
+
+              <br />
+              <br />
+
+              Individual scoring details are intentionally not displayed
+              while the user is completing the assessment.
+
+            </div>
+
+
+            <div className="assessment-page-actions">
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={
+                  goToPreviousAssessmentPage
+                }
+              >
+                Previous
+              </button>
+
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={
+                  goToNextAssessmentPage
+                }
+              >
+                Next: GAD-7
+              </button>
+
+            </div>
+
+          </section>
+
+        )}
+
+
+        {assessmentPageIndex === 2 && (
+
+          <section className="panel assessment-instrument-card assessment-page-card">
+
+            <div className="assessment-instrument-heading">
+
+              <div>
+
+                <span className="assessment-instrument-code">
+                  GAD-7
+                </span>
+
+                <h2>
+                  {GAD7_TITLE}
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <p className="assessment-instructions">
+              {assessmentPages[2].description}
+            </p>
+
+
+            {
+              renderInstrumentQuestions(
+                gad7Questions,
+                gad7Choices
+              )
+            }
+
+
+            <div className="assessment-source-note">
+
+              The GAD-7 responses are recorded for authorized
+              counselor review and monitoring.
+
+              <br />
+              <br />
+
+              Individual scoring details are intentionally not displayed
+              while the user is completing the assessment.
+
+            </div>
+
+
+            <div className="assessment-page-actions">
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={
+                  goToPreviousAssessmentPage
+                }
+              >
+                Previous
+              </button>
+
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={
+                  goToNextAssessmentPage
+                }
+              >
+                Next: DASS-21
+              </button>
+
+            </div>
+
+          </section>
+
+        )}
+
+
+        {assessmentPageIndex === 3 && (
+
+          <section className="panel assessment-instrument-card assessment-page-card">
+
+            <div className="assessment-instrument-heading">
+
+              <div>
+
+                <span className="assessment-instrument-code">
+                  DASS-21
+                </span>
+
+                <h2>
+                  {DASS21_TITLE}
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <p className="assessment-instructions">
+              {assessmentPages[3].description}
+            </p>
+
+
+            {
+              renderInstrumentQuestions(
+                dass21Questions,
+                dass21Choices
+              )
+            }
+
+
+            <div className="assessment-source-note">
+
+              DASS-21 covers depression, anxiety, and stress response areas.
+              MindTrack records the responses for authorized counselor review.
+
+              <br />
+              <br />
+
+              Individual scoring details are intentionally not displayed
+              while the user is completing the assessment.
+
+            </div>
+
+
+            <div className="assessment-page-actions">
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={
+                  goToPreviousAssessmentPage
+                }
+              >
+                Previous
+              </button>
+
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={
+                  goToNextAssessmentPage
+                }
+              >
+                Review answers
+              </button>
+
+            </div>
+
+          </section>
+
+        )}
+
+
+        {assessmentPageIndex === 4 && (
+
+          <section className="panel assessment-final-section assessment-page-card">
+
+            <div className="assessment-instrument-heading">
+
+              <div>
+
+                <span className="assessment-instrument-code">
+                  Review
+                </span>
+
+                <h2>
+                  Review and Submit
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <p className="assessment-instructions">
+              Check that all four assessment sections are complete before
+              submitting. Individual scores remain hidden from this page.
+            </p>
+
+
+            <div className="assessment-page-review-grid">
+
+              {assessmentPages
+                .slice(
+                  0,
+                  4
+                )
+                .map(
+                  (
+                    page,
+                    index
+                  ) => {
+
+                    const answered =
+                      assessmentPageAnsweredCount(
+                        page.questions
+                      );
+
+
+                    const complete =
+                      assessmentPageComplete(
+                        page.questions
+                      );
+
+
+                    return (
+
+                      <button
+                        key={
+                          page.code
+                        }
+                        type="button"
+                        className={
+                          complete
+                            ? "assessment-page-review-item complete"
+                            : "assessment-page-review-item"
+                        }
+                        onClick={
+                          () =>
+                            moveAssessmentPage(
+                              index
+                            )
+                        }
+                      >
+
+                        <span>
+                          {page.code}
+                        </span>
+
+                        <strong>
+                          {answered}
+                          /
+                          {page.questions.length}
+                          {" "}
+                          answered
+                        </strong>
+
+                        <small>
+                          {
+                            complete
+                              ? "Complete"
+                              : "Needs attention"
+                          }
+                        </small>
+
+                      </button>
+
+                    );
+                  }
+                )
               }
 
-              rows="4"
-
-              placeholder="Share information that may help the counselor understand your concern."
-
-            />
-
-          </label>
+            </div>
 
 
-          <div className="notice">
+            <label>
 
-            Please review your answers before submitting.
-            MindTrack uses these tools for screening and monitoring
-            support only. Results are not a diagnosis.
+              Additional notes
+              {" "}
 
-          </div>
+              <span className="optional-text">
+                (Optional)
+              </span>
 
 
-          <button className="primary-button">
+              <textarea
 
-            Submit psychological assessment
+                value={notes}
 
-          </button>
+                onChange={
+                  e =>
+                    setNotes(
+                      e.target.value
+                    )
+                }
 
-        </section>
+                rows="4"
+
+                placeholder="Share information that may help the counselor understand your concern."
+
+              />
+
+            </label>
+
+
+            <div className="notice">
+
+              Please review your answers before submitting.
+              MindTrack uses these tools for screening and monitoring
+              support only. Results are not a diagnosis.
+
+            </div>
+
+
+            <div className="assessment-page-actions">
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={
+                  goToPreviousAssessmentPage
+                }
+              >
+                Previous
+              </button>
+
+
+              <button
+                type="submit"
+                className="primary-button"
+                disabled={
+                  assessmentProgress !==
+                  100
+                }
+              >
+                Submit psychological assessment
+              </button>
+
+            </div>
+
+          </section>
+
+        )}
 
 
       </form>
@@ -6037,6 +6607,8 @@ function Assessment() {
     </>
 
   );
+
+
 }
 
 
@@ -6094,12 +6666,102 @@ function activeCounselingSlotState(
 
 
 const TERMINAL_COUNSELING_REQUEST_STATUSES = [
-  "Concluded",
+  "Terminated",
   "Cancelled",
 
-  // Legacy spelling kept so older records do not lock a user forever.
+  // Legacy values are still recognized during migration.
+  "Concluded",
   "Canceled"
 ];
+
+
+function normalizeCounselingRequestStatus(
+  status
+) {
+
+  const value =
+    String(
+      status ||
+      ""
+    ).trim();
+
+
+  if (
+    value ===
+    "Schedule for counseling"
+  ) {
+
+    return "Scheduled for counseling";
+  }
+
+
+  if (
+    value ===
+    "Follow up is recommended"
+  ) {
+
+    return "Follow up Counseling is recommended";
+  }
+
+
+  if (
+    value ===
+    "Concluded"
+  ) {
+
+    return "Terminated";
+  }
+
+
+  return value;
+}
+
+
+function counselingRequestIsScheduled(
+  status
+) {
+
+  return [
+    "Scheduled for counseling",
+    "Rescheduled"
+  ].includes(
+    normalizeCounselingRequestStatus(
+      status
+    )
+  );
+}
+
+
+function counselingRequestCreatesSession(
+  status
+) {
+
+  return [
+    "Scheduled for counseling",
+    "Rescheduled",
+    "Terminated"
+  ].includes(
+    normalizeCounselingRequestStatus(
+      status
+    )
+  );
+}
+
+
+function counselingRequestHiddenFromRequestList(
+  status
+) {
+
+  return [
+    "Scheduled for counseling",
+    "Rescheduled",
+    "Terminated"
+  ].includes(
+    normalizeCounselingRequestStatus(
+      status
+    )
+  );
+}
 
 
 function counselingRequestIsTerminal(
@@ -6107,10 +6769,9 @@ function counselingRequestIsTerminal(
 ) {
 
   return TERMINAL_COUNSELING_REQUEST_STATUSES.includes(
-    String(
-      status ||
-      ""
-    ).trim()
+    normalizeCounselingRequestStatus(
+      status
+    )
   );
 }
 
@@ -6245,6 +6906,53 @@ function counselorCollegeLabel(
 
   return cleanValue ||
     "Not provided";
+}
+
+
+function counselingUserRoleLabel(
+  value
+) {
+
+  const role =
+    String(
+      value ||
+      ""
+    ).trim();
+
+
+  if (
+    role ===
+      "student"
+  ) {
+
+    return "Student";
+  }
+
+
+  if (
+    role ===
+      "teaching" ||
+    role ===
+      "faculty"
+  ) {
+
+    return "Teaching";
+  }
+
+
+  if (
+    role ===
+      "non_teaching" ||
+    role ===
+      "personnel"
+  ) {
+
+    return "Non-teaching";
+  }
+
+
+  return role ||
+    "User";
 }
 
 
@@ -7891,7 +8599,7 @@ function Consultations() {
 
       alert(
         activeCounselingRequest
-          ? `You already have an active counseling request with status "${activeCounselingRequest.status || "Pending approval"}". Please wait until that request is concluded before submitting another request.`
+          ? `You already have an active counseling request with status "${normalizeCounselingRequestStatus(activeCounselingRequest.status) || "Pending approval"}". Please wait until that request is terminated before submitting another request.`
           : "Your counseling-request eligibility record is not ready. Please contact the Guidance Office or Super Admin."
       );
 
@@ -8063,7 +8771,7 @@ function Consultations() {
           ) {
 
             throw new Error(
-              `You already have an active counseling request with status "${requestLockData.status || "Pending approval"}". Please wait until it is concluded before submitting another request.`
+              `You already have an active counseling request with status "${normalizeCounselingRequestStatus(requestLockData.status) || "Pending approval"}". Please wait until it is terminated before submitting another request.`
             );
           }
 
@@ -8109,6 +8817,9 @@ function Consultations() {
 
               department:
                 user.department,
+
+              role:
+                user.role,
 
               program:
                 user.program ||
@@ -8722,7 +9433,9 @@ function Consultations() {
                         {" "}
                         <strong>
                           {
-                            activeCounselingRequest.status ||
+                            normalizeCounselingRequestStatus(
+                              activeCounselingRequest.status
+                            ) ||
                             "Pending approval"
                           }
                         </strong>
@@ -8755,7 +9468,7 @@ function Consultations() {
                         request is marked
                         {" "}
                         <strong>
-                          Concluded
+                          Terminated
                         </strong>
                         {" "}
                         or is cancelled.
@@ -9391,7 +10104,11 @@ function Consultations() {
 
 
                             <span className="status">
-                              {row.status}
+                              {
+                                normalizeCounselingRequestStatus(
+                                  row.status
+                                )
+                              }
                             </span>
 
 
@@ -9574,7 +10291,7 @@ function Consultations() {
                                   color: "#7b8495"
                                 }}
                               >
-                                This request can no longer be edited because it is {String(row.status).toLowerCase()}.
+                                This request can no longer be edited because it is {normalizeCounselingRequestStatus(row.status).toLowerCase()}.
                               </small>
 
                             )}
@@ -13660,7 +14377,7 @@ function UserMonitoringContent({
 
   const assessments =
     useRows(
-      "assessments",
+      "assessmentUserViews",
       {
         ownerId:
           user.id
@@ -13674,41 +14391,61 @@ function UserMonitoringContent({
     "";
 
 
+  function summaryDateValue(
+    row
+  ) {
+
+    const date =
+      recordDateObject(
+        row.createdAt
+      );
+
+
+    return date
+      ? date.getTime()
+      : 0;
+  }
+
+
   const reviewedAssessments =
     [...assessments]
       .filter(
         isCounselorReviewedAssessment
       )
       .sort(
-        (a, b) => {
-
-          const aDate =
-            recordDateObject(
-              a.createdAt
-            );
-
-
-          const bDate =
-            recordDateObject(
-              b.createdAt
-            );
-
-
-          return (
-            (bDate?.getTime() || 0) -
-            (aDate?.getTime() || 0)
-          );
-        }
+        (
+          a,
+          b
+        ) =>
+          summaryDateValue(
+            b
+          ) -
+          summaryDateValue(
+            a
+          )
       );
 
 
   const pendingAssessments =
-    assessments.filter(
-      row =>
-        !isCounselorReviewedAssessment(
-          row
-        )
-    );
+    [...assessments]
+      .filter(
+        row =>
+          !isCounselorReviewedAssessment(
+            row
+          )
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          summaryDateValue(
+            b
+          ) -
+          summaryDateValue(
+            a
+          )
+      );
 
 
   const latest =
@@ -13721,32 +14458,151 @@ function UserMonitoringContent({
     null;
 
 
+  function priorityRank(
+    priority
+  ) {
+
+    const ranks = {
+      Low:
+        1,
+
+      Moderate:
+        2,
+
+      High:
+        3,
+
+      Critical:
+        4
+    };
+
+
+    return ranks[
+      priority
+    ] ||
+    0;
+  }
+
+
+  function priorityTrend(
+    current,
+    earlier
+  ) {
+
+    if (
+      !current ||
+      !earlier
+    ) {
+
+      return {
+        key:
+          "insufficient",
+
+        label:
+          "Not enough reviewed assessments",
+
+        summary:
+          "At least two counselor-reviewed assessments are needed to show a monitoring-priority trend."
+      };
+    }
+
+
+    const currentRank =
+      priorityRank(
+        current.priority
+      );
+
+
+    const earlierRank =
+      priorityRank(
+        earlier.priority
+      );
+
+
+    if (
+      !currentRank ||
+      !earlierRank
+    ) {
+
+      return {
+        key:
+          "insufficient",
+
+        label:
+          "Not enough comparable records",
+
+        summary:
+          "The available reviewed assessments do not contain enough monitoring-priority information for comparison."
+      };
+    }
+
+
+    if (
+      currentRank <
+      earlierRank
+    ) {
+
+      return {
+        key:
+          "improving",
+
+        label:
+          "Lower monitoring priority",
+
+        summary:
+          "The latest counselor-reviewed assessment has a lower MindTrack monitoring priority than the previous reviewed assessment."
+      };
+    }
+
+
+    if (
+      currentRank >
+      earlierRank
+    ) {
+
+      return {
+        key:
+          "worsening",
+
+        label:
+          "Higher monitoring priority",
+
+        summary:
+          "The latest counselor-reviewed assessment has a higher MindTrack monitoring priority than the previous reviewed assessment."
+      };
+    }
+
+
+    return {
+      key:
+        "stable",
+
+      label:
+        "Same monitoring priority",
+
+      summary:
+        "The latest and previous counselor-reviewed assessments have the same MindTrack monitoring priority."
+    };
+  }
+
+
   const trend =
-    compareReviewedAssessmentTrend(
+    priorityTrend(
       latest,
       previous
     );
 
 
-  const latestResults =
-    latest?.instrumentResults ||
-    null;
-
-
   const notificationAssessment =
     requestedAssessmentId
-      ? reviewedAssessments.find(
+      ? assessments.find(
           row =>
             row.id ===
-            requestedAssessmentId
+              requestedAssessmentId ||
+            row.assessmentId ===
+              requestedAssessmentId
         )
       : null;
-
-
-  const openedFromNotification =
-    Boolean(
-      notificationAssessment
-    );
 
 
   useEffect(
@@ -13789,7 +14645,6 @@ function UserMonitoringContent({
         );
 
     },
-
     [
       requestedAssessmentId,
       notificationAssessment
@@ -13797,37 +14652,49 @@ function UserMonitoringContent({
   );
 
 
-  if (assessments.loading) {
+  if (
+    assessments.loading
+  ) {
 
     return (
       <>
+
         <PageTitle
           title="Mental Health Monitoring"
-          subtitle="Your current monitoring state and trend are based only on assessments reviewed by a Guidance Counselor."
+          subtitle="Your monitoring page shows counselor-reviewed status and priority only. Detailed assessment scores are private to authorized Guidance Counselors."
         />
 
+
         <section className="panel">
+
           <Empty
             text="Loading monitoring data..."
           />
+
         </section>
+
       </>
     );
   }
 
 
-  if (assessments.error) {
+  if (
+    assessments.error
+  ) {
 
     return (
       <>
+
         <PageTitle
           title="Mental Health Monitoring"
-          subtitle="Your current monitoring state and trend are based only on assessments reviewed by a Guidance Counselor."
+          subtitle="Your monitoring page shows counselor-reviewed status and priority only. Detailed assessment scores are private to authorized Guidance Counselors."
         />
+
 
         <div className="error-box">
           {assessments.error}
         </div>
+
       </>
     );
   }
@@ -13838,15 +14705,13 @@ function UserMonitoringContent({
     <>
 
       <PageTitle
-
         title="Mental Health Monitoring"
-
-        subtitle="Your current monitoring state and trend are based only on assessments reviewed by a Guidance Counselor."
-
+        subtitle="Your monitoring page shows counselor-reviewed status and priority only. Detailed WHO-5, PHQ-9, GAD-7, and DASS-21 scores are visible only to authorized Guidance Counselors and Super Admin."
       />
 
 
-      {assessments.length === 0
+      {assessments.length ===
+        0
 
         ? (
 
@@ -13856,28 +14721,28 @@ function UserMonitoringContent({
               size={42}
             />
 
+
             <h2>
               No assessment data yet
             </h2>
 
+
             <p>
-              Complete a psychological assessment first. Your Monitoring page will show a current state after a Guidance Counselor reviews the assessment.
+              Complete a psychological assessment first. After a Guidance
+              Counselor reviews it, this page will show your monitoring
+              priority and review status without displaying assessment scores.
             </p>
 
 
             <button
-
               type="button"
-
               className="primary-button"
-
               onClick={
                 () =>
                   navigate(
                     "/assessment"
                   )
               }
-
             >
               Take an assessment
             </button>
@@ -13896,17 +14761,23 @@ function UserMonitoringContent({
                 size={42}
               />
 
+
               <h2>
                 Awaiting counselor review
               </h2>
 
+
               <p>
-                You have submitted an assessment, but MindTrack will not display a current mental health monitoring state until a Guidance Counselor has reviewed the case and selected a reviewed status.
+                You have submitted an assessment, but MindTrack will not show
+                a reviewed monitoring state until a Guidance Counselor reviews
+                the case.
               </p>
 
 
               <div className="notice">
-                Your assessment scores are not used here as your current monitoring state while the case is still marked for review.
+                Detailed assessment scores are not displayed to users.
+                They remain available only to authorized Guidance Counselors
+                and Super Admin for case review.
               </div>
 
 
@@ -13917,7 +14788,8 @@ function UserMonitoringContent({
                 {" "}
                 assessment
                 {
-                  pendingAssessments.length === 1
+                  pendingAssessments.length ===
+                    1
                     ? ""
                     : "s"
                 }
@@ -13933,16 +14805,23 @@ function UserMonitoringContent({
 
             <>
 
-              {openedFromNotification && (
+              {notificationAssessment && (
 
                 <section className="monitoring-notification-banner">
-                  You opened Monitoring from a counselor notification. Your current state below still uses your latest counselor-reviewed assessment.
+                  You opened Monitoring from an assessment notification.
+                  The information shown below contains only user-visible
+                  monitoring details, not assessment scores.
                 </section>
 
               )}
 
 
-              <section className="panel monitoring-summary-panel">
+              <section
+                id={
+                  `monitoring-assessment-${latest.assessmentId || latest.id}`
+                }
+                className="panel monitoring-summary-panel"
+              >
 
                 <div className="monitoring-summary-header">
 
@@ -13952,9 +14831,11 @@ function UserMonitoringContent({
                       Current Reviewed Monitoring State
                     </span>
 
+
                     <h2>
                       Based on your latest counselor-reviewed assessment
                     </h2>
+
 
                     <p>
                       Assessment taken:
@@ -14022,6 +14903,25 @@ function UserMonitoringContent({
                 </div>
 
 
+                {latest.recommendation && (
+
+                  <div className="monitoring-counselor-note">
+
+                    <strong>
+                      Monitoring Recommendation
+                    </strong>
+
+                    <p>
+                      {
+                        latest.recommendation
+                      }
+                    </p>
+
+                  </div>
+
+                )}
+
+
                 {latest.counselorRemarks && (
 
                   <div className="monitoring-counselor-note">
@@ -14040,6 +14940,14 @@ function UserMonitoringContent({
 
                 )}
 
+
+                <div className="notice">
+                  Your detailed WHO-5, PHQ-9, GAD-7, and DASS-21 scores are
+                  intentionally hidden on the user side. Authorized Guidance
+                  Counselors and Super Admin can review the detailed screening
+                  results when managing your assessment case.
+                </div>
+
               </section>
 
 
@@ -14054,7 +14962,7 @@ function UserMonitoringContent({
                   <div>
 
                     <span className="monitoring-kicker">
-                      Monitoring Trend
+                      Monitoring Priority Trend
                     </span>
 
                     <h2>
@@ -14083,7 +14991,8 @@ function UserMonitoringContent({
                 {previous && (
 
                   <small>
-                    Compared with the previous counselor-reviewed assessment from
+                    Compared with the previous counselor-reviewed assessment
+                    from
                     {" "}
                     {
                       formatRecordDateTime(
@@ -14096,319 +15005,25 @@ function UserMonitoringContent({
 
 
                 <div className="notice monitoring-trend-note">
-                  This trend is a simple comparison of the available screening scores. It is a monitoring aid and not a diagnosis or a substitute for a counselor's professional assessment.
+                  This comparison uses only the counselor-reviewed MindTrack
+                  monitoring priority. Numerical assessment scores are not
+                  displayed to the user.
                 </div>
 
               </section>
 
 
-              {latestResults
-
-                ? (
-
-                  <section className="monitoring-score-grid">
-
-                    <article className="panel monitoring-score-card">
-
-                      <span>
-                        WHO-5 Well-Being
-                      </span>
-
-                      <strong>
-                        {
-                          latestResults
-                            ?.who5
-                            ?.percentageScore ??
-                          "—"
-                        }
-                        /100
-                      </strong>
-
-                      <small>
-                        Raw:
-                        {" "}
-                        {
-                          latestResults
-                            ?.who5
-                            ?.rawScore ??
-                          "—"
-                        }
-                        /25
-                      </small>
-
-                      <p>
-                        {
-                          latestResults
-                            ?.who5
-                            ?.interpretation ||
-                          "No interpretation available."
-                        }
-                      </p>
-
-                    </article>
-
-
-                    <article className="panel monitoring-score-card">
-
-                      <span>
-                        PHQ-9
-                      </span>
-
-                      <strong>
-                        {
-                          latestResults
-                            ?.phq9
-                            ?.totalScore ??
-                          "—"
-                        }
-                        /27
-                      </strong>
-
-                      <small>
-                        {
-                          latestResults
-                            ?.phq9
-                            ?.severity ||
-                          "No severity available"
-                        }
-                      </small>
-
-                    </article>
-
-
-                    <article className="panel monitoring-score-card">
-
-                      <span>
-                        GAD-7
-                      </span>
-
-                      <strong>
-                        {
-                          latestResults
-                            ?.gad7
-                            ?.totalScore ??
-                          "—"
-                        }
-                        /21
-                      </strong>
-
-                      <small>
-                        {
-                          latestResults
-                            ?.gad7
-                            ?.severity ||
-                          "No severity available"
-                        }
-                      </small>
-
-                    </article>
-
-
-                    {latestResults
-                      ?.dass21
-                      ?.depression
-
-                      ? (
-
-                        <>
-
-                          <article className="panel monitoring-score-card">
-
-                            <span>
-                              DASS-21 Depression
-                            </span>
-
-                            <strong>
-                              {
-                                latestResults
-                                  .dass21
-                                  .depression
-                                  .adjustedScore
-                              }
-                              /42
-                            </strong>
-
-                            <small>
-                              Raw:
-                              {" "}
-                              {
-                                latestResults
-                                  .dass21
-                                  .depression
-                                  .rawScore
-                              }
-                              /21
-                            </small>
-
-                          </article>
-
-
-                          <article className="panel monitoring-score-card">
-
-                            <span>
-                              DASS-21 Anxiety
-                            </span>
-
-                            <strong>
-                              {
-                                latestResults
-                                  .dass21
-                                  .anxiety
-                                  .adjustedScore
-                              }
-                              /42
-                            </strong>
-
-                            <small>
-                              Raw:
-                              {" "}
-                              {
-                                latestResults
-                                  .dass21
-                                  .anxiety
-                                  .rawScore
-                              }
-                              /21
-                            </small>
-
-                          </article>
-
-
-                          <article className="panel monitoring-score-card">
-
-                            <span>
-                              DASS-21 Stress
-                            </span>
-
-                            <strong>
-                              {
-                                latestResults
-                                  .dass21
-                                  .stress
-                                  .adjustedScore
-                              }
-                              /42
-                            </strong>
-
-                            <small>
-                              Raw:
-                              {" "}
-                              {
-                                latestResults
-                                  .dass21
-                                  .stress
-                                  .rawScore
-                              }
-                              /21
-                            </small>
-
-                          </article>
-
-                        </>
-
-                      )
-
-                      : (
-
-                        <article className="panel monitoring-score-card">
-
-                          <span>
-                            DASS-21 Legacy Total
-                          </span>
-
-                          <strong>
-                            {
-                              latestResults
-                                ?.dass21
-                                ?.totalScore ??
-                              "—"
-                            }
-                            /63
-                          </strong>
-
-                          <small>
-                            Older record without separate subscale scores
-                          </small>
-
-                        </article>
-
-                      )
-                    }
-
-                  </section>
-
-                )
-
-                : (
-
-                  <section className="panel">
-
-                    <div className="notice">
-                      This counselor-reviewed record is an older assessment. Detailed standardized instrument results are not available for this record.
-                    </div>
-
-                  </section>
-
-                )
-              }
-
-
-              <section className="panel monitoring-guidance-panel">
+              <section className="panel monitoring-history-panel">
 
                 <h2>
-                  Monitoring Guidance
+                  Reviewed Assessment History
                 </h2>
 
+
                 <p>
-                  {
-                    latest.recommendation ||
-                    "Continue monitoring your well-being and contact the Guidance and Counseling Unit if you need support."
-                  }
+                  This history shows review status and monitoring priority only.
+                  Detailed assessment scores remain counselor-only.
                 </p>
-
-
-                <div className="notice">
-                  MindTrack displays screening and monitoring information only. These results are not a medical or psychological diagnosis. A Guidance Counselor should interpret concerns together with your situation and professional assessment.
-                </div>
-
-              </section>
-
-
-              <section className="panel">
-
-                <div className="monitoring-history-heading">
-
-                  <div>
-
-                    <h2>
-                      Counselor-Reviewed Assessment History
-                    </h2>
-
-                    <p>
-                      Only counselor-reviewed assessments are used in your current state and monitoring trend. Newest reviewed assessment first.
-                    </p>
-
-                  </div>
-
-
-                  <button
-
-                    type="button"
-
-                    className="secondary-button"
-
-                    onClick={
-                      () =>
-                        navigate(
-                          "/assessment"
-                        )
-                    }
-
-                  >
-                    Take another assessment
-                  </button>
-
-                </div>
 
 
                 <div className="monitoring-history-list">
@@ -14417,22 +15032,13 @@ function UserMonitoringContent({
                     row => (
 
                       <article
-
-                        id={
-                          `monitoring-assessment-${row.id}`
-                        }
-
                         key={
                           row.id
                         }
-
-                        className={
-                          row.id ===
-                            requestedAssessmentId
-                            ? "monitoring-history-card notification-target-highlight"
-                            : "monitoring-history-card"
+                        id={
+                          `monitoring-assessment-${row.assessmentId || row.id}`
                         }
-
+                        className="monitoring-history-item"
                       >
 
                         <div>
@@ -14445,13 +15051,13 @@ function UserMonitoringContent({
                             }
                           </strong>
 
-                          <small>
+                          <span>
                             {
                               assessmentCaseStatusLabel(
                                 row.status
                               )
                             }
-                          </small>
+                          </span>
 
                         </div>
 
@@ -14469,106 +15075,6 @@ function UserMonitoringContent({
                           }
                         </span>
 
-
-                        <div className="monitoring-history-scores">
-
-                          <span>
-                            WHO-5:
-                            {" "}
-                            {
-                              row.instrumentResults
-                                ?.who5
-                                ?.percentageScore ??
-                              row.score ??
-                              "—"
-                            }
-                          </span>
-
-                          <span>
-                            PHQ-9:
-                            {" "}
-                            {
-                              row.instrumentResults
-                                ?.phq9
-                                ?.totalScore ??
-                              "—"
-                            }
-                          </span>
-
-                          <span>
-                            GAD-7:
-                            {" "}
-                            {
-                              row.instrumentResults
-                                ?.gad7
-                                ?.totalScore ??
-                              "—"
-                            }
-                          </span>
-
-                          {row.instrumentResults
-                            ?.dass21
-                            ?.depression
-
-                            ? (
-
-                              <>
-
-                                <span>
-                                  DASS-D:
-                                  {" "}
-                                  {
-                                    row.instrumentResults
-                                      .dass21
-                                      .depression
-                                      .adjustedScore
-                                  }
-                                </span>
-
-                                <span>
-                                  DASS-A:
-                                  {" "}
-                                  {
-                                    row.instrumentResults
-                                      .dass21
-                                      .anxiety
-                                      .adjustedScore
-                                  }
-                                </span>
-
-                                <span>
-                                  DASS-S:
-                                  {" "}
-                                  {
-                                    row.instrumentResults
-                                      .dass21
-                                      .stress
-                                      .adjustedScore
-                                  }
-                                </span>
-
-                              </>
-
-                            )
-
-                            : (
-
-                              <span>
-                                DASS-21 legacy total:
-                                {" "}
-                                {
-                                  row.instrumentResults
-                                    ?.dass21
-                                    ?.totalScore ??
-                                  "—"
-                                }
-                              </span>
-
-                            )
-                          }
-
-                        </div>
-
                       </article>
 
                     )
@@ -14579,7 +15085,8 @@ function UserMonitoringContent({
               </section>
 
 
-              {pendingAssessments.length > 0 && (
+              {pendingAssessments.length >
+                0 && (
 
                 <section className="panel monitoring-pending-panel">
 
@@ -14587,8 +15094,11 @@ function UserMonitoringContent({
                     Awaiting Counselor Review
                   </h2>
 
+
                   <p>
-                    These assessments are not included in your current state or trend until a Guidance Counselor reviews them.
+                    These assessments are waiting for Guidance Counselor
+                    review. Their detailed scores are not shown on the user
+                    side.
                   </p>
 
 
@@ -14600,6 +15110,9 @@ function UserMonitoringContent({
                         <div
                           key={
                             row.id
+                          }
+                          id={
+                            `monitoring-assessment-${row.assessmentId || row.id}`
                           }
                           className="monitoring-pending-item"
                         >
@@ -14650,7 +15163,7 @@ function History() {
 
   const assessments =
     useRows(
-      "assessments",
+      "assessmentUserViews",
       {
         ownerId:
           user.id
@@ -14738,10 +15251,154 @@ function History() {
         </h2>
 
 
-        <CaseTable
-          rows={assessments}
-          personal
-        />
+        {assessments.length ===
+          0
+
+          ? (
+
+            <Empty
+              text="No assessment records yet."
+            />
+
+          )
+
+          : (
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+
+                    <th>
+                      Date
+                    </th>
+
+                    <th>
+                      Monitoring Priority
+                    </th>
+
+                    <th>
+                      Status
+                    </th>
+
+                    <th>
+                      Counselor Remark
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                  {[...assessments]
+                    .sort(
+                      (
+                        a,
+                        b
+                      ) => {
+
+                        const aDate =
+                          recordDateObject(
+                            a.createdAt
+                          );
+
+
+                        const bDate =
+                          recordDateObject(
+                            b.createdAt
+                          );
+
+
+                        return (
+                          (bDate?.getTime() || 0) -
+                          (aDate?.getTime() || 0)
+                        );
+                      }
+                    )
+                    .map(
+                      row => (
+
+                        <tr
+                          key={
+                            row.id
+                          }
+                        >
+
+                          <td>
+                            {
+                              formatRecordDateTime(
+                                row.createdAt
+                              )
+                            }
+                          </td>
+
+
+                          <td>
+
+                            <span
+                              className={
+                                priorityClassName(
+                                  row.priority
+                                )
+                              }
+                            >
+                              {
+                                row.priority ||
+                                "No priority"
+                              }
+                            </span>
+
+                          </td>
+
+
+                          <td>
+                            {
+                              assessmentCaseStatusLabel(
+                                row.status
+                              )
+                            }
+                          </td>
+
+
+                          <td>
+                            {
+                              row.counselorRemarks ||
+                              "No counselor remark."
+                            }
+                          </td>
+
+                        </tr>
+
+                      )
+                    )
+                  }
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )
+        }
+
+
+        <div
+          className="notice"
+          style={{
+            marginTop:
+              "14px"
+          }}
+        >
+          Detailed WHO-5, PHQ-9, GAD-7, and DASS-21 scores are hidden from
+          the user History page and are available only to authorized Guidance
+          Counselors and Super Admin.
+        </div>
 
       </section>
 
@@ -15634,6 +16291,15 @@ function Cases() {
       );
 
 
+      batch.delete(
+        doc(
+          db,
+          "assessmentUserViews",
+          selected.id
+        )
+      );
+
+
       notificationSnapshot.docs.forEach(
         item =>
           batch.delete(
@@ -15866,6 +16532,14 @@ function Cases() {
         );
 
 
+      const userViewRef =
+        doc(
+          db,
+          "assessmentUserViews",
+          selected.id
+        );
+
+
       await runTransaction(
         db,
 
@@ -15914,6 +16588,118 @@ function Cases() {
 
               updatedAt:
                 serverTimestamp()
+            }
+          );
+
+
+          const nextReviewed =
+            user.role ===
+              "counselor"
+              ? statusDraft !==
+                "For review"
+              : storedAssessment.reviewed ===
+                true;
+
+
+          const nextReviewedById =
+            user.role ===
+              "counselor"
+              ? user.id
+              : (
+                  storedAssessment.reviewedById ||
+                  ""
+                );
+
+
+          const nextReviewedByName =
+            user.role ===
+              "counselor"
+              ? (
+                  user.name ||
+                  "Guidance Counselor"
+                )
+              : (
+                  storedAssessment.reviewedByName ||
+                  ""
+                );
+
+
+          const nextReviewedByRole =
+            user.role ===
+              "counselor"
+              ? "counselor"
+              : (
+                  storedAssessment.reviewedByRole ||
+                  ""
+                );
+
+
+          transaction.set(
+            userViewRef,
+            {
+              assessmentId:
+                selected.id,
+
+              ownerId:
+                storedAssessment.ownerId,
+
+              ownerName:
+                storedAssessment.ownerName ||
+                selected.ownerName ||
+                "",
+
+              role:
+                storedAssessment.role ||
+                selected.role ||
+                "",
+
+              department:
+                storedAssessment.department ||
+                selected.department ||
+                "",
+
+              program:
+                storedAssessment.program ||
+                selected.program ||
+                "",
+
+              priority:
+                storedAssessment.priority ||
+                selected.priority ||
+                "Low",
+
+              recommendation:
+                storedAssessment.recommendation ||
+                selected.recommendation ||
+                "",
+
+              status:
+                statusDraft,
+
+              counselorRemarks:
+                remarksDraft,
+
+              reviewed:
+                nextReviewed,
+
+              reviewedById:
+                nextReviewedById,
+
+              reviewedByName:
+                nextReviewedByName,
+
+              reviewedByRole:
+                nextReviewedByRole,
+
+              createdAt:
+                storedAssessment.createdAt,
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
             }
           );
 
@@ -17519,11 +18305,39 @@ function CounselingRequestsManagement() {
 
   const counselors =
     useRows(
-      "users",
+      "counselorDirectory",
       {
-        role:
-          "counselor"
+        active:
+          true
       }
+    );
+
+
+  const transferCounselorOptions =
+    useMemo(
+      () =>
+        counselors
+          .filter(
+            counselor =>
+              counselor.active ===
+                true &&
+              Boolean(
+                counselor.counselorId ||
+                counselor.id
+              )
+          )
+          .map(
+            counselor => ({
+              ...counselor,
+
+              id:
+                counselor.counselorId ||
+                counselor.id
+            })
+          ),
+      [
+        counselors
+      ]
     );
 
 
@@ -17591,6 +18405,12 @@ function CounselingRequestsManagement() {
             return {
 
               ...row,
+
+              role:
+                row.role ||
+                latestAssessment
+                  ?.role ||
+                "",
 
               program:
                 row.program ||
@@ -17737,8 +18557,138 @@ function CounselingRequestsManagement() {
     );
 
 
+  const actionableRequestRows =
+    filteredRequestRows.filter(
+      row =>
+        !Number(
+          row.sessionNumber ||
+          0
+        ) &&
+        !counselingRequestHiddenFromRequestList(
+          row.status
+        )
+    );
+
+
+  const groupedRequestUsers =
+    useMemo(
+      () => {
+
+        const groups =
+          new Map();
+
+
+        actionableRequestRows.forEach(
+          row => {
+
+            const key =
+              row.ownerId ||
+              row.ownerName ||
+              row.id;
+
+
+            if (
+              !groups.has(
+                key
+              )
+            ) {
+
+              groups.set(
+                key,
+                {
+                  ownerId:
+                    row.ownerId ||
+                    key,
+
+                  ownerName:
+                    row.ownerName ||
+                    "User",
+
+                  role:
+                    row.role ||
+                    "",
+
+                  program:
+                    row.program ||
+                    "",
+
+                  rows:
+                    []
+                }
+              );
+            }
+
+
+            groups
+              .get(
+                key
+              )
+              .rows.push(
+                row
+              );
+          }
+        );
+
+
+        return Array.from(
+          groups.values()
+        )
+          .map(
+            group => ({
+              ...group,
+
+              rows:
+                [...group.rows]
+                  .sort(
+                    newestRecordFirst
+                  )
+            })
+          )
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              String(
+                a.ownerName ||
+                ""
+              ).localeCompare(
+                String(
+                  b.ownerName ||
+                  ""
+                )
+              )
+          );
+      },
+      [
+        actionableRequestRows
+      ]
+    );
+
+
   const [selected, setSelected] =
     useState(null);
+
+
+  const [
+    selectedRequestOwnerId,
+    setSelectedRequestOwnerId
+  ] = useState("");
+
+
+  const selectedRequestUser =
+    groupedRequestUsers.find(
+      group =>
+        group.ownerId ===
+        selectedRequestOwnerId
+    ) ||
+    null;
+
+
+  const [
+    transferTargetCounselorId,
+    setTransferTargetCounselorId
+  ] = useState("");
 
 
   const [
@@ -17863,6 +18813,8 @@ function CounselingRequestsManagement() {
 
 
     setSelected(null);
+
+    setTransferTargetCounselorId("");
 
     setStatusDraft("");
 
@@ -18347,11 +19299,12 @@ function CounselingRequestsManagement() {
 
       const allowedReviewStatuses = [
         "For review",
-        "Schedule for counseling",
-        "Follow up is recommended",
+        "Scheduled for counseling",
+        "Rescheduled",
+        "Follow up Counseling is recommended",
         "Counseling is optional",
         "For referral",
-        "Concluded"
+        "Terminated"
       ];
 
 
@@ -18373,9 +19326,13 @@ function CounselingRequestsManagement() {
 
       setStatusDraft(
         allowedReviewStatuses.includes(
-          target.status
+          normalizeCounselingRequestStatus(
+            target.status
+          )
         )
-          ? target.status
+          ? normalizeCounselingRequestStatus(
+              target.status
+            )
           : "For review"
       );
 
@@ -18419,21 +19376,28 @@ function CounselingRequestsManagement() {
 
     setSelected(row);
 
+    setTransferTargetCounselorId("");
+
     const allowedReviewStatuses = [
       "For review",
-      "Schedule for counseling",
-      "Follow up is recommended",
+      "Scheduled for counseling",
+      "Rescheduled",
+      "Follow up Counseling is recommended",
       "Counseling is optional",
       "For referral",
-      "Concluded"
+      "Terminated"
     ];
 
 
     setStatusDraft(
       allowedReviewStatuses.includes(
-        row.status
+        normalizeCounselingRequestStatus(
+          row.status
+        )
       )
-        ? row.status
+        ? normalizeCounselingRequestStatus(
+            row.status
+          )
         : "For review"
     );
 
@@ -18489,23 +19453,22 @@ function CounselingRequestsManagement() {
 
     if (
       user.role !== "counselor" ||
-      row.status !==
-        "Schedule for counseling" ||
-      !row.date ||
-      !row.time ||
-      appointmentHasStarted(row) ||
+      !row?.id ||
+      requestIsReadOnly(
+        row
+      ) ||
       transferRequestForConsultation(
         row.id
       )
     ) {
+
       return false;
     }
 
 
     return (
-      !row.assignedCounselorId ||
       row.assignedCounselorId ===
-        user.id
+      user.id
     );
   }
 
@@ -18786,10 +19749,19 @@ function CounselingRequestsManagement() {
       );
 
 
+      const counselingProfileRef =
+        doc(
+          db,
+          "counselingProfiles",
+          selected.ownerId
+        );
+
+
       const [
         ownerConsultationsSnapshot,
         slotSnapshot,
-        consultationNotificationsSnapshot
+        consultationNotificationsSnapshot,
+        counselingProfileSnapshot
       ] =
         await Promise.all([
           getDocs(
@@ -18832,6 +19804,10 @@ function CounselingRequestsManagement() {
                 selected.id
               )
             )
+          ),
+
+          getDoc(
+            counselingProfileRef
           )
         ]);
 
@@ -18853,6 +19829,67 @@ function CounselingRequestsManagement() {
           )
           .sort(
             newestRecordFirst
+          );
+
+
+      const remainingSessions =
+        [...remainingConsultations]
+          .filter(
+            row =>
+              counselingRequestCreatesSession(
+                row.status
+              )
+          )
+          .sort(
+            (
+              first,
+              second
+            ) => {
+
+              const firstSchedule =
+                counselingScheduledAtDate(
+                  first
+                )
+                  ?.getTime() ||
+                recordTimestampMillis(
+                  first.createdAt ||
+                  first.updatedAt
+                ) ||
+                0;
+
+
+              const secondSchedule =
+                counselingScheduledAtDate(
+                  second
+                )
+                  ?.getTime() ||
+                recordTimestampMillis(
+                  second.createdAt ||
+                  second.updatedAt
+                ) ||
+                0;
+
+
+              if (
+                firstSchedule !==
+                secondSchedule
+              ) {
+
+                return (
+                  firstSchedule -
+                  secondSchedule
+                );
+              }
+
+
+              return String(
+                first.id
+              ).localeCompare(
+                String(
+                  second.id
+                )
+              );
+            }
           );
 
 
@@ -19071,6 +20108,69 @@ function CounselingRequestsManagement() {
       }
 
 
+      remainingSessions.forEach(
+        (
+          row,
+          index
+        ) => {
+
+          const sessionNumber =
+            index + 1;
+
+
+          if (
+            Number(
+              row.sessionNumber ||
+              0
+            ) !==
+              sessionNumber
+          ) {
+
+            batch.update(
+              doc(
+                db,
+                "consultations",
+                row.id
+              ),
+              {
+                sessionNumber,
+
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+          }
+        }
+      );
+
+
+      if (
+        counselingProfileSnapshot.exists()
+      ) {
+
+        batch.update(
+          counselingProfileRef,
+          {
+            sessionCount:
+              remainingSessions.length,
+
+            lastSessionNumber:
+              remainingSessions.length,
+
+            updatedById:
+              user.id,
+
+            updatedByName:
+              user.name ||
+              "Super Admin",
+
+            updatedAt:
+              serverTimestamp()
+          }
+        );
+      }
+
+
       await batch.commit();
 
 
@@ -19078,7 +20178,7 @@ function CounselingRequestsManagement() {
 
 
       alert(
-        "Counseling-request cleanup completed. The request, private session note, slot, pending transfer data, notifications, and counseling lock were repaired."
+        "Counseling-request cleanup completed. The request, private session note, slot, pending transfer data, notifications, counseling lock, and session numbering were repaired."
       );
 
     } catch (error) {
@@ -19297,7 +20397,29 @@ function CounselingRequestsManagement() {
     if (!canRequestTransfer(row)) {
 
       alert(
-        "This counseling request cannot be transferred. Transfers are only available to the currently assigned counselor before the scheduled counseling session starts."
+        "Only the currently assigned counselor can transfer this user. A new transfer cannot be started while another transfer request is pending."
+      );
+
+      return;
+    }
+
+
+    const targetCounselor =
+      transferCounselorOptions.find(
+        counselor =>
+          counselor.id ===
+          transferTargetCounselorId
+      );
+
+
+    if (
+      !targetCounselor ||
+      targetCounselor.id ===
+        user.id
+    ) {
+
+      alert(
+        "Please choose the specific Guidance Counselor who should receive this transfer."
       );
 
       return;
@@ -19306,7 +20428,7 @@ function CounselingRequestsManagement() {
 
     const reason =
       window.prompt(
-        "Briefly state why this scheduled counseling request needs to be transferred to another counselor."
+        `Briefly state why ${row.ownerName || "this user"} should be transferred to ${targetCounselor.name || "the selected counselor"}.`
       );
 
 
@@ -19327,9 +20449,10 @@ function CounselingRequestsManagement() {
 
     if (
       !window.confirm(
-        `Request another counselor to take over ${row.ownerName || "this user's"} scheduled counseling session?`
+        `Transfer ${row.ownerName || "this user"} to ${targetCounselor.name || "the selected Guidance Counselor"}?\n\nThe selected counselor will receive the transfer request and must accept it before the assignment changes.`
       )
     ) {
+
       return;
     }
 
@@ -19430,6 +20553,12 @@ function CounselingRequestsManagement() {
               user.department ||
               "",
 
+            previousCounselorIds:
+              [],
+
+            previousCounselorNames:
+              [],
+
             caseHistory:
               "",
 
@@ -19460,18 +20589,6 @@ function CounselingRequestsManagement() {
         counselingScheduledAtDate(
           row
         );
-
-
-      if (
-        !scheduledAt ||
-        scheduledAt.getTime() <=
-          Date.now()
-      ) {
-
-        throw new Error(
-          "The counseling schedule has already started or the schedule is invalid. A transfer must be requested before counseling begins."
-        );
-      }
 
 
       const transferRef =
@@ -19517,18 +20634,6 @@ function CounselingRequestsManagement() {
 
 
           if (
-            currentConsultation.status !==
-              "Schedule for counseling"
-          ) {
-
-            throw new Error(
-              "Only a counseling request with status Schedule for counseling can be transferred."
-            );
-          }
-
-
-          if (
-            currentConsultation.assignedCounselorId &&
             currentConsultation.assignedCounselorId !==
               user.id
           ) {
@@ -19567,6 +20672,18 @@ function CounselingRequestsManagement() {
               consultationId:
                 row.id,
 
+              consultationStatus:
+                normalizeCounselingRequestStatus(
+                  currentConsultation.status
+                ),
+
+              sessionNumber:
+                Number(
+                  currentConsultation.sessionNumber ||
+                  0
+                ) ||
+                0,
+
               date:
                 row.date ||
                 "",
@@ -19575,7 +20692,9 @@ function CounselingRequestsManagement() {
                 row.time ||
                 "",
 
-              scheduledAt,
+              scheduledAt:
+                scheduledAt ||
+                null,
 
               mode:
                 row.mode ||
@@ -19590,6 +20709,17 @@ function CounselingRequestsManagement() {
 
               requestedByDepartment:
                 user.department ||
+                "",
+
+              targetCounselorId:
+                targetCounselor.id,
+
+              targetCounselorName:
+                targetCounselor.name ||
+                "Guidance Counselor",
+
+              targetCounselorDepartment:
+                targetCounselor.department ||
                 "",
 
               reason:
@@ -19619,20 +20749,6 @@ function CounselingRequestsManagement() {
           transaction.update(
             consultationRef,
             {
-              assignedCounselorId:
-                currentConsultation.assignedCounselorId ||
-                user.id,
-
-              assignedCounselorName:
-                currentConsultation.assignedCounselorName ||
-                user.name ||
-                "Guidance Counselor",
-
-              assignedCounselorDepartment:
-                currentConsultation.assignedCounselorDepartment ||
-                user.department ||
-                "",
-
               transferStatus:
                 "Pending approval",
 
@@ -19647,107 +20763,100 @@ function CounselingRequestsManagement() {
       );
 
 
-      const otherCounselors =
-        counselors.filter(
-          counselor =>
-            counselor.id !==
-            user.id
-        );
+      await Promise.allSettled([
+        addRecord(
+          "notifications",
+          {
+            ownerId:
+              targetCounselor.id,
 
+            title:
+              "Counselor transfer request",
 
-      await Promise.allSettled(
-        otherCounselors.map(
-          counselor =>
-            addRecord(
-              "notifications",
-              {
-                ownerId:
-                  counselor.id,
+            message:
+              `${user.name || "The assigned counselor"} selected you to receive ${row.ownerName || "a user's"} counseling case. Open your Dashboard to review the transfer request.`,
 
-                title:
-                  "User waiting for counselor transfer",
+            notificationType:
+              "transfer_request",
 
-                message:
-                  `${row.ownerName || "A user"} has a scheduled counseling request that ${user.name || "the assigned counselor"} needs to transfer. Open your Dashboard to review and accept the transfer if you are available.`,
+            senderRole:
+              "counselor",
 
-                notificationType:
-                  "transfer_request",
+            senderId:
+              user.id,
 
-                senderRole:
-                  "counselor",
+            senderName:
+              user.name ||
+              "Guidance Counselor",
 
-                senderId:
-                  user.id,
+            targetPath:
+              "/dashboard",
 
-                senderName:
-                  user.name ||
-                  "Guidance Counselor",
+            sourceType:
+              "transfer",
 
-                targetPath:
-                  "/dashboard",
+            sourceId:
+              transferRef.id,
 
-                sourceType:
-                  "transfer",
+            consultationId:
+              row.id,
 
-                sourceId:
-                  transferRef.id,
+            read:
+              false
+          }
+        ),
 
-                consultationId:
-                  row.id,
+        addRecord(
+          "notifications",
+          {
+            ownerId:
+              row.ownerId,
 
-                read:
-                  false
-              }
-            )
+            title:
+              "Counselor transfer requested",
+
+            message:
+              `${user.name || "Your assigned counselor"} requested to transfer your counseling case to ${targetCounselor.name || "another Guidance Counselor"}. The assignment will change after the selected counselor accepts the transfer.`,
+
+            notificationType:
+              "counselor_transfer_update",
+
+            senderRole:
+              "counselor",
+
+            senderId:
+              user.id,
+
+            senderName:
+              user.name ||
+              "Guidance Counselor",
+
+            targetPath:
+              "/consultations",
+
+            sourceType:
+              "consultation",
+
+            sourceId:
+              row.id,
+
+            transferRequestId:
+              transferRef.id,
+
+            read:
+              false
+          }
         )
-      );
+      ]);
 
 
-      await addRecord(
-        "notifications",
-        {
-          ownerId:
-            row.ownerId,
-
-          title:
-            "Counselor transfer requested",
-
-          message:
-            `${user.name || "Your assigned counselor"} requested another Guidance Counselor to take over your scheduled counseling session. Your schedule remains active while another counselor reviews the transfer request.`,
-
-          notificationType:
-            "counselor_transfer_update",
-
-          senderRole:
-            "counselor",
-
-          senderId:
-            user.id,
-
-          senderName:
-            user.name ||
-            "Guidance Counselor",
-
-          targetPath:
-            "/consultations",
-
-          sourceType:
-            "consultation",
-
-          sourceId:
-            row.id,
-
-          transferRequestId:
-            transferRef.id,
-
-          read:
-            false
-        }
+      setTransferTargetCounselorId(
+        ""
       );
 
 
       alert(
-        "Transfer request sent. Other counselors have been notified and the transfer will only take effect after another counselor approves it."
+        `Transfer request sent to ${targetCounselor.name || "the selected Guidance Counselor"}. The assignment will change only after that counselor accepts it.`
       );
 
     } catch (error) {
@@ -19793,7 +20902,9 @@ function CounselingRequestsManagement() {
 
 
       const requestChanged =
-        selected.status !==
+        normalizeCounselingRequestStatus(
+          selected.status
+        ) !==
           statusDraft ||
         String(
           selected.counselorRemarks ||
@@ -19819,8 +20930,9 @@ function CounselingRequestsManagement() {
       if (
         user.role ===
           "counselor" &&
-        statusDraft ===
-          "Schedule for counseling" &&
+        counselingRequestCreatesSession(
+          statusDraft
+        ) &&
         !selected.assignedCounselorId
       ) {
 
@@ -19870,8 +20982,9 @@ function CounselingRequestsManagement() {
 
 
       if (
-        statusDraft ===
-          "Schedule for counseling" &&
+        counselingRequestIsScheduled(
+          statusDraft
+        ) &&
         !effectiveCounselorId
       ) {
 
@@ -19895,6 +21008,22 @@ function CounselingRequestsManagement() {
           "counselingRequestLocks",
           selected.ownerId
         );
+
+
+      const counselingProfileRef =
+        doc(
+          db,
+          "counselingProfiles",
+          selected.ownerId
+        );
+
+
+      let resolvedSessionNumber =
+        Number(
+          selected.sessionNumber ||
+          0
+        ) ||
+        0;
 
 
       const slotRef =
@@ -19930,6 +21059,12 @@ function CounselingRequestsManagement() {
             );
 
 
+          const counselingProfileSnapshot =
+            await transaction.get(
+              counselingProfileRef
+            );
+
+
           if (!requestSnap.exists()) {
 
             throw new Error(
@@ -19956,6 +21091,119 @@ function CounselingRequestsManagement() {
             requestLockSnapshot.data();
 
 
+          const storedCounselingProfile =
+            counselingProfileSnapshot.exists()
+              ? counselingProfileSnapshot.data()
+              : {};
+
+
+          const shouldAssignSessionNumber =
+            counselingRequestCreatesSession(
+              statusDraft
+            ) &&
+            !Number(
+              storedRequest.sessionNumber ||
+              0
+            );
+
+
+          if (
+            shouldAssignSessionNumber
+          ) {
+
+            resolvedSessionNumber =
+              (
+                Number(
+                  storedCounselingProfile.sessionCount ||
+                  0
+                ) ||
+                0
+              ) + 1;
+
+
+            requestUpdate.sessionNumber =
+              resolvedSessionNumber;
+
+
+            transaction.set(
+              counselingProfileRef,
+              {
+                ownerId:
+                  selected.ownerId,
+
+                ownerName:
+                  selected.ownerName ||
+                  storedCounselingProfile.ownerName ||
+                  "",
+
+                department:
+                  selected.department ||
+                  storedCounselingProfile.department ||
+                  "",
+
+                assignedCounselorId:
+                  effectiveCounselorId ||
+                  storedCounselingProfile.assignedCounselorId ||
+                  "",
+
+                assignedCounselorName:
+                  effectiveCounselorName ||
+                  storedCounselingProfile.assignedCounselorName ||
+                  "",
+
+                assignedCounselorDepartment:
+                  effectiveCounselorDepartment ||
+                  storedCounselingProfile.assignedCounselorDepartment ||
+                  "",
+
+                previousCounselorIds:
+                  Array.isArray(
+                    storedCounselingProfile.previousCounselorIds
+                  )
+                    ? storedCounselingProfile.previousCounselorIds
+                    : [],
+
+                previousCounselorNames:
+                  Array.isArray(
+                    storedCounselingProfile.previousCounselorNames
+                  )
+                    ? storedCounselingProfile.previousCounselorNames
+                    : [],
+
+                sessionCount:
+                  resolvedSessionNumber,
+
+                lastSessionNumber:
+                  resolvedSessionNumber,
+
+                updatedById:
+                  user.id,
+
+                updatedByName:
+                  user.name ||
+                  "Guidance Counselor",
+
+                updatedAt:
+                  serverTimestamp()
+              },
+              {
+                merge:
+                  true
+              }
+            );
+
+          } else {
+
+            resolvedSessionNumber =
+              Number(
+                storedRequest.sessionNumber ||
+                selected.sessionNumber ||
+                0
+              ) ||
+              0;
+          }
+
+
           const slotSnap =
             slotRef
               ? await transaction.get(
@@ -19965,8 +21213,9 @@ function CounselingRequestsManagement() {
 
 
           const slotState =
-            statusDraft ===
-              "Schedule for counseling"
+            counselingRequestIsScheduled(
+              statusDraft
+            )
               ? "booked"
               : statusDraft ===
                   "For review"
@@ -20005,7 +21254,9 @@ function CounselingRequestsManagement() {
 
 
           if (
-            storedRequest.status !==
+            normalizeCounselingRequestStatus(
+              storedRequest.status
+            ) !==
               statusDraft &&
             storedRequestLock.latestConsultationId ===
               selected.id
@@ -20162,7 +21413,16 @@ function CounselingRequestsManagement() {
           statusDraft,
 
         counselorRemarks:
-          remarksDraft
+          remarksDraft,
+
+        ...(
+          resolvedSessionNumber
+            ? {
+                sessionNumber:
+                  resolvedSessionNumber
+              }
+            : {}
+        )
       });
 
 
@@ -20298,13 +21558,15 @@ function CounselingRequestsManagement() {
 
           <span className="counselor-filter-count">
             {
-              filteredRequestRows.length
+              actionableRequestRows.length
             }
             {" "}
-            of
-            {" "}
+            active request
             {
-              enrichedRows.length
+              actionableRequestRows.length ===
+                1
+                ? ""
+                : "s"
             }
           </span>
 
@@ -20450,176 +21712,267 @@ function CounselingRequestsManagement() {
 
       <section className="panel counseling-request-list-panel">
 
-        <h2>
-          Request List
-        </h2>
+        <div className="counseling-request-list-heading">
+
+          <div>
+
+            <h2>
+              Request List
+            </h2>
+
+            <p>
+              Only users with counseling requests that still need action are shown here. Scheduled, rescheduled, and terminated sessions are removed from this request list and remain available through Schedule and User Profiles.
+            </p>
+
+          </div>
 
 
-        {filteredRequestRows.length === 0
+          <span className="counselor-filter-count">
+            {
+              groupedRequestUsers.length
+            }
+            {" "}
+            user
+            {
+              groupedRequestUsers.length ===
+                1
+                ? ""
+                : "s"
+            }
+          </span>
+
+        </div>
+
+
+        {groupedRequestUsers.length === 0
 
           ? (
 
             <Empty
-              text="No counseling requests."
+              text="No active counseling requests requiring review."
             />
 
           )
 
-          : filteredRequestRows.map(
+          : (
+
+            <div className="counseling-request-user-grid">
+
+              {groupedRequestUsers.map(
+                group => (
+
+                  <article
+                    className="counseling-request-user-card"
+                    key={
+                      group.ownerId
+                    }
+                  >
+
+                    <div className="counseling-request-user-main">
+
+                      <strong>
+                        {
+                          group.ownerName ||
+                          "User"
+                        }
+                      </strong>
+
+
+                      <div className="counseling-request-user-meta">
+
+                        <span>
+                          {
+                            counselingUserRoleLabel(
+                              group.role
+                            )
+                          }
+                        </span>
+
+
+                        {group.program && (
+
+                          <>
+
+                            <span aria-hidden="true">
+                              ·
+                            </span>
+
+                            <span>
+                              {
+                                counselorProgramLabel(
+                                  group.program
+                                )
+                              }
+                            </span>
+
+                          </>
+
+                        )}
+
+                      </div>
+
+                    </div>
+
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={
+                        () =>
+                          setSelectedRequestOwnerId(
+                            group.ownerId
+                          )
+                      }
+                    >
+                      View counseling requests
+                    </button>
+
+                  </article>
+
+                )
+              )}
+
+            </div>
+
+          )
+        }
+
+      </section>
+
+
+      {selectedRequestUser && (
+
+        <section className="panel counseling-request-user-view">
+
+          <div className="counseling-request-user-view-header">
+
+            <div>
+
+              <span className="counseling-request-user-view-eyebrow">
+                Counseling Requests
+              </span>
+
+              <h2>
+                {
+                  selectedRequestUser.ownerName ||
+                  "User"
+                }
+              </h2>
+
+              <p>
+                {
+                  counselingUserRoleLabel(
+                    selectedRequestUser.role
+                  )
+                }
+
+                {selectedRequestUser.program && (
+                  <>
+                    {" · "}
+                    {
+                      counselorProgramLabel(
+                        selectedRequestUser.program
+                      )
+                    }
+                  </>
+                )}
+              </p>
+
+            </div>
+
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={
+                () =>
+                  setSelectedRequestOwnerId(
+                    ""
+                  )
+              }
+            >
+              Close
+            </button>
+
+          </div>
+
+
+          <div className="counseling-request-user-request-list">
+
+            {selectedRequestUser.rows.map(
               row => (
 
                 <article
-
-                  className="record-card counseling-request-list-card"
-
                   key={
                     row.id
                   }
-
+                  className="counseling-request-user-request-card"
                 >
 
-                  <strong>
-                    {
-                      row.ownerName ||
-                      "User"
-                    }
-                  </strong>
+                  <div>
 
-
-                  <span className="status">
-                    {
-                      row.status ||
-                      "Pending approval"
-                    }
-                  </span>
-
-
-                  <p>
-
-                    {
-                      row.category ||
-                      "Counseling concern"
-                    }
-
-                    {" · "}
-
-                    {
-                      row.date ||
-                      "No date"
-                    }
-
-                    {" · "}
-
-                    {
-                      row.time ||
-                      "No time"
-                    }
-
-                  </p>
-
-
-                  <small>
-                    {
-                      row.department ||
-                      "No department"
-                    }
-
-                    {" · "}
-
-                    {
-                      counselorProgramLabel(
-                        row.program
-                      )
-                    }
-
-                    {row.mode && (
-                      <>
-                        {" · "}
-                        {row.mode}
-                      </>
-                    )}
-                  </small>
-
-
-                  <div className="counseling-request-priority-row">
-
-                    <span
-                      className={
-                        priorityClassName(
-                          row.priority
-                        )
-                      }
-                    >
+                    <strong>
                       {
-                        row.priority ||
-                        "No Assessment"
+                        row.category ||
+                        "Counseling request"
+                      }
+                    </strong>
+
+                    <span className="status">
+                      {
+                        normalizeCounselingRequestStatus(
+                          row.status
+                        ) ||
+                        "Pending approval"
                       }
                     </span>
 
+                    <small>
+                      Preferred schedule:
+                      {" "}
+                      {
+                        row.date ||
+                        "No date"
+                      }
+                      {" · "}
+                      {
+                        row.time ||
+                        "No time"
+                      }
+                    </small>
+
                   </div>
 
 
-                  <div className="counseling-request-list-actions">
-
-                    <button
-
-                      type="button"
-
-                      className="secondary-button"
-
-                      onClick={
-                        () =>
-                          selectRequest(
-                            row
-                          )
-                      }
-
-                    >
-                      {
-                        requestIsReadOnly(
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={
+                      () =>
+                        selectRequest(
                           row
                         )
-                          ? "View record"
-                          : "Review request"
-                      }
-                    </button>
-
-
-                    {canRequestTransfer(row) && (
-
-                      <button
-                        type="button"
-                        className="transfer-user-button"
-                        onClick={
-                          () =>
-                            requestCounselorTransfer(
-                              row
-                            )
-                        }
-                      >
-                        Transfer user to another counselor
-                      </button>
-
-                    )}
-
-
-                    {transferRequestForConsultation(row.id) && (
-
-                      <span className="transfer-pending-label">
-                        Transfer awaiting approval
-                      </span>
-
-                    )}
-
-                  </div>
+                    }
+                  >
+                    {
+                      requestIsReadOnly(
+                        row
+                      )
+                        ? "View request"
+                        : "Review request"
+                    }
+                  </button>
 
                 </article>
 
               )
-            )
-        }
+            )}
 
-      </section>
+          </div>
+
+        </section>
+
+      )}
 
 
       {selected && (
@@ -20681,7 +22034,9 @@ function CounselingRequestsManagement() {
 
                   <span className="status">
                     {
-                      selected.status ||
+                      normalizeCounselingRequestStatus(
+                        selected.status
+                      ) ||
                       "Pending approval"
                     }
                   </span>
@@ -20832,6 +22187,23 @@ function CounselingRequestsManagement() {
                   </div>
 
 
+                  <div className="review-request-detail-item">
+
+                    <span>
+                      Counseling Session
+                    </span>
+
+                    <strong>
+                      {
+                        selected.sessionNumber
+                          ? `Session ${selected.sessionNumber}`
+                          : "Not numbered yet"
+                      }
+                    </strong>
+
+                  </div>
+
+
                   <div className="review-request-detail-item full">
 
                     <span>
@@ -20900,11 +22272,15 @@ function CounselingRequestsManagement() {
                     </option>
 
                     <option>
-                      Schedule for counseling
+                      Scheduled for counseling
                     </option>
 
                     <option>
-                      Follow up is recommended
+                      Rescheduled
+                    </option>
+
+                    <option>
+                      Follow up Counseling is recommended
                     </option>
 
                     <option>
@@ -20916,7 +22292,7 @@ function CounselingRequestsManagement() {
                     </option>
 
                     <option>
-                      Concluded
+                      Terminated
                     </option>
 
                   </select>
@@ -21322,18 +22698,109 @@ function CounselingRequestsManagement() {
                   selected
                 ) && (
 
-                  <button
-                    type="button"
-                    className="transfer-user-button"
-                    onClick={
-                      () =>
-                        requestCounselorTransfer(
-                          selected
-                        )
-                    }
-                  >
-                    Transfer user to another counselor
-                  </button>
+                  <div className="counselor-transfer-target-panel">
+
+                    <label>
+
+                      Transfer to
+
+                      <select
+                        value={
+                          transferTargetCounselorId
+                        }
+                        onChange={
+                          event =>
+                            setTransferTargetCounselorId(
+                              event.target.value
+                            )
+                        }
+                      >
+
+                        <option value="">
+                          Choose a Guidance Counselor
+                        </option>
+
+
+                        {transferCounselorOptions
+                          .filter(
+                            counselor =>
+                              counselor.id !==
+                                user.id
+                          )
+                          .sort(
+                            (
+                              first,
+                              second
+                            ) =>
+                              String(
+                                first.name ||
+                                ""
+                              ).localeCompare(
+                                String(
+                                  second.name ||
+                                  ""
+                                )
+                              )
+                          )
+                          .map(
+                            counselor => (
+
+                              <option
+                                key={
+                                  counselor.id
+                                }
+                                value={
+                                  counselor.id
+                                }
+                              >
+                                {
+                                  counselor.name ||
+                                  "Guidance Counselor"
+                                }
+                                {
+                                  counselor.department
+                                    ? ` — ${counselor.department}`
+                                    : ""
+                                }
+                              </option>
+
+                            )
+                          )
+                        }
+
+                      </select>
+
+                    </label>
+
+
+                    <button
+                      type="button"
+                      className="transfer-user-button"
+                      disabled={
+                        !transferTargetCounselorId
+                      }
+                      onClick={
+                        () =>
+                          requestCounselorTransfer(
+                            selected
+                          )
+                      }
+                    >
+                      Transfer user
+                    </button>
+
+                  </div>
+
+                )}
+
+
+                {transferRequestForConsultation(
+                  selected.id
+                ) && (
+
+                  <span className="transfer-pending-label">
+                    Transfer awaiting acceptance by the selected counselor
+                  </span>
 
                 )}
 
@@ -21420,7 +22887,7 @@ function Schedule() {
     scheduleFilter,
     setScheduleFilter
   ] = useState(
-    "Upcoming"
+    "Terminated"
   );
 
 
@@ -21465,6 +22932,27 @@ function Schedule() {
               "Pending approval"
           }
         : {
+            targetCounselorId:
+              user.id,
+
+            status:
+              "Pending approval"
+          }
+    );
+
+
+  const outgoingTransferRows =
+    useRows(
+      "transferRequests",
+      isSuperAdmin
+        ? {
+            requestedById:
+              "__NO_ACCESS__"
+          }
+        : {
+            requestedById:
+              user.id,
+
             status:
               "Pending approval"
           }
@@ -21476,24 +22964,37 @@ function Schedule() {
       ? []
       : pendingTransferRows.filter(
           row =>
-            row.requestedById !==
-            user.id
+            row.status ===
+              "Pending approval" &&
+            row.targetCounselorId ===
+              user.id
         );
 
 
   const outgoingTransferRequests =
     isSuperAdmin
       ? []
-      : pendingTransferRows.filter(
+      : outgoingTransferRows.filter(
           row =>
-            row.requestedById ===
-            user.id
+            row.status ===
+              "Pending approval"
         );
+
+
+  const allPendingTransferRows =
+    mergeRowsById(
+      pendingTransferRows,
+      outgoingTransferRows
+    ).filter(
+      row =>
+        row.status ===
+          "Pending approval"
+    );
 
 
   const pendingTransferByConsultation =
     new Map(
-      pendingTransferRows.map(
+      allPendingTransferRows.map(
         row => [
           row.consultationId,
           row
@@ -21605,10 +23106,10 @@ function Schedule() {
     row
   ) {
 
-    return String(
+    return normalizeCounselingRequestStatus(
       row?.status ||
       "For review"
-    ).trim();
+    );
   }
 
 
@@ -21635,16 +23136,15 @@ function Schedule() {
     row
   ) {
 
-    return (
+    return counselingRequestIsScheduled(
       normalizedStatus(
         row
-      ) ===
-      "Schedule for counseling"
+      )
     );
   }
 
 
-  function isConcludedAppointment(
+  function isTerminatedAppointment(
     row
   ) {
 
@@ -21652,27 +23152,7 @@ function Schedule() {
       normalizedStatus(
         row
       ) ===
-      "Concluded"
-    );
-  }
-
-
-  function isOutcomeAppointment(
-    row
-  ) {
-
-    const status =
-      normalizedStatus(
-        row
-      );
-
-
-    return [
-      "Follow up is recommended",
-      "Counseling is optional",
-      "For referral"
-    ].includes(
-      status
+      "Terminated"
     );
   }
 
@@ -21713,14 +23193,6 @@ function Schedule() {
       isSuperAdmin ||
       user.role !==
         "counselor" ||
-      !isScheduledAppointment(
-        row
-      ) ||
-      !row.date ||
-      !row.time ||
-      appointmentHasStarted(
-        row
-      ) ||
       pendingTransferFor(
         row
       )
@@ -21731,9 +23203,8 @@ function Schedule() {
 
 
     return (
-      !row.assignedCounselorId ||
       row.assignedCounselorId ===
-        user.id
+      user.id
     );
   }
 
@@ -21766,16 +23237,12 @@ function Schedule() {
   }
 
 
-  function isUpcomingAppointment(
+  function isTerminatedScheduleRecord(
     row
   ) {
 
-    return (
-      row.date >=
-        todayKey &&
-      isOperationalAppointment(
-        row
-      )
+    return isTerminatedAppointment(
+      row
     );
   }
 
@@ -21814,9 +23281,9 @@ function Schedule() {
               )
           ).length,
 
-        upcoming:
+        terminated:
           appointments.filter(
-            isUpcomingAppointment
+            isTerminatedScheduleRecord
           ).length,
 
         transfers:
@@ -21855,10 +23322,10 @@ function Schedule() {
 
             if (
               scheduleFilter ===
-              "Upcoming"
+              "Terminated"
             ) {
 
-              return isUpcomingAppointment(
+              return isTerminatedScheduleRecord(
                 row
               );
             }
@@ -21881,28 +23348,6 @@ function Schedule() {
             ) {
 
               return isScheduledAppointment(
-                row
-              );
-            }
-
-
-            if (
-              scheduleFilter ===
-              "Completed"
-            ) {
-
-              return isConcludedAppointment(
-                row
-              );
-            }
-
-
-            if (
-              scheduleFilter ===
-              "Outcomes"
-            ) {
-
-              return isOutcomeAppointment(
                 row
               );
             }
@@ -22088,8 +23533,9 @@ function Schedule() {
   ) {
 
     if (
-      status ===
-      "Schedule for counseling"
+      counselingRequestIsScheduled(
+        status
+      )
     ) {
 
       return {
@@ -22127,7 +23573,7 @@ function Schedule() {
 
     if (
       status ===
-      "Follow up is recommended"
+      "Follow up Counseling is recommended"
     ) {
 
       return {
@@ -22181,7 +23627,7 @@ function Schedule() {
 
     if (
       status ===
-      "Concluded"
+      "Terminated"
     ) {
 
       return {
@@ -22240,7 +23686,8 @@ function Schedule() {
           ? []
           : [
               transferredAssignedRows,
-              pendingTransferRows
+              pendingTransferRows,
+              outgoingTransferRows
             ]
       )
     );
@@ -22254,7 +23701,8 @@ function Schedule() {
           ? []
           : [
               transferredAssignedRows,
-              pendingTransferRows
+              pendingTransferRows,
+              outgoingTransferRows
             ]
       )
     );
@@ -22268,7 +23716,7 @@ function Schedule() {
       <>
         <PageTitle
           title="Counselor Schedule"
-          subtitle="Upcoming counseling activity is grouped by date and time."
+          subtitle="Counseling activity is grouped by date and time."
         />
 
         <section className="panel">
@@ -22289,7 +23737,7 @@ function Schedule() {
       <>
         <PageTitle
           title="Counselor Schedule"
-          subtitle="Upcoming counseling activity is grouped by date and time."
+          subtitle="Counseling activity is grouped by date and time."
         />
 
         <div className="error-box">
@@ -22301,13 +23749,11 @@ function Schedule() {
 
 
   const filterOptions = [
-    "Upcoming",
+    "Terminated",
     "Today",
     "Pending",
     "Scheduled",
     "Transfers",
-    "Outcomes",
-    "Completed",
     "All"
   ];
 
@@ -22320,7 +23766,7 @@ function Schedule() {
 
         title="Counselor Schedule"
 
-        subtitle="Upcoming counseling activity is grouped by date and time. Completed and outcome records are separated from the default schedule."
+        subtitle="Counseling activity is grouped by date and time. Use the filters to review pending, scheduled, transferred, or terminated sessions."
 
       />
 
@@ -22383,10 +23829,10 @@ function Schedule() {
 
             {
               label:
-                "Upcoming",
+                "Terminated",
 
               value:
-                scheduleCounts.upcoming
+                scheduleCounts.terminated
             },
 
             {
@@ -22566,8 +24012,8 @@ function Schedule() {
                     "4px"
                 }}
               >
-                Scheduled sessions assigned to you can still be transferred
-                before the appointment starts. Cards will show
+                Counseling cases assigned to you can be transferred to a
+                specific Guidance Counselor regardless of the current request status. Cards will show
                 {" "}
                 <strong>
                   Transfer available
@@ -22656,9 +24102,9 @@ function Schedule() {
               <Empty
                 text={
                   scheduleFilter ===
-                  "Upcoming"
+                  "Terminated"
 
-                    ? "No upcoming counseling appointments."
+                    ? "No terminated counseling sessions."
 
                     : scheduleFilter ===
                         "Transfers"
@@ -22990,6 +24436,36 @@ function Schedule() {
                                     "User"
                                   }
                                 </div>
+
+
+                                {Number(
+                                  row.sessionNumber ||
+                                  0
+                                ) > 0 && (
+
+                                  <div
+                                    style={{
+                                      marginTop:
+                                        "3px",
+
+                                      color:
+                                        "#173f8f",
+
+                                      fontSize:
+                                        "0.78rem",
+
+                                      fontWeight:
+                                        800
+                                    }}
+                                  >
+                                    Session
+                                    {" "}
+                                    {
+                                      row.sessionNumber
+                                    }
+                                  </div>
+
+                                )}
 
 
                                 <div
@@ -24256,9 +25732,8 @@ function Reports() {
     row
   ) {
 
-    return (
-      row.status ===
-      "Schedule for counseling"
+    return counselingRequestIsScheduled(
+      row.status
     );
   }
 
@@ -25131,7 +26606,7 @@ function Reports() {
         </h2>
 
         <p>
-          Requests include every counseling request record. Scheduled counseling counts records currently marked Schedule for counseling.
+          Requests include every counseling request record. Scheduled counseling counts records currently marked Scheduled for counseling or Rescheduled.
         </p>
 
       </div>
