@@ -4685,6 +4685,19 @@ function Dashboard() {
 // ASSESSMENT
 // ======================================================
 
+// TEMPORARY TESTING SWITCH:
+// false = the 14-day reassessment cooldown is disabled.
+// true  = the normal 14-day reassessment cooldown is enforced.
+//
+// Keep the one-active-assessment rule enabled even while this is false.
+const ASSESSMENT_COOLDOWN_ENABLED =
+  false;
+
+
+const ASSESSMENT_COOLDOWN_DAYS =
+  14;
+
+
 function Assessment() {
 
   const { user } =
@@ -4740,10 +4753,6 @@ function Assessment() {
         assessmentLock.status
       )
     );
-
-
-  const ASSESSMENT_COOLDOWN_DAYS =
-    14;
 
 
   const ASSESSMENT_COOLDOWN_MS =
@@ -4819,6 +4828,7 @@ function Assessment() {
 
 
   const cooldownBlocked =
+    ASSESSMENT_COOLDOWN_ENABLED &&
     Boolean(
       !activeAssessment &&
       assessmentLock?.status ===
@@ -5491,6 +5501,7 @@ function Assessment() {
 
 
           if (
+            ASSESSMENT_COOLDOWN_ENABLED &&
             lockData.status ===
               "Concluded"
           ) {
@@ -5520,7 +5531,7 @@ function Assessment() {
             ) {
 
               throw new Error(
-                `Your next psychological assessment will be available on ${new Date(eligibleAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}. The 14-day cooldown cannot be bypassed.`
+                `Your next psychological assessment will be available on ${new Date(eligibleAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}.`
               );
             }
           }
@@ -5873,6 +5884,27 @@ function Assessment() {
         subtitle="Complete the screening tools one section at a time. Only one assessment section is shown per page to keep the process clear and easy to follow."
 
       />
+
+
+      {!ASSESSMENT_COOLDOWN_ENABLED && (
+
+        <div
+          className="notice assessment-page-shell"
+          style={{
+            marginBottom:
+              "14px"
+          }}
+        >
+          <strong>
+            Testing mode:
+          </strong>
+          {" "}
+          the 14-day reassessment cooldown is temporarily disabled.
+          A new assessment can be taken immediately after the current
+          assessment is concluded.
+        </div>
+
+      )}
 
 
       <div
@@ -14941,7 +14973,7 @@ function UserMonitoringContent({
                 )}
 
 
-                <div className="notice">
+                <div className="notice monitoring-score-privacy-note">
                   Your detailed WHO-5, PHQ-9, GAD-7, and DASS-21 scores are
                   intentionally hidden on the user side. Authorized Guidance
                   Counselors and Super Admin can review the detailed screening
@@ -15015,15 +15047,33 @@ function UserMonitoringContent({
 
               <section className="panel monitoring-history-panel">
 
-                <h2>
-                  Reviewed Assessment History
-                </h2>
+                <div className="monitoring-history-heading">
+
+                  <div>
+
+                    <span className="monitoring-kicker">
+                      Assessment History
+                    </span>
+
+                    <h2>
+                      Reviewed Assessment History
+                    </h2>
+
+                    <p>
+                      Review status and monitoring priority are shown from
+                      newest to oldest. Detailed assessment scores remain
+                      counselor-only.
+                    </p>
+
+                  </div>
 
 
-                <p>
-                  This history shows review status and monitoring priority only.
-                  Detailed assessment scores remain counselor-only.
-                </p>
+                  <Activity
+                    size={26}
+                    aria-hidden="true"
+                  />
+
+                </div>
 
 
                 <div className="monitoring-history-list">
@@ -18058,23 +18108,47 @@ function Cases() {
                   <div className="notice">
 
                     <strong>
-                      Mandatory 14-day reassessment cooldown
+                      {
+                        ASSESSMENT_COOLDOWN_ENABLED
+                          ? "Mandatory 14-day reassessment cooldown"
+                          : "Testing mode: reassessment cooldown disabled"
+                      }
                     </strong>
 
-                    <p>
-                      This assessment is concluded. MindTrack requires the user
-                      to complete the full 14-day reassessment period before a
-                      new psychological assessment can be submitted.
-                    </p>
+                    {ASSESSMENT_COOLDOWN_ENABLED
+                      ? (
+                        <>
+                          <p>
+                            This assessment is concluded. MindTrack requires
+                            the user to complete the full 14-day reassessment
+                            period before a new psychological assessment can be
+                            submitted.
+                          </p>
 
-                    <p
-                      style={{
-                        marginBottom: 0
-                      }}
-                    >
-                      The cooldown cannot be bypassed by a counselor or
-                      Super Admin.
-                    </p>
+                          <p
+                            style={{
+                              marginBottom: 0
+                            }}
+                          >
+                            The cooldown cannot be bypassed by a counselor or
+                            Super Admin.
+                          </p>
+                        </>
+                      )
+                      : (
+                        <p
+                          style={{
+                            marginBottom: 0
+                          }}
+                        >
+                          The 14-day cooldown is temporarily disabled for
+                          monitoring-feature testing. After this assessment is
+                          concluded, the user may immediately submit another
+                          assessment. Restore the cooldown before the final
+                          production deployment.
+                        </p>
+                      )
+                    }
 
                   </div>
 
@@ -18648,8 +18722,27 @@ function CounselingRequestsManagement() {
             (
               a,
               b
-            ) =>
-              String(
+            ) => {
+
+              const newestDifference =
+                newestRecordFirst(
+                  a.rows[0] ||
+                    {},
+                  b.rows[0] ||
+                    {}
+                );
+
+
+              if (
+                newestDifference !==
+                  0
+              ) {
+
+                return newestDifference;
+              }
+
+
+              return String(
                 a.ownerName ||
                 ""
               ).localeCompare(
@@ -18657,7 +18750,8 @@ function CounselingRequestsManagement() {
                   b.ownerName ||
                   ""
                 )
-              )
+              );
+            }
           );
       },
       [
@@ -18668,21 +18762,6 @@ function CounselingRequestsManagement() {
 
   const [selected, setSelected] =
     useState(null);
-
-
-  const [
-    selectedRequestOwnerId,
-    setSelectedRequestOwnerId
-  ] = useState("");
-
-
-  const selectedRequestUser =
-    groupedRequestUsers.find(
-      group =>
-        group.ownerId ===
-        selectedRequestOwnerId
-    ) ||
-    null;
 
 
   const [
@@ -21065,6 +21144,14 @@ function CounselingRequestsManagement() {
             );
 
 
+          const slotSnap =
+            slotRef
+              ? await transaction.get(
+                  slotRef
+                )
+              : null;
+
+
           if (!requestSnap.exists()) {
 
             throw new Error(
@@ -21202,14 +21289,6 @@ function CounselingRequestsManagement() {
               ) ||
               0;
           }
-
-
-          const slotSnap =
-            slotRef
-              ? await transaction.get(
-                  slotRef
-                )
-              : null;
 
 
           const slotState =
@@ -21818,13 +21897,25 @@ function CounselingRequestsManagement() {
                       type="button"
                       className="secondary-button"
                       onClick={
-                        () =>
-                          setSelectedRequestOwnerId(
-                            group.ownerId
-                          )
+                        () => {
+
+                          const newestRequest =
+                            group.rows?.[0] ||
+                            null;
+
+
+                          if (
+                            newestRequest
+                          ) {
+
+                            selectRequest(
+                              newestRequest
+                            );
+                          }
+                        }
                       }
                     >
-                      View counseling requests
+                      View counseling request
                     </button>
 
                   </article>
@@ -21838,141 +21929,6 @@ function CounselingRequestsManagement() {
         }
 
       </section>
-
-
-      {selectedRequestUser && (
-
-        <section className="panel counseling-request-user-view">
-
-          <div className="counseling-request-user-view-header">
-
-            <div>
-
-              <span className="counseling-request-user-view-eyebrow">
-                Counseling Requests
-              </span>
-
-              <h2>
-                {
-                  selectedRequestUser.ownerName ||
-                  "User"
-                }
-              </h2>
-
-              <p>
-                {
-                  counselingUserRoleLabel(
-                    selectedRequestUser.role
-                  )
-                }
-
-                {selectedRequestUser.program && (
-                  <>
-                    {" · "}
-                    {
-                      counselorProgramLabel(
-                        selectedRequestUser.program
-                      )
-                    }
-                  </>
-                )}
-              </p>
-
-            </div>
-
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={
-                () =>
-                  setSelectedRequestOwnerId(
-                    ""
-                  )
-              }
-            >
-              Close
-            </button>
-
-          </div>
-
-
-          <div className="counseling-request-user-request-list">
-
-            {selectedRequestUser.rows.map(
-              row => (
-
-                <article
-                  key={
-                    row.id
-                  }
-                  className="counseling-request-user-request-card"
-                >
-
-                  <div>
-
-                    <strong>
-                      {
-                        row.category ||
-                        "Counseling request"
-                      }
-                    </strong>
-
-                    <span className="status">
-                      {
-                        normalizeCounselingRequestStatus(
-                          row.status
-                        ) ||
-                        "Pending approval"
-                      }
-                    </span>
-
-                    <small>
-                      Preferred schedule:
-                      {" "}
-                      {
-                        row.date ||
-                        "No date"
-                      }
-                      {" · "}
-                      {
-                        row.time ||
-                        "No time"
-                      }
-                    </small>
-
-                  </div>
-
-
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={
-                      () =>
-                        selectRequest(
-                          row
-                        )
-                    }
-                  >
-                    {
-                      requestIsReadOnly(
-                        row
-                      )
-                        ? "View request"
-                        : "Review request"
-                    }
-                  </button>
-
-                </article>
-
-              )
-            )}
-
-          </div>
-
-        </section>
-
-      )}
 
 
       {selected && (

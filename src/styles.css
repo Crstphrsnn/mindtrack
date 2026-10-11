@@ -5843,3 +5843,508 @@ th {
   }
 }
 
+/* =====================================================
+   USER PROFILE + MONITORING UI POLISH
+   Improves spacing, hierarchy, scanability, and balance.
+===================================================== */
+
+/* ---------- User Profile layout ---------- */
+
+.user-profile-modal-body {
+  gap: 20px;
+  padding: 24px;
+  background: #f6f9fd;
+}
+
+.user-profile-modal-card {
+  border-color: #dbe4ef;
+  box-shadow: 0 4px 14px rgba(25, 55, 95, 0.045);
+}
+
+.profile-account-section {
+  grid-column: 1 / -1;
+}
+
+.profile-account-section .readonly-profile-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-account-section .readonly-profile-item {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.profile-account-section .readonly-profile-item.full {
+  grid-column: span 2;
+}
+
+.profile-schedule-section,
+.profile-assessment-history-section {
+  min-height: 100%;
+}
+
+.profile-counseling-history-section,
+.counseling-notes-card {
+  grid-column: 1 / -1;
+}
+
+.user-profile-section-title {
+  padding-bottom: 13px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.user-profile-section-title h3 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.user-profile-section-title p {
+  max-width: 760px;
+  margin-top: 5px;
+  line-height: 1.55;
+}
+
+.profile-history-list {
+  gap: 12px;
+}
+
+.assessment-profile-history-card {
+  padding: 16px;
+  background: #fbfcfe;
+}
+
+.profile-history-card-top {
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9eef5;
+}
+
+.profile-history-card-top > strong {
+  font-size: 14px;
+}
+
+.profile-assessment-priority-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 10px !important;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f2f6fb;
+}
+
+.profile-assessment-priority-row > span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-assessment-priority-row > strong {
+  color: #173f8f;
+  font-size: 13px;
+}
+
+.profile-assessment-score-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.profile-assessment-score-list > span {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #e0e7f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.profile-assessment-remark {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 9px;
+  margin-top: 12px !important;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: #f5f8fc;
+}
+
+.profile-assessment-remark b {
+  color: #334155;
+}
+
+.profile-assessment-remark span {
+  min-width: 0;
+  color: #5d687b;
+  overflow-wrap: anywhere;
+}
+
+.profile-session-history-list {
+  margin-top: 4px;
+  padding: 10px 0 2px;
+}
+
+.profile-session-history-button {
+  min-width: 92px;
+  text-align: center;
+}
+
+.profile-session-note-view {
+  margin-top: 14px;
+  padding: 18px;
+  background: #f7faff;
+}
+
+.profile-session-note-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e1e8f1;
+}
+
+.profile-session-note-grid {
+  margin-top: 14px;
+}
+
+.profile-session-note-field {
+  min-height: 108px;
+}
+
+.profile-session-note-field > span {
+  letter-spacing: 0.01em;
+}
+
+.profile-recent-session-note-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.counseling-notes-card .counselor-notes-grid {
+  gap: 14px;
+}
+
+.counseling-notes-card .counselor-note-field textarea {
+  min-height: 138px;
+  border-color: #d9e2ed;
+  border-radius: 11px;
+  line-height: 1.55;
+}
+
+.counseling-notes-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid #e8edf3;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.counseling-notes-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.counseling-notes-meta strong {
+  color: #334155;
+}
+
+
+/* ---------- User Monitoring layout ---------- */
+
+.monitoring-summary-panel,
+.monitoring-trend-panel,
+.monitoring-history-panel,
+.monitoring-pending-panel,
+.monitoring-notification-banner,
+.monitoring-review-gate,
+.monitoring-empty-panel {
+  width: min(1100px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.monitoring-summary-panel,
+.monitoring-trend-panel,
+.monitoring-history-panel,
+.monitoring-pending-panel {
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(25, 55, 95, 0.04);
+}
+
+.monitoring-summary-panel {
+  padding: 22px;
+}
+
+.monitoring-summary-header {
+  align-items: center;
+}
+
+.monitoring-summary-header > div {
+  min-width: 0;
+}
+
+.monitoring-summary-header h2 {
+  margin-bottom: 6px;
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  line-height: 1.25;
+}
+
+.monitoring-summary-header p {
+  line-height: 1.45;
+}
+
+.monitoring-status-grid {
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.monitoring-status-item {
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 16px;
+  background: #f8fafc;
+}
+
+.monitoring-counselor-note {
+  padding: 14px 16px;
+  border-left-width: 3px;
+  background: #f6f9fe;
+}
+
+.monitoring-counselor-note > strong {
+  color: #172033;
+}
+
+.monitoring-score-privacy-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #dce8f7;
+  border-radius: 10px;
+  background: #f4f8fd;
+  color: #536174;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.monitoring-trend-panel {
+  padding: 20px 22px;
+  border-left-width: 4px;
+}
+
+.monitoring-trend-header {
+  align-items: center;
+}
+
+.monitoring-trend-panel > p {
+  margin-top: 10px;
+}
+
+.monitoring-trend-note {
+  padding: 11px 13px;
+  font-size: 12.5px;
+}
+
+.monitoring-history-panel {
+  padding: 22px;
+}
+
+.monitoring-history-heading {
+  align-items: center;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.monitoring-history-heading > div {
+  min-width: 0;
+}
+
+.monitoring-history-heading > svg {
+  flex: 0 0 auto;
+  color: #173f8f;
+}
+
+.monitoring-history-heading h2 {
+  margin: 2px 0 5px;
+  color: #172033;
+  font-size: 1.25rem;
+}
+
+.monitoring-history-heading p {
+  max-width: 760px;
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.monitoring-history-list {
+  gap: 10px;
+}
+
+.monitoring-history-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #e0e7f0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.monitoring-history-item > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.monitoring-history-item > div > strong {
+  color: #273246;
+  font-size: 13.5px;
+}
+
+.monitoring-history-item > div > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #eef3f8;
+  color: #536174;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.monitoring-history-item > .priority {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.monitoring-pending-panel {
+  padding: 20px 22px;
+}
+
+.monitoring-pending-panel h2 {
+  margin-top: 0;
+  color: #172033;
+}
+
+.monitoring-pending-item {
+  background: #fbfcfe;
+}
+
+
+/* ---------- Responsive polish ---------- */
+
+@media (max-width: 1100px) {
+  .profile-account-section .readonly-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-account-section .readonly-profile-item.full {
+    grid-column: 1 / -1;
+  }
+
+  .profile-assessment-score-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-account-section,
+  .profile-counseling-history-section,
+  .counseling-notes-card {
+    grid-column: auto;
+  }
+
+  .profile-account-section .readonly-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .user-profile-modal-body {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .profile-account-section .readonly-profile-grid,
+  .profile-assessment-score-list,
+  .profile-session-note-grid,
+  .monitoring-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-account-section .readonly-profile-item.full {
+    grid-column: auto;
+  }
+
+  .profile-assessment-priority-row,
+  .profile-session-note-heading,
+  .profile-recent-session-note-banner,
+  .monitoring-summary-header,
+  .monitoring-trend-header,
+  .monitoring-history-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-assessment-remark {
+    grid-template-columns: 1fr;
+  }
+
+  .counseling-notes-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .monitoring-summary-panel,
+  .monitoring-trend-panel,
+  .monitoring-history-panel,
+  .monitoring-pending-panel {
+    padding: 16px;
+    border-radius: 13px;
+  }
+
+  .monitoring-history-item {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .monitoring-history-item > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .monitoring-history-item > .priority {
+    justify-self: start;
+  }
+}
+

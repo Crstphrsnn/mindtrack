@@ -1472,7 +1472,7 @@ export default function UserProfileFullScreen({
           )}
 
 
-          <section className="user-profile-modal-card">
+          <section className="user-profile-modal-card profile-account-section">
 
             <h3>
               Account Information
@@ -1652,7 +1652,7 @@ export default function UserProfileFullScreen({
           </section>
 
 
-          <section className="user-profile-modal-card">
+          <section className="user-profile-modal-card profile-schedule-section">
 
             <div className="user-profile-section-title">
 
@@ -1746,7 +1746,7 @@ export default function UserProfileFullScreen({
           </section>
 
 
-          <section className="user-profile-modal-card">
+          <section className="user-profile-modal-card profile-assessment-history-section">
 
             <div className="user-profile-section-title">
 
@@ -1817,9 +1817,11 @@ export default function UserProfileFullScreen({
                           </div>
 
 
-                          <p>
-                            Priority:
-                            {" "}
+                          <p className="profile-assessment-priority-row">
+                            <span>
+                              Monitoring Priority
+                            </span>
+
                             <strong>
                               {
                                 row.priority ||
@@ -1872,10 +1874,14 @@ export default function UserProfileFullScreen({
 
 
                           {row.counselorRemarks && (
-                            <small>
-                              <b>Counselor remarks:</b>
-                              {" "}
-                              {row.counselorRemarks}
+                            <small className="profile-assessment-remark">
+                              <b>
+                                Counselor remark
+                              </b>
+
+                              <span>
+                                {row.counselorRemarks}
+                              </span>
                             </small>
                           )}
 
@@ -1892,7 +1898,7 @@ export default function UserProfileFullScreen({
           </section>
 
 
-          <section className="user-profile-modal-card">
+          <section className="user-profile-modal-card profile-counseling-history-section">
 
             <div className="user-profile-section-title">
 
