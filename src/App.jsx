@@ -6818,6 +6818,22 @@ function counselingRequestIsActive(
 }
 
 
+function counselingRequestStatusIsLocked(
+  row,
+  currentUser
+) {
+
+  return Boolean(
+    currentUser?.role ===
+      "counselor" &&
+    normalizeCounselingRequestStatus(
+      row?.status
+    ) ===
+      "Terminated"
+  );
+}
+
+
 function superAdminDeleteConfirmed(
   recordLabel,
   ownerName
@@ -16916,6 +16932,266 @@ function Cases() {
   }
 
 
+  function assessmentAnswerLabel(
+    value,
+    choices
+  ) {
+
+    if (
+      value ===
+        undefined ||
+      value ===
+        null
+    ) {
+
+      return "Not answered";
+    }
+
+
+    const matchedChoice =
+      choices.find(
+        choice =>
+          String(
+            choice.value
+          ) ===
+          String(
+            value
+          )
+      );
+
+
+    if (!matchedChoice) {
+
+      return String(
+        value
+      );
+    }
+
+
+    return matchedChoice.helper
+      ? `${matchedChoice.label} — ${matchedChoice.helper}`
+      : matchedChoice.label;
+  }
+
+
+  function renderAssessmentAnswerGroup(
+    title,
+    questions,
+    choices,
+    answers
+  ) {
+
+    return (
+
+      <section className="assessment-answer-instrument">
+
+        <div className="assessment-answer-instrument-heading">
+
+          <h4>
+            {title}
+          </h4>
+
+          <span>
+            {
+              questions.filter(
+                question =>
+                  answers?.[
+                    question.id
+                  ] !==
+                    undefined
+              ).length
+            }
+            /
+            {
+              questions.length
+            }
+            {" "}
+            answered
+          </span>
+
+        </div>
+
+
+        <div className="assessment-answer-list">
+
+          {questions.map(
+            (
+              question,
+              index
+            ) => (
+
+              <article
+                className="assessment-answer-item"
+                key={
+                  question.id
+                }
+              >
+
+                <div className="assessment-answer-question">
+
+                  <span>
+                    {index + 1}
+                  </span>
+
+                  <p>
+                    {question.text}
+                  </p>
+
+                </div>
+
+
+                <div className="assessment-answer-response">
+
+                  <small>
+                    User's answer
+                  </small>
+
+                  <strong>
+                    {
+                      assessmentAnswerLabel(
+                        answers?.[
+                          question.id
+                        ],
+                        choices
+                      )
+                    }
+                  </strong>
+
+                </div>
+
+              </article>
+
+            )
+          )}
+
+        </div>
+
+      </section>
+
+    );
+  }
+
+
+  function renderAssessmentAnswers(
+    row
+  ) {
+
+    if (
+      user.role !==
+        "counselor"
+    ) {
+
+      return null;
+    }
+
+
+    if (
+      !row?.answers ||
+      typeof row.answers !==
+        "object"
+    ) {
+
+      return (
+
+        <div className="notice assessment-answers-unavailable">
+          This older assessment does not contain saved item-level answers.
+          The scoring summary remains available for counselor review.
+        </div>
+
+      );
+    }
+
+
+    return (
+
+      <div className="assessment-answer-review">
+
+        <div className="assessment-answer-review-heading">
+
+          <div>
+
+            <span className="assessment-answer-review-kicker">
+              Counselor-only
+            </span>
+
+            <h3>
+              User's Psychological Assessment Answers
+            </h3>
+
+            <p>
+              Review the user's selected response for every screening item.
+              These item-level answers are not shown on the user side.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        {
+          renderAssessmentAnswerGroup(
+            "WHO-5 Well-Being Index",
+            who5Questions,
+            who5Choices,
+            row.answers
+          )
+        }
+
+
+        {
+          renderAssessmentAnswerGroup(
+            "PHQ-9",
+            phq9Questions,
+            phq9Choices,
+            row.answers
+          )
+        }
+
+
+        <div className="assessment-answer-difficulty">
+
+          <span>
+            PHQ-9 Functional Difficulty
+          </span>
+
+          <strong>
+            {
+              row.instrumentResults
+                ?.phq9
+                ?.difficulty ||
+              row.phq9Difficulty ||
+              "Not provided"
+            }
+          </strong>
+
+        </div>
+
+
+        {
+          renderAssessmentAnswerGroup(
+            "GAD-7",
+            gad7Questions,
+            gad7Choices,
+            row.answers
+          )
+        }
+
+
+        {
+          renderAssessmentAnswerGroup(
+            "DASS-21",
+            dass21Questions,
+            dass21Choices,
+            row.answers
+          )
+        }
+
+      </div>
+
+    );
+  }
+
+
   function renderHistoryScores(
     row
   ) {
@@ -17394,7 +17670,7 @@ function Cases() {
                       : "s"
                   }
                   {" "}
-                  recorded for this account. Select an assessment below to view its scores, details, and review status.
+                  recorded for this account. Select an assessment below to review its item-level answers, scoring summary, details, and review status.
                 </p>
 
               </div>
@@ -17434,7 +17710,7 @@ function Cases() {
                     </h3>
 
                     <p>
-                      Newest assessment first. Scores are kept here instead of the main case list.
+                      Newest assessment first. Open an assessment to review the user's item-level answers and scoring summary.
                     </p>
 
                   </div>
@@ -18009,6 +18285,22 @@ function Cases() {
                 }
 
               </section>
+
+
+              {user.role ===
+                "counselor" && (
+
+                <section className="review-request-modal-card assessment-answer-review-card">
+
+                  {
+                    renderAssessmentAnswers(
+                      selected
+                    )
+                  }
+
+                </section>
+
+              )}
 
 
               <section className="review-request-modal-card review-request-update-card assessment-case-update-card">
@@ -20975,6 +21267,23 @@ function CounselingRequestsManagement() {
     }
 
 
+    if (
+      counselingRequestStatusIsLocked(
+        selected,
+        user
+      ) &&
+      statusDraft !==
+        "Terminated"
+    ) {
+
+      alert(
+        "This counseling request is already Terminated. Its status can no longer be changed."
+      );
+
+      return;
+    }
+
+
     try {
 
       setSaving(true);
@@ -21182,6 +21491,23 @@ function CounselingRequestsManagement() {
             counselingProfileSnapshot.exists()
               ? counselingProfileSnapshot.data()
               : {};
+
+
+          if (
+            user.role ===
+              "counselor" &&
+            normalizeCounselingRequestStatus(
+              storedRequest.status
+            ) ===
+              "Terminated" &&
+            statusDraft !==
+              "Terminated"
+          ) {
+
+            throw new Error(
+              "This counseling request is already Terminated. Its status can no longer be changed."
+            );
+          }
 
 
           const shouldAssignSessionNumber =
@@ -22198,6 +22524,25 @@ function CounselingRequestsManagement() {
                 )}
 
 
+                {counselingRequestStatusIsLocked(
+                  selected,
+                  user
+                ) && (
+
+                  <div className="notice counseling-terminated-lock-notice">
+                    <strong>
+                      Terminated counseling request
+                    </strong>
+                    <p>
+                      This counseling request has already been concluded. Its
+                      status is locked and can no longer be changed. Existing
+                      counselor documentation may still be reviewed.
+                    </p>
+                  </div>
+
+                )}
+
+
                 <label>
 
                   Status
@@ -22211,6 +22556,10 @@ function CounselingRequestsManagement() {
                     disabled={
                       requestIsReadOnly(
                         selected
+                      ) ||
+                      counselingRequestStatusIsLocked(
+                        selected,
+                        user
                       )
                     }
 
@@ -25213,7 +25562,7 @@ function FeedbackAnalytics() {
                           <tr>
 
                             <th>
-                              User
+                              Name
                             </th>
 
                             <th>

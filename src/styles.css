@@ -6348,3 +6348,289 @@ th {
   }
 }
 
+/* =====================================================
+   COUNSELOR ASSESSMENT ANSWERS + TERMINATED STATUS LOCK
+===================================================== */
+
+.counseling-terminated-lock-notice {
+  border-left: 4px solid #64748b;
+}
+
+.counseling-terminated-lock-notice strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #334155;
+}
+
+.counseling-terminated-lock-notice p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.assessment-answer-review-card {
+  grid-column: 1 / -1;
+}
+
+.assessment-answer-review {
+  display: grid;
+  gap: 18px;
+}
+
+.assessment-answer-review-heading {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e3e9f1;
+}
+
+.assessment-answer-review-kicker {
+  display: inline-block;
+  margin-bottom: 3px;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.assessment-answer-review-heading h3 {
+  margin: 0 0 5px;
+  color: #172033;
+}
+
+.assessment-answer-review-heading p {
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.assessment-answer-instrument {
+  overflow: hidden;
+  border: 1px solid #dde5ef;
+  border-radius: 13px;
+  background: #fbfcfe;
+}
+
+.assessment-answer-instrument-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  border-bottom: 1px solid #e4eaf2;
+  background: #f3f7fc;
+}
+
+.assessment-answer-instrument-heading h4 {
+  margin: 0;
+  color: #173f8f;
+}
+
+.assessment-answer-instrument-heading span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-answer-list {
+  display: grid;
+}
+
+.assessment-answer-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.8fr);
+  gap: 18px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.assessment-answer-item:last-child {
+  border-bottom: 0;
+}
+
+.assessment-answer-question {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+}
+
+.assessment-answer-question > span {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf2ff;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.assessment-answer-question p {
+  margin: 2px 0 0;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.assessment-answer-response {
+  min-width: 0;
+  align-self: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eef5ff;
+}
+
+.assessment-answer-response small,
+.assessment-answer-response strong {
+  display: block;
+}
+
+.assessment-answer-response small {
+  margin-bottom: 3px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.assessment-answer-response strong {
+  color: #173f8f;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.assessment-answer-difficulty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 15px;
+  border: 1px solid #dce5ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.assessment-answer-difficulty span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-answer-difficulty strong {
+  color: #334155;
+  text-align: right;
+}
+
+.assessment-answers-unavailable {
+  margin: 0;
+}
+
+
+/* Counselor-only assessment history in User Profile */
+
+.profile-assessment-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.profile-assessment-answer-toggle {
+  min-width: 118px;
+}
+
+.profile-assessment-answers-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e1e8f1;
+}
+
+.profile-assessment-answer-group {
+  overflow: hidden;
+  border: 1px solid #dfe6ef;
+  border-radius: 11px;
+  background: #fbfcfe;
+}
+
+.profile-assessment-answer-group h5 {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5ebf2;
+  background: #f3f7fc;
+  color: #173f8f;
+  font-size: 13px;
+}
+
+.profile-assessment-answer-list {
+  display: grid;
+}
+
+.profile-assessment-answer-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(180px, 0.65fr);
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.profile-assessment-answer-item:last-child {
+  border-bottom: 0;
+}
+
+.profile-assessment-answer-item p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.profile-assessment-answer-item p span {
+  color: #173f8f;
+  font-weight: 800;
+}
+
+.profile-assessment-answer-item strong {
+  align-self: center;
+  color: #173f8f;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.profile-assessment-difficulty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid #dfe6ef;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+
+.profile-assessment-difficulty-row span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-assessment-difficulty-row strong {
+  color: #334155;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .assessment-answer-item,
+  .profile-assessment-answer-item {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-answer-difficulty,
+  .profile-assessment-difficulty-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .assessment-answer-difficulty strong,
+  .profile-assessment-difficulty-row strong {
+    text-align: left;
+  }
+}
+
