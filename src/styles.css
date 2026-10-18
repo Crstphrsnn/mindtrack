@@ -6699,3 +6699,43 @@ th {
   width: 100%;
 }
 
+/* =====================================================
+   ACCOUNT ROLE FILTER + REFERRAL/SCHEDULE POLISH
+===================================================== */
+
+.account-management-filter-panel {
+  margin-bottom: 18px;
+}
+
+.account-role-filter-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 360px);
+  gap: 14px;
+}
+
+.account-role-filter-row label {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.profile-schedule-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.profile-schedule-type-label {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 620px) {
+  .account-role-filter-row {
+    grid-template-columns: 1fr;
+  }
+}
+

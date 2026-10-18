@@ -10568,6 +10568,20 @@ function Referrals() {
     }
 
 
+    if (
+      !/^\d{11}$/.test(
+        form.contact
+      )
+    ) {
+
+      setReferralSubmitError(
+        "Contact information must contain exactly 11 digits."
+      );
+
+      return;
+    }
+
+
     const matchingCounselors =
       counselorDirectory.filter(
         counselor =>
@@ -11732,6 +11746,24 @@ function Referrals() {
 
             <input
 
+              type="tel"
+
+              inputMode="numeric"
+
+              autoComplete="tel"
+
+              required
+
+              minLength={11}
+
+              maxLength={11}
+
+              pattern="[0-9]{11}"
+
+              title="Enter exactly 11 digits."
+
+              placeholder="09XXXXXXXXX"
+
               value={
                 form.contact
               }
@@ -11742,6 +11774,14 @@ function Referrals() {
                     ...form,
                     contact:
                       e.target.value
+                        .replace(
+                          /\D/g,
+                          ""
+                        )
+                        .slice(
+                          0,
+                          11
+                        )
                   })
               }
 
@@ -25057,6 +25097,109 @@ function Accounts() {
     );
 
 
+  const [
+    selectedRoleFilter,
+    setSelectedRoleFilter
+  ] = useState(
+    "All Roles"
+  );
+
+
+  function accountRoleFilterLabel(
+    role
+  ) {
+
+    const normalizedRole =
+      String(
+        role ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    if (
+      normalizedRole ===
+      "student"
+    ) {
+
+      return "Student";
+    }
+
+
+    if (
+      normalizedRole ===
+        "teaching" ||
+      normalizedRole ===
+        "faculty"
+    ) {
+
+      return "Teaching";
+    }
+
+
+    if (
+      normalizedRole ===
+        "non_teaching" ||
+      normalizedRole ===
+        "non-teaching" ||
+      normalizedRole ===
+        "personnel"
+    ) {
+
+      return "Non-teaching";
+    }
+
+
+    if (
+      normalizedRole ===
+      "counselor"
+    ) {
+
+      return "Counselor";
+    }
+
+
+    if (
+      normalizedRole ===
+      "super_admin"
+    ) {
+
+      return "Super Admin";
+    }
+
+
+    return systemRoleLabel(
+      role
+    );
+  }
+
+
+  const visibleAccounts =
+    users
+      .filter(
+        account =>
+          selectedRoleFilter ===
+            "All Roles" ||
+          accountRoleFilterLabel(
+            account.role
+          ) ===
+            selectedRoleFilter
+      )
+      .sort(
+        (a, b) =>
+          String(
+            a.name ||
+            ""
+          ).localeCompare(
+            String(
+              b.name ||
+              ""
+            )
+          )
+      );
+
+
   if (users.loading) {
 
     return (
@@ -25106,6 +25249,57 @@ function Accounts() {
       />
 
 
+      <section className="panel account-management-filter-panel">
+
+        <div className="profile-filter-heading">
+
+          <div>
+
+            <h2>
+              Filter Accounts
+            </h2>
+
+            <p>
+              Filter the account list by user role.
+            </p>
+
+          </div>
+
+
+          <span className="profile-result-count">
+            {visibleAccounts.length} result{visibleAccounts.length === 1 ? "" : "s"}
+          </span>
+
+        </div>
+
+
+        <div className="account-role-filter-row">
+
+          <label>
+            Role
+
+            <select
+              value={selectedRoleFilter}
+              onChange={
+                event =>
+                  setSelectedRoleFilter(
+                    event.target.value
+                  )
+              }
+            >
+              <option>All Roles</option>
+              <option>Student</option>
+              <option>Teaching</option>
+              <option>Non-teaching</option>
+              <option>Counselor</option>
+            </select>
+          </label>
+
+        </div>
+
+      </section>
+
+
       <section className="panel">
 
 
@@ -25140,7 +25334,7 @@ function Accounts() {
 
             <tbody>
 
-              {users.map(
+              {visibleAccounts.map(
                 account => (
 
                   <tr

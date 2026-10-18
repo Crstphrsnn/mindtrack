@@ -1126,28 +1126,6 @@ export default function UserProfileFullScreen({
       );
 
 
-  const today =
-    new Date();
-
-
-  const todayKey =
-    [
-      today.getFullYear(),
-      String(
-        today.getMonth() + 1
-      ).padStart(
-        2,
-        "0"
-      ),
-      String(
-        today.getDate()
-      ).padStart(
-        2,
-        "0"
-      )
-    ].join("-");
-
-
   const upcomingSchedules =
     useMemo(
       () =>
@@ -1155,6 +1133,8 @@ export default function UserProfileFullScreen({
           .filter(
             row =>
               [
+                "Pending approval",
+                "For review",
                 "Scheduled for counseling",
                 "Schedule for counseling",
                 "Approved",
@@ -1162,24 +1142,46 @@ export default function UserProfileFullScreen({
               ].includes(
                 row.status
               ) &&
-              row.date &&
-              row.date >=
-                todayKey
+              row.date
           )
           .sort(
-            (a, b) =>
-              String(
-                a.date || ""
+            (a, b) => {
+
+              const dateDifference =
+                String(
+                  a.date ||
+                  ""
+                ).localeCompare(
+                  String(
+                    b.date ||
+                    ""
+                  )
+                );
+
+
+              if (
+                dateDifference !==
+                0
+              ) {
+
+                return dateDifference;
+              }
+
+
+              return String(
+                a.time ||
+                ""
               ).localeCompare(
                 String(
-                  b.date || ""
+                  b.time ||
+                  ""
                 )
-              )
+              );
+            }
           ),
 
       [
-        consultations,
-        todayKey
+        consultations
       ]
     );
 
@@ -1804,7 +1806,7 @@ export default function UserProfileFullScreen({
                 </h3>
 
                 <p>
-                  Shows upcoming approved or rescheduled counseling appointments so the counselor can quickly see the user's next session.
+                  Shows the user's requested, approved, scheduled, or rescheduled counseling date and time so the counselor can quickly track the next counseling activity.
                 </p>
 
               </div>
@@ -1821,7 +1823,7 @@ export default function UserProfileFullScreen({
               ? (
 
                 <div className="user-profile-empty">
-                  No upcoming approved counseling schedule.
+                  No counseling request schedule is available yet.
                 </div>
 
               )
@@ -1845,6 +1847,19 @@ export default function UserProfileFullScreen({
                               "Counseling"
                             }
                           </strong>
+
+                          <small className="profile-schedule-type-label">
+                            {
+                              [
+                                "Pending approval",
+                                "For review"
+                              ].includes(
+                                row.status
+                              )
+                                ? "Requested schedule"
+                                : "Counseling schedule"
+                            }
+                          </small>
 
                           <span>
                             {
