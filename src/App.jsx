@@ -25768,7 +25768,7 @@ function Reports() {
       <>
         <PageTitle
           title="Reports and Analytics"
-          subtitle="Live assessment and counseling analytics."
+          subtitle="Assessment and counseling analytics."
         />
 
         <section className="panel">
@@ -25787,7 +25787,7 @@ function Reports() {
       <>
         <PageTitle
           title="Reports and Analytics"
-          subtitle="Live assessment and counseling analytics."
+          subtitle="Assessment and counseling analytics."
         />
 
         <div className="error-box">
@@ -25929,6 +25929,52 @@ function Reports() {
 
     if (value === "female") {
       return "Female";
+    }
+
+
+    return "Not specified";
+  }
+
+
+  function recordUserType(
+    row
+  ) {
+
+    const profile =
+      profileForRecord(
+        row
+      );
+
+
+    const role =
+      String(
+        profile?.role ||
+        row.role ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    if (role === "student") {
+      return "Student";
+    }
+
+
+    if (
+      role === "teaching" ||
+      role === "faculty"
+    ) {
+      return "Teaching";
+    }
+
+
+    if (
+      role === "non_teaching" ||
+      role === "non-teaching" ||
+      role === "personnel"
+    ) {
+      return "Non-teaching";
     }
 
 
@@ -26130,6 +26176,13 @@ function Reports() {
     );
 
 
+  const priorityByUserType =
+    buildPriorityBreakdown(
+      assessments,
+      recordUserType
+    );
+
+
   const counselingByCollege =
     buildCounselingBreakdown(
       consultations,
@@ -26148,6 +26201,13 @@ function Reports() {
     buildCounselingBreakdown(
       consultations,
       recordSex
+    );
+
+
+  const counselingByUserType =
+    buildCounselingBreakdown(
+      consultations,
+      recordUserType
     );
 
 
@@ -26187,20 +26247,6 @@ function Reports() {
           user.department ||
           "Assigned college / office"
         );
-
-
-  const generatedAt =
-    new Date()
-      .toLocaleString(
-        "en-PH",
-        {
-          dateStyle:
-            "medium",
-
-          timeStyle:
-            "short"
-        }
-      );
 
 
   function AnalyticsLegend({
@@ -26736,12 +26782,6 @@ function Reports() {
           {analyticsScope}
         </p>
 
-        <p>
-          Generated:
-          {" "}
-          {generatedAt}
-        </p>
-
       </div>
 
 
@@ -26749,7 +26789,7 @@ function Reports() {
 
         title="Reports and Analytics"
 
-        subtitle="Assessment priority and counseling analytics grouped by college, program, and sex."
+        subtitle="Assessment priority and counseling analytics grouped by college, program, user type, and sex."
 
       />
 
@@ -26768,10 +26808,6 @@ function Reports() {
 
         </div>
 
-
-        <small>
-          Live Firestore data · Generated {generatedAt}
-        </small>
 
       </div>
 
@@ -26896,6 +26932,15 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        title="Assessment priorities by user type"
+        subtitle="Priority distribution for Student, Teaching, and Non-teaching users."
+        rows={priorityByUserType}
+        series={prioritySeries}
+        emptyText="No assessment cases are available for user-type analytics."
+      />
+
+
+      <AnalyticsBarChart
         title="Assessment priorities by sex"
         subtitle="Priority distribution using the Male/Female value stored in the user's public account profile."
         rows={priorityBySex}
@@ -26932,6 +26977,15 @@ function Reports() {
         rows={counselingByProgram}
         series={counselingSeries}
         emptyText="No counseling records are available for program-level analytics."
+      />
+
+
+      <AnalyticsBarChart
+        title="Counseling by user type"
+        subtitle="Counseling requests and scheduled counseling records for Student, Teaching, and Non-teaching users."
+        rows={counselingByUserType}
+        series={counselingSeries}
+        emptyText="No counseling records are available for user-type analytics."
       />
 
 

@@ -6634,3 +6634,68 @@ th {
   }
 }
 
+/* =====================================================
+   USER PROFILE — STACKED COUNSELOR SECTIONS
+===================================================== */
+
+.user-profile-modal-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.profile-account-section,
+.profile-schedule-section,
+.profile-assessment-history-section,
+.profile-counseling-history-section,
+.counseling-notes-card {
+  width: 100%;
+  min-width: 0;
+  min-height: auto;
+  grid-column: 1 / -1;
+}
+
+.profile-schedule-section,
+.profile-assessment-history-section,
+.profile-counseling-history-section {
+  align-self: start;
+}
+
+.profile-schedule-list,
+.profile-history-list,
+.profile-schedule-card,
+.profile-assessment-history-section .assessment-profile-history-card {
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .user-profile-modal-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-account-section,
+  .profile-schedule-section,
+  .profile-assessment-history-section,
+  .profile-counseling-history-section,
+  .counseling-notes-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-account-section,
+  .profile-schedule-section,
+  .profile-assessment-history-section,
+  .profile-counseling-history-section,
+  .counseling-notes-card {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Cleaner analytics scope card after removing the live/generated line. */
+.analytics-scope-card {
+  justify-content: flex-start !important;
+}
+
+.analytics-scope-card > div {
+  width: 100%;
+}
+
