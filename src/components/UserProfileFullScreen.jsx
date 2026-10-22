@@ -373,6 +373,7 @@ export default function UserProfileFullScreen({
   profile,
   currentUser,
   onClose,
+  onTransferUser = null,
 
   displayRole = role => {
 
@@ -1186,6 +1187,46 @@ export default function UserProfileFullScreen({
     );
 
 
+  const transferableConsultation =
+    useMemo(
+      () =>
+        [...consultations]
+          .filter(
+            row =>
+              currentUser.role ===
+                "counselor" &&
+              row.assignedCounselorId ===
+                currentUser.id
+          )
+          .sort(
+            (
+              first,
+              second
+            ) =>
+              recordTimestampMillis(
+                second.updatedAt ||
+                second.createdAt
+              ) -
+              recordTimestampMillis(
+                first.updatedAt ||
+                first.createdAt
+              )
+          )[0] ||
+        null,
+      [
+        consultations,
+        currentUser.id,
+        currentUser.role
+      ]
+    );
+
+
+  const profileTransferPending =
+    transferableConsultation
+      ?.transferStatus ===
+      "Pending approval";
+
+
   const terminatedSessions =
     useMemo(
       () =>
@@ -1577,6 +1618,49 @@ export default function UserProfileFullScreen({
                   )}
 
                 </div>
+
+
+                {
+                  currentUser.role ===
+                    "counselor" &&
+                  typeof onTransferUser ===
+                    "function" &&
+                  transferableConsultation && (
+
+                    <div className="user-profile-transfer-action">
+
+                      <button
+                        type="button"
+                        className="secondary-button user-profile-transfer-button"
+                        disabled={
+                          profileTransferPending
+                        }
+                        onClick={
+                          () =>
+                            onTransferUser(
+                              transferableConsultation
+                            )
+                        }
+                      >
+                        {
+                          profileTransferPending
+                            ? "Transfer pending"
+                            : "Transfer user to another counselor"
+                        }
+                      </button>
+
+                      <small>
+                        {
+                          profileTransferPending
+                            ? "A transfer request is already waiting for the selected counselor."
+                            : "Open the current counseling case and choose the receiving counselor."
+                        }
+                      </small>
+
+                    </div>
+
+                  )
+                }
 
               </div>
 

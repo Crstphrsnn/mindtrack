@@ -6739,3 +6739,37 @@ th {
   }
 }
 
+/* =====================================================
+   USER PROFILE — COUNSELOR TRANSFER ACTION
+===================================================== */
+
+.user-profile-transfer-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+
+.user-profile-transfer-button {
+  width: fit-content;
+  min-width: 230px;
+}
+
+.user-profile-transfer-action small {
+  color: #667085;
+  line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+  .user-profile-transfer-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-profile-transfer-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+

@@ -3,6 +3,7 @@ import psuLogo from "./assets/psu-logo.jpg";
 
 import {
   addDoc,
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -2886,6 +2887,19 @@ function useRows(
   useEffect(
     () => {
 
+      if (
+        filters.disabled ===
+          true
+      ) {
+
+        setRows([]);
+        setLoading(false);
+        setError("");
+
+        return undefined;
+      }
+
+
       setLoading(true);
       setError("");
 
@@ -3144,6 +3158,7 @@ function useRows(
 
     [
       name,
+      filters.disabled,
       filters.ownerId,
       filters.department,
       filters.role,
@@ -3361,8 +3376,8 @@ function Dashboard() {
               user.department
           }
         : {
-            ownerId:
-              user.id
+            disabled:
+              true
           };
 
 
@@ -3375,8 +3390,8 @@ function Dashboard() {
               user.department
           }
         : {
-            ownerId:
-              user.id
+            disabled:
+              true
           };
 
 
@@ -3389,8 +3404,8 @@ function Dashboard() {
               user.id
           }
         : {
-            ownerId:
-              user.id
+            disabled:
+              true
           };
 
 
@@ -3432,8 +3447,8 @@ function Dashboard() {
                 "Pending approval"
             }
           : {
-              ownerId:
-                "__NO_ACCESS__"
+              disabled:
+                true
             }
     );
 
@@ -3447,8 +3462,8 @@ function Dashboard() {
               "counselor"
           }
         : {
-            id:
-              "__NO_ACCESS__"
+            disabled:
+              true
           }
     );
 
@@ -3668,12 +3683,6 @@ function Dashboard() {
             );
 
 
-          const profileSnap =
-            await transaction.get(
-              profileRef
-            );
-
-
           if (
             !transferSnap.exists()
           ) {
@@ -3735,42 +3744,19 @@ function Dashboard() {
           }
 
 
-          const existingProfile =
-            profileSnap.exists()
-              ? profileSnap.data()
-              : {};
+          if (
+            currentConsultation.assignedCounselorId !==
+              current.requestedById ||
+            currentConsultation.transferStatus !==
+              "Pending approval" ||
+            currentConsultation.transferRequestId !==
+              transfer.id
+          ) {
 
-
-          const previousCounselorIds =
-            Array.from(
-              new Set([
-                ...(
-                  Array.isArray(
-                    existingProfile.previousCounselorIds
-                  )
-                    ? existingProfile.previousCounselorIds
-                    : []
-                ),
-
-                current.requestedById
-              ].filter(Boolean))
+            throw new Error(
+              "This transfer request is no longer linked to the user's current counselor assignment."
             );
-
-
-          const previousCounselorNames =
-            Array.from(
-              new Set([
-                ...(
-                  Array.isArray(
-                    existingProfile.previousCounselorNames
-                  )
-                    ? existingProfile.previousCounselorNames
-                    : []
-                ),
-
-                current.requestedByName
-              ].filter(Boolean))
-            );
+          }
 
 
           const hasActiveScheduledSession =
@@ -4005,9 +3991,16 @@ function Dashboard() {
               transferApprovedAt:
                 serverTimestamp(),
 
-              previousCounselorIds,
+              previousCounselorIds:
+                arrayUnion(
+                  current.requestedById
+                ),
 
-              previousCounselorNames,
+              previousCounselorNames:
+                arrayUnion(
+                  current.requestedByName ||
+                  "Guidance Counselor"
+                ),
 
               transferredAt:
                 serverTimestamp(),
@@ -4220,6 +4213,16 @@ function Dashboard() {
         );
 
 
+      const permissionDenied =
+        errorMessage.includes(
+          "Missing or insufficient permissions"
+        ) ||
+        error?.code ===
+          "permission-denied" ||
+        error?.code ===
+          "firestore/permission-denied";
+
+
       const alreadyHandled =
         errorMessage.includes(
           "already been handled"
@@ -4231,15 +4234,19 @@ function Dashboard() {
           "assigned to another"
         ) ||
         errorMessage.includes(
-          "Missing or insufficient permissions"
-        ) ||
-        error?.code ===
-          "permission-denied" ||
-        error?.code ===
-          "firestore/permission-denied";
+          "no longer linked"
+        );
 
 
       if (
+        permissionDenied
+      ) {
+
+        alert(
+          "The transfer could not be approved because the deployed Firestore rules do not match the current transfer workflow. Deploy the updated rules included with this fix, then try again."
+        );
+
+      } else if (
         alreadyHandled
       ) {
 
@@ -13218,6 +13225,10 @@ function UserProfilesContent({
   currentUser
 }) {
 
+  const navigate =
+    useNavigate();
+
+
   const isSuperAdmin =
     currentUser.role ===
     "super_admin";
@@ -13752,6 +13763,66 @@ function UserProfilesContent({
   }
 
 
+  function openProfileTransfer(
+    consultation
+  ) {
+
+    if (
+      currentUser.role !==
+        "counselor" ||
+      !consultation?.id
+    ) {
+
+      return;
+    }
+
+
+    if (
+      consultation.assignedCounselorId !==
+        currentUser.id
+    ) {
+
+      alert(
+        "Only the currently assigned counselor can transfer this user."
+      );
+
+      return;
+    }
+
+
+    if (
+      consultation.transferStatus ===
+        "Pending approval"
+    ) {
+
+      alert(
+        "A counselor transfer request is already waiting for approval for this counseling case."
+      );
+
+      return;
+    }
+
+
+    setSelected(
+      null
+    );
+
+
+    navigate(
+      "/counseling-requests",
+      {
+        state: {
+          requestId:
+            consultation.id,
+
+          requestNavigationKey:
+            `profile-transfer:${consultation.id}`
+        }
+      }
+    );
+  }
+
+
   return (
 
     <>
@@ -13935,6 +14006,12 @@ function UserProfilesContent({
           profile={selected}
           currentUser={currentUser}
           onClose={() => setSelected(null)}
+          onTransferUser={
+            currentUser.role ===
+              "counselor"
+              ? openProfileTransfer
+              : null
+          }
         />
       )}
 
