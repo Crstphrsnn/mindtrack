@@ -3359,6 +3359,10 @@ function Dashboard() {
     useAuth();
 
 
+  const navigate =
+    useNavigate();
+
+
   const isSuperAdmin =
     user.role === "super_admin";
 
@@ -3466,6 +3470,44 @@ function Dashboard() {
               true
           }
     );
+
+
+  const userMonitoringRows =
+    useRows(
+      "assessmentUserViews",
+      (
+        isCounselor ||
+        isSuperAdmin
+      )
+        ? {
+            disabled:
+              true
+          }
+        : {
+            ownerId:
+              user.id
+          }
+    );
+
+
+  const latestReviewedMonitoring =
+    userMonitoringRows.find(
+      row =>
+        isCounselorReviewedAssessment(
+          row
+        )
+    ) ||
+    null;
+
+
+  const pendingMonitoringCount =
+    userMonitoringRows.filter(
+      row =>
+        !isCounselorReviewedAssessment(
+          row
+        )
+    ).length;
+
 
 
   // This is a live Firestore query. As soon as one counselor changes a
@@ -3866,54 +3908,6 @@ function Dashboard() {
             }
           );
 
-
-          transaction.set(
-            accessRef,
-            {
-              ownerId:
-                current.ownerId,
-
-              ownerName:
-                current.ownerName ||
-                "",
-
-              ownerDepartment:
-                current.ownerDepartment ||
-                "",
-
-              counselorId:
-                user.id,
-
-              counselorName:
-                user.name ||
-                "Guidance Counselor",
-
-              counselorDepartment:
-                user.department ||
-                "",
-
-              previousCounselorId:
-                current.requestedById,
-
-              previousCounselorName:
-                current.requestedByName ||
-                "",
-
-              transferRequestId:
-                transfer.id,
-
-              consultationId:
-                current.consultationId,
-
-              active:
-                true,
-
-              createdAt:
-                serverTimestamp()
-            }
-          );
-
-
           transaction.update(
             consultationRef,
             {
@@ -3948,82 +3942,6 @@ function Dashboard() {
                 serverTimestamp()
             }
           );
-
-
-          transaction.set(
-            profileRef,
-            {
-              ownerId:
-                current.ownerId,
-
-              ownerName:
-                current.ownerName ||
-                "",
-
-              department:
-                current.ownerDepartment ||
-                "",
-
-              assignedCounselorId:
-                user.id,
-
-              assignedCounselorName:
-                user.name ||
-                "Guidance Counselor",
-
-              assignedCounselorDepartment:
-                user.department ||
-                "",
-
-              transferActive:
-                true,
-
-              transferRequestId:
-                transfer.id,
-
-              transferredFromCounselorId:
-                current.requestedById,
-
-              transferredFromCounselorName:
-                current.requestedByName ||
-                "",
-
-              transferApprovedAt:
-                serverTimestamp(),
-
-              previousCounselorIds:
-                arrayUnion(
-                  current.requestedById
-                ),
-
-              previousCounselorNames:
-                arrayUnion(
-                  current.requestedByName ||
-                  "Guidance Counselor"
-                ),
-
-              transferredAt:
-                serverTimestamp(),
-
-              lastTransferId:
-                transfer.id,
-
-              updatedById:
-                user.id,
-
-              updatedByName:
-                user.name ||
-                "Guidance Counselor",
-
-              updatedAt:
-                serverTimestamp()
-            },
-            {
-              merge:
-                true
-            }
-          );
-
 
           if (
             oldSlotRef &&
@@ -4089,6 +4007,156 @@ function Dashboard() {
           }
         }
       );
+
+
+      const transferMetadataResults =
+        await Promise.allSettled([
+          setDoc(
+            profileRef,
+            {
+              ownerId:
+                transfer.ownerId,
+
+              ownerName:
+                transfer.ownerName ||
+                "",
+
+              department:
+                transfer.ownerDepartment ||
+                "",
+
+              assignedCounselorId:
+                user.id,
+
+              assignedCounselorName:
+                user.name ||
+                "Guidance Counselor",
+
+              assignedCounselorDepartment:
+                user.department ||
+                "",
+
+              transferActive:
+                true,
+
+              transferRequestId:
+                transfer.id,
+
+              transferredFromCounselorId:
+                transfer.requestedById,
+
+              transferredFromCounselorName:
+                transfer.requestedByName ||
+                "",
+
+              transferApprovedAt:
+                serverTimestamp(),
+
+              previousCounselorIds:
+                arrayUnion(
+                  transfer.requestedById
+                ),
+
+              previousCounselorNames:
+                arrayUnion(
+                  transfer.requestedByName ||
+                  "Guidance Counselor"
+                ),
+
+              transferredAt:
+                serverTimestamp(),
+
+              lastTransferId:
+                transfer.id,
+
+              updatedById:
+                user.id,
+
+              updatedByName:
+                user.name ||
+                "Guidance Counselor",
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          ),
+
+          setDoc(
+            accessRef,
+            {
+              ownerId:
+                transfer.ownerId,
+
+              ownerName:
+                transfer.ownerName ||
+                "",
+
+              ownerDepartment:
+                transfer.ownerDepartment ||
+                "",
+
+              counselorId:
+                user.id,
+
+              counselorName:
+                user.name ||
+                "Guidance Counselor",
+
+              counselorDepartment:
+                user.department ||
+                "",
+
+              previousCounselorId:
+                transfer.requestedById,
+
+              previousCounselorName:
+                transfer.requestedByName ||
+                "",
+
+              transferRequestId:
+                transfer.id,
+
+              consultationId:
+                transfer.consultationId,
+
+              active:
+                true,
+
+              createdAt:
+                serverTimestamp(),
+
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          )
+        ]);
+
+
+      const transferMetadataFailed =
+        transferMetadataResults.some(
+          result =>
+            result.status ===
+              "rejected"
+        );
+
+
+      if (
+        transferMetadataFailed
+      ) {
+
+        console.warn(
+          "Transfer approved, but one or more profile/access metadata writes could not be synchronized.",
+          transferMetadataResults
+        );
+      }
 
 
       await Promise.allSettled([
@@ -4195,7 +4263,9 @@ function Dashboard() {
 
 
       alert(
-        `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you.`
+        transferMetadataFailed
+          ? `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you. Profile/access metadata needs the latest Firestore rules to finish syncing.`
+          : `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you.`
       );
 
     } catch (error) {
@@ -4243,7 +4313,7 @@ function Dashboard() {
       ) {
 
         alert(
-          "The transfer could not be approved because the deployed Firestore rules do not match the current transfer workflow. Deploy the updated rules included with this fix, then try again."
+          "The transfer could not be approved because Firebase blocked access to the pending counseling case. Replace and deploy the updated Firestore rules included with this fix, then try again."
         );
 
       } else if (
@@ -4614,6 +4684,255 @@ function Dashboard() {
         subtitle="Access your MindTrack services and personal wellness tools."
 
       />
+
+
+      <section className="panel home-monitoring-summary-panel">
+
+        <div className="home-monitoring-summary-heading">
+
+          <div>
+
+            <span className="home-monitoring-kicker">
+              Mental Health Monitoring
+            </span>
+
+            <h2>
+              Your Monitoring Summary
+            </h2>
+
+            <p>
+              This shows counselor-reviewed monitoring information only.
+              Detailed psychological assessment scores and answers stay private.
+            </p>
+
+          </div>
+
+
+          <Activity
+            size={30}
+            aria-hidden="true"
+          />
+
+        </div>
+
+
+        {userMonitoringRows.loading
+
+          ? (
+
+            <div className="home-monitoring-empty">
+              Loading your monitoring summary...
+            </div>
+
+          )
+
+          : userMonitoringRows.error
+
+            ? (
+
+              <div className="home-monitoring-empty">
+                Your monitoring summary is temporarily unavailable. You can
+                still open the Monitoring page from the menu.
+              </div>
+
+            )
+
+            : latestReviewedMonitoring
+
+              ? (
+
+                <div className="home-monitoring-summary-content">
+
+                  <div className="home-monitoring-summary-main">
+
+                    <div>
+
+                      <span>
+                        Current Monitoring Priority
+                      </span>
+
+                      <strong>
+                        {
+                          latestReviewedMonitoring.priority ||
+                          "Not available"
+                        }
+                      </strong>
+
+                    </div>
+
+
+                    <span
+                      className={
+                        priorityClassName(
+                          latestReviewedMonitoring.priority
+                        )
+                      }
+                    >
+                      {
+                        latestReviewedMonitoring.priority ||
+                        "No priority"
+                      }
+                    </span>
+
+                  </div>
+
+
+                  <div className="home-monitoring-summary-grid">
+
+                    <div>
+
+                      <span>
+                        Review Status
+                      </span>
+
+                      <strong>
+                        {
+                          assessmentCaseStatusLabel(
+                            latestReviewedMonitoring.status
+                          )
+                        }
+                      </strong>
+
+                    </div>
+
+
+                    <div>
+
+                      <span>
+                        Reviewed By
+                      </span>
+
+                      <strong>
+                        {
+                          latestReviewedMonitoring.reviewedByName ||
+                          "Guidance Counselor"
+                        }
+                      </strong>
+
+                    </div>
+
+
+                    <div>
+
+                      <span>
+                        Latest Reviewed Assessment
+                      </span>
+
+                      <strong>
+                        {
+                          formatRecordDateTime(
+                            latestReviewedMonitoring.createdAt
+                          )
+                        }
+                      </strong>
+
+                    </div>
+
+                  </div>
+
+
+                  {latestReviewedMonitoring.recommendation && (
+
+                    <div className="home-monitoring-recommendation">
+
+                      <span>
+                        Monitoring Recommendation
+                      </span>
+
+                      <p>
+                        {
+                          latestReviewedMonitoring.recommendation
+                        }
+                      </p>
+
+                    </div>
+
+                  )}
+
+
+                  {pendingMonitoringCount >
+                    0 && (
+
+                    <div className="home-monitoring-pending-note">
+                      {
+                        pendingMonitoringCount
+                      }
+                      {" "}
+                      assessment
+                      {
+                        pendingMonitoringCount ===
+                          1
+                          ? ""
+                          : "s"
+                      }
+                      {" "}
+                      still waiting for counselor review.
+                    </div>
+
+                  )}
+
+
+                  <button
+                    type="button"
+                    className="primary-button home-monitoring-button"
+                    onClick={
+                      () =>
+                        navigate(
+                          "/monitoring"
+                        )
+                    }
+                  >
+                    View full monitoring
+                  </button>
+
+                </div>
+
+              )
+
+              : (
+
+                <div className="home-monitoring-empty">
+
+                  <strong>
+                    No counselor-reviewed monitoring summary yet.
+                  </strong>
+
+                  <p>
+                    {
+                      pendingMonitoringCount >
+                        0
+                        ? "Your assessment has been submitted and is waiting for counselor review."
+                        : "Complete a psychological assessment to begin your MindTrack monitoring history."
+                    }
+                  </p>
+
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={
+                      () =>
+                        navigate(
+                          pendingMonitoringCount >
+                            0
+                            ? "/monitoring"
+                            : "/assessment"
+                        )
+                    }
+                  >
+                    {
+                      pendingMonitoringCount >
+                        0
+                        ? "Open Monitoring"
+                        : "Take an assessment"
+                    }
+                  </button>
+
+                </div>
+
+              )
+        }
+
+      </section>
 
 
       <section className="panel">
