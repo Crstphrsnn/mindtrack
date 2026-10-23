@@ -3188,6 +3188,100 @@ function useRows(
 }
 
 
+function useDocumentRow(
+  name,
+  documentId
+) {
+
+  const [row, setRow] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(Boolean(documentId));
+
+  const [error, setError] =
+    useState("");
+
+
+  useEffect(
+    () => {
+
+      if (!documentId) {
+        setRow(null);
+        setLoading(false);
+        setError("");
+        return undefined;
+      }
+
+
+      setLoading(true);
+      setError("");
+
+
+      const unsubscribe =
+        onSnapshot(
+          doc(
+            db,
+            name,
+            documentId
+          ),
+
+          snapshot => {
+            setRow(
+              snapshot.exists()
+                ? {
+                    id: snapshot.id,
+                    ...snapshot.data()
+                  }
+                : null
+            );
+
+            setError("");
+            setLoading(false);
+          },
+
+          firestoreError => {
+            console.error(
+              `Unable to load ${name}/${documentId}:`,
+              firestoreError
+            );
+
+            setError(
+              firestoreError?.code ===
+                "permission-denied"
+                ? `You do not have permission to load ${name}.`
+                : (
+                    firestoreError?.message ||
+                    `Unable to load ${name}.`
+                  )
+            );
+
+            setLoading(false);
+          }
+        );
+
+
+      return unsubscribe;
+    },
+    [
+      name,
+      documentId
+    ]
+  );
+
+
+  const result =
+    row
+      ? [row]
+      : [];
+
+  result.loading = loading;
+  result.error = error;
+
+  return result;
+}
+
+
 function rowsAreLoading(
   ...sources
 ) {
@@ -5055,12 +5149,9 @@ function Assessment() {
 
 
   const assessmentLocks =
-    useRows(
+    useDocumentRow(
       "assessmentLocks",
-      {
-        ownerId:
-          user.id
-      }
+      user.id
     );
 
 
@@ -8593,12 +8684,9 @@ function Consultations() {
 
 
   const counselingRequestLocks =
-    useRows(
+    useDocumentRow(
       "counselingRequestLocks",
-      {
-        ownerId:
-          user.id
-      }
+      user.id
     );
 
 

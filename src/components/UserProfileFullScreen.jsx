@@ -38,28 +38,72 @@ function useProfileRows(
   profile,
   currentUser
 ) {
-
   const [rows, setRows] =
     useState([]);
 
-
   useEffect(
     () => {
-
       if (
         !profile?.id ||
         !currentUser
       ) {
-
         setRows([]);
-
         return undefined;
       }
 
+      const filters = {
+        ownerId:
+          profile.id
+      };
 
-      // Query by owner ID for both Super Admin and Counselor.
-      // Firestore rules decide whether the current counselor has
-      // department, current-transfer, or previous-transfer access.
+      const profileDepartment =
+        String(
+          profile.department || ""
+        ).trim();
+
+      const counselorDepartment =
+        String(
+          currentUser.department || ""
+        ).trim();
+
+      const sameDepartment =
+        Boolean(
+          profileDepartment &&
+          counselorDepartment &&
+          profileDepartment ===
+            counselorDepartment
+        );
+
+      // Firestore rules are not filters.
+      // A counselor query must include the field restriction
+      // that proves why the counselor may read the result.
+      if (
+        currentUser.role ===
+          "counselor"
+      ) {
+        if (
+          collectionName ===
+            "consultations"
+        ) {
+          if (sameDepartment) {
+            filters.department =
+              counselorDepartment;
+          } else {
+            filters.assignedCounselorId =
+              currentUser.id;
+          }
+        }
+
+        if (
+          collectionName ===
+            "assessments" &&
+          sameDepartment
+        ) {
+          filters.department =
+            counselorDepartment;
+        }
+      }
+
       return subscribeCollection(
         collectionName,
         incomingRows => {
@@ -67,12 +111,8 @@ function useProfileRows(
             incomingRows
           );
         },
-        {
-          ownerId:
-            profile.id
-        }
+        filters
       );
-
     },
 
     [
@@ -85,10 +125,8 @@ function useProfileRows(
     ]
   );
 
-
   return rows;
 }
-
 
 function formatDate(dateKey) {
 

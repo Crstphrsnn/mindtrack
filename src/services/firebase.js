@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 
 import {
+  getToken,
   initializeAppCheck,
   ReCaptchaEnterpriseProvider
 } from "firebase/app-check";
@@ -48,6 +49,11 @@ const appCheckKey =
     .VITE_RECAPTCHA_ENTERPRISE_KEY;
 
 
+const configuredDebugToken =
+  import.meta.env
+    .VITE_FIREBASE_APPCHECK_DEBUG_TOKEN;
+
+
 export const firebaseEnabled =
   Boolean(
     config.apiKey &&
@@ -79,14 +85,16 @@ if (firebaseEnabled) {
   // FIREBASE APP CHECK
   // ==========================================
   //
-  // Development:
-  // Uses Firebase App Check debug mode.
+  // Local development:
+  // Firebase App Check must use a registered debug token when
+  // Cloud Firestore App Check enforcement is enabled.
   //
-  // Production:
-  // Uses reCAPTCHA Enterprise normally.
+  // If VITE_FIREBASE_APPCHECK_DEBUG_TOKEN is present in .env.local,
+  // that exact registered token is reused. Otherwise Firebase creates
+  // a browser-local token and prints it in DevTools so it can be
+  // registered once in Firebase Console > App Check > Manage debug tokens.
   //
-  // Never enable this debug token manually
-  // in production.
+  // Production never uses the debug token branch.
   // ==========================================
 
   if (
@@ -95,8 +103,8 @@ if (firebaseEnabled) {
       "undefined"
   ) {
 
-    globalThis
-      .FIREBASE_APPCHECK_DEBUG_TOKEN =
+    globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN =
+      configuredDebugToken ||
       true;
   }
 
@@ -119,9 +127,29 @@ if (firebaseEnabled) {
           }
         );
 
-      console.log(
-        "Firebase App Check initialized."
-      );
+
+      // Force one token request early so an invalid/unregistered local
+      // debug token is reported clearly instead of looking like dozens of
+      // unrelated Firestore rule failures later in the application.
+      getToken(
+        appCheck,
+        true
+      )
+        .then(
+          () => {
+            console.info(
+              `Firebase App Check token ready for project ${config.projectId}.`
+            );
+          }
+        )
+        .catch(
+          error => {
+            console.error(
+              "Firebase App Check token was rejected. If you are on localhost and Firestore App Check enforcement is enabled, register the debug token printed above in Firebase Console > App Check > Manage debug tokens.",
+              error
+            );
+          }
+        );
 
     } catch (error) {
 
@@ -134,7 +162,7 @@ if (firebaseEnabled) {
   } else {
 
     console.warn(
-      "Firebase App Check is not configured. VITE_RECAPTCHA_ENTERPRISE_KEY is missing."
+      "Firebase App Check is not configured. VITE_RECAPTCHA_ENTERPRISE_KEY is missing. If Firestore App Check enforcement is enabled, Firestore requests will be rejected until App Check is configured."
     );
   }
 
@@ -153,6 +181,13 @@ if (firebaseEnabled) {
     getFirestore(
       app
     );
+
+
+  if (import.meta.env.DEV) {
+    console.info(
+      `MindTrack Firebase project: ${config.projectId}`
+    );
+  }
 }
 
 

@@ -460,7 +460,14 @@ export function subscribeCollection(
 
             console.error(
               `Unable to load ${name}:`,
-              error
+              {
+                filters,
+                code:
+                  error?.code,
+                message:
+                  error?.message,
+                error
+              }
             );
 
 
