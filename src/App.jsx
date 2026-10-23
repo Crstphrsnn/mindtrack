@@ -3551,6 +3551,24 @@ function Dashboard() {
     );
 
 
+  const outgoingTransferRows =
+    useRows(
+      "transferRequests",
+      isCounselor
+        ? {
+            requestedById:
+              user.id,
+
+            status:
+              "Pending approval"
+          }
+        : {
+            disabled:
+              true
+          }
+    );
+
+
   const counselorAccounts =
     useRows(
       "users",
@@ -3621,6 +3639,23 @@ function Dashboard() {
     );
 
 
+  const outgoingTransferRequests =
+    outgoingTransferRows.filter(
+      row =>
+        isCounselor &&
+        row.status ===
+          "Pending approval" &&
+        row.requestedById ===
+          user.id
+    );
+
+
+  const [
+    cancelingIncomingTransferId,
+    setCancelingIncomingTransferId
+  ] = useState("");
+
+
   const [
     approvingTransferId,
     setApprovingTransferId
@@ -3645,6 +3680,7 @@ function Dashboard() {
         isCounselor
           ? [
               pendingTransferRows,
+              outgoingTransferRows,
               counselorAccounts
             ]
           : []
@@ -3661,6 +3697,7 @@ function Dashboard() {
         isCounselor
           ? [
               pendingTransferRows,
+              outgoingTransferRows,
               counselorAccounts
             ]
           : []
@@ -4455,6 +4492,341 @@ function Dashboard() {
   }
 
 
+  async function cancelIncomingTransfer(
+    transfer
+  ) {
+
+    if (
+      !isCounselor ||
+      !transfer?.id ||
+      transfer.status !==
+        "Pending approval" ||
+      transfer.targetCounselorId !==
+        user.id ||
+      transfer.requestedById ===
+        user.id
+    ) {
+
+      alert(
+        "Only the selected counselor can cancel a pending transfer assigned to them."
+      );
+
+      return;
+    }
+
+
+    const reason =
+      window.prompt(
+        `State why you are not accepting the transfer of ${transfer.ownerName || "this user"}.`
+      );
+
+
+    if (reason === null) {
+      return;
+    }
+
+
+    const cleanReason =
+      reason.trim();
+
+
+    if (!cleanReason) {
+
+      alert(
+        "A cancellation reason is required. The transfer was not cancelled."
+      );
+
+      return;
+    }
+
+
+    if (cleanReason.length > 1000) {
+
+      alert(
+        "The cancellation reason must be 1000 characters or fewer."
+      );
+
+      return;
+    }
+
+
+    if (
+      !window.confirm(
+        `Cancel this transfer request for ${transfer.ownerName || "this user"}?\n\nThe requesting counselor and the user will be notified. The current counselor assignment will remain unchanged.`
+      )
+    ) {
+      return;
+    }
+
+
+    try {
+
+      setCancelingIncomingTransferId(
+        transfer.id
+      );
+
+
+      const transferRef =
+        doc(
+          db,
+          "transferRequests",
+          transfer.id
+        );
+
+
+      const consultationRef =
+        doc(
+          db,
+          "consultations",
+          transfer.consultationId
+        );
+
+
+      const requesterNotificationRef =
+        doc(
+          collection(
+            db,
+            "notifications"
+          )
+        );
+
+
+      const userNotificationRef =
+        doc(
+          collection(
+            db,
+            "notifications"
+          )
+        );
+
+
+      await runTransaction(
+        db,
+        async transaction => {
+
+          const transferSnap =
+            await transaction.get(
+              transferRef
+            );
+
+
+          const consultationSnap =
+            await transaction.get(
+              consultationRef
+            );
+
+
+          if (
+            !transferSnap.exists() ||
+            !consultationSnap.exists()
+          ) {
+
+            throw new Error(
+              "The pending transfer or its counseling request no longer exists."
+            );
+          }
+
+
+          const currentTransfer =
+            transferSnap.data();
+
+
+          const currentConsultation =
+            consultationSnap.data();
+
+
+          if (
+            currentTransfer.status !==
+              "Pending approval" ||
+            currentTransfer.targetCounselorId !==
+              user.id
+          ) {
+
+            throw new Error(
+              "This transfer is no longer available for cancellation."
+            );
+          }
+
+
+          if (
+            currentConsultation.assignedCounselorId !==
+              currentTransfer.requestedById ||
+            currentConsultation.transferStatus !==
+              "Pending approval" ||
+            currentConsultation.transferRequestId !==
+              transfer.id
+          ) {
+
+            throw new Error(
+              "This transfer is no longer the active pending transfer for the counseling case."
+            );
+          }
+
+
+          transaction.update(
+            transferRef,
+            {
+              status:
+                "Cancelled",
+
+              cancellationReason:
+                cleanReason,
+
+              cancelledById:
+                user.id,
+
+              cancelledByName:
+                user.name ||
+                "Guidance Counselor",
+
+              cancelledByDepartment:
+                user.department ||
+                "",
+
+              cancelledAt:
+                serverTimestamp(),
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.update(
+            consultationRef,
+            {
+              transferStatus:
+                "",
+
+              transferRequestId:
+                "",
+
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.set(
+            requesterNotificationRef,
+            {
+              ownerId:
+                currentTransfer.requestedById,
+
+              title:
+                "Transfer request not accepted",
+
+              message:
+                `${user.name || "The selected Guidance Counselor"} did not accept the transfer of ${transfer.ownerName || "the user"}. Reason: ${cleanReason}`,
+
+              notificationType:
+                "transfer_status",
+
+              senderRole:
+                "counselor",
+
+              senderId:
+                user.id,
+
+              senderName:
+                user.name ||
+                "Guidance Counselor",
+
+              targetPath:
+                "/dashboard",
+
+              sourceType:
+                "transfer",
+
+              sourceId:
+                transfer.id,
+
+              consultationId:
+                transfer.consultationId,
+
+              read:
+                false,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+
+
+          transaction.set(
+            userNotificationRef,
+            {
+              ownerId:
+                transfer.ownerId,
+
+              title:
+                "Counselor transfer not accepted",
+
+              message:
+                `Your transfer request was not accepted by ${user.name || "the selected Guidance Counselor"}. Reason: ${cleanReason}. Your current counselor remains ${currentTransfer.requestedByName || "your assigned Guidance Counselor"}.`,
+
+              notificationType:
+                "counselor_transfer_update",
+
+              senderRole:
+                "counselor",
+
+              senderId:
+                user.id,
+
+              senderName:
+                user.name ||
+                "Guidance Counselor",
+
+              targetPath:
+                "/consultations",
+
+              sourceType:
+                "consultation",
+
+              sourceId:
+                transfer.consultationId,
+
+              transferRequestId:
+                transfer.id,
+
+              read:
+                false,
+
+              createdAt:
+                serverTimestamp()
+            }
+          );
+        }
+      );
+
+
+      alert(
+        "The transfer was cancelled. The requesting counselor and the user were notified, and the current counselor assignment remains unchanged."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Unable to cancel incoming counselor transfer:",
+        error
+      );
+
+
+      alert(
+        error?.message ||
+        "Unable to cancel the counselor transfer."
+      );
+
+    } finally {
+
+      setCancelingIncomingTransferId(
+        ""
+      );
+    }
+  }
+
+
   if (
     (
       isCounselor ||
@@ -4691,40 +5063,79 @@ function Dashboard() {
                         </div>
 
 
-                        <button
-                          type="button"
-                          className="primary-button"
-                          disabled={
-                            approvingTransferId ===
-                              transfer.id ||
-                            transfer.status !==
-                              "Pending approval" ||
-                            unavailableTransferIds.has(
-                              transfer.id
-                            )
-                          }
-                          onClick={
-                            () =>
-                              approveTransfer(
-                                transfer
-                              )
-                          }
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "10px",
+                            flexWrap: "wrap"
+                          }}
                         >
-                          {
-                            approvingTransferId ===
-                            transfer.id
-                              ? "Approving..."
-                              : (
-                                  transfer.status !==
-                                    "Pending approval" ||
-                                  unavailableTransferIds.has(
-                                    transfer.id
-                                  )
+                          <button
+                            type="button"
+                            className="primary-button"
+                            disabled={
+                              approvingTransferId ===
+                                transfer.id ||
+                              cancelingIncomingTransferId ===
+                                transfer.id ||
+                              transfer.status !==
+                                "Pending approval" ||
+                              unavailableTransferIds.has(
+                                transfer.id
+                              )
+                            }
+                            onClick={
+                              () =>
+                                approveTransfer(
+                                  transfer
                                 )
-                                ? "Already accepted"
-                                : "Accept transfer"
-                          }
-                        </button>
+                            }
+                          >
+                            {
+                              approvingTransferId ===
+                              transfer.id
+                                ? "Approving..."
+                                : (
+                                    transfer.status !==
+                                      "Pending approval" ||
+                                    unavailableTransferIds.has(
+                                      transfer.id
+                                    )
+                                  )
+                                  ? "Already handled"
+                                  : "Accept transfer"
+                            }
+                          </button>
+
+                          <button
+                            type="button"
+                            className="danger-button danger-button-outline"
+                            disabled={
+                              approvingTransferId ===
+                                transfer.id ||
+                              cancelingIncomingTransferId ===
+                                transfer.id ||
+                              transfer.status !==
+                                "Pending approval" ||
+                              unavailableTransferIds.has(
+                                transfer.id
+                              )
+                            }
+                            onClick={
+                              () =>
+                                cancelIncomingTransfer(
+                                  transfer
+                                )
+                            }
+                          >
+                            {
+                              cancelingIncomingTransferId ===
+                              transfer.id
+                                ? "Cancelling..."
+                                : "Cancel transfer"
+                            }
+                          </button>
+                        </div>
 
                       </article>
                     )
@@ -4732,6 +5143,72 @@ function Dashboard() {
 
                 </div>
 
+              )
+            }
+
+
+            <div
+              className="transfer-dashboard-heading"
+              style={{
+                marginTop:
+                  "24px"
+              }}
+            >
+
+              <div>
+                <h3>
+                  Outgoing transfers awaiting selected counselor decision
+                </h3>
+                <p>
+                  Transfers you requested remain assigned to you until the selected counselor accepts or cancels them.
+                </p>
+              </div>
+
+              <span className="transfer-count-badge">
+                {outgoingTransferRequests.length}
+              </span>
+
+            </div>
+
+
+            {outgoingTransferRequests.length === 0
+              ? (
+                <div className="transfer-empty-state">
+                  You have no outgoing transfer requests waiting for a selected counselor decision.
+                </div>
+              )
+              : (
+                <div className="transfer-request-grid">
+                  {outgoingTransferRequests.map(
+                    transfer => (
+                      <article
+                        className="transfer-request-card"
+                        key={`outgoing-${transfer.id}`}
+                      >
+                        <div>
+                          <strong>
+                            {transfer.ownerName || "User"}
+                          </strong>
+                          <p>
+                            To: {transfer.targetCounselorName || "Selected counselor"}
+                          </p>
+                          <small>
+                            {transfer.ownerDepartment || "No college / office"}
+                          </small>
+                          {transfer.reason && (
+                            <small>
+                              Transfer reason: {transfer.reason}
+                            </small>
+                          )}
+                        </div>
+
+                        <span className="transfer-pending-label">
+                          Awaiting selected counselor decision
+                        </span>
+                      </article>
+                    )
+                  )}
+                </div>
               )
             }
 
@@ -21285,6 +21762,9 @@ function CounselingRequestsManagement() {
   }
 
 
+  
+
+
   async function requestCounselorTransfer(
     row
   ) {
@@ -23627,9 +24107,30 @@ function CounselingRequestsManagement() {
                   selected.id
                 ) && (
 
-                  <span className="transfer-pending-label">
-                    Transfer awaiting acceptance by the selected counselor
-                  </span>
+                  <div
+                    style={{
+                      display:
+                        "flex",
+
+                      alignItems:
+                        "center",
+
+                      gap:
+                        "10px",
+
+                      flexWrap:
+                        "wrap"
+                    }}
+                  >
+
+                    <span className="transfer-pending-label">
+                      Transfer awaiting acceptance by the selected counselor
+                    </span>
+
+
+                    
+
+                  </div>
 
                 )}
 
