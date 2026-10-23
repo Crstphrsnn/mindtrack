@@ -3789,7 +3789,9 @@ function Dashboard() {
 
     if (
       !window.confirm(
-        `Accept the counselor transfer for ${transfer.ownerName || "this user"}? You will become the assigned counselor for this counseling case.`
+        transfer.sourceType === "profile" || !transfer.consultationId
+          ? `Accept the counselor transfer for ${transfer.ownerName || "this user"}? You will become the assigned counselor and the user will appear in your User Profiles.`
+          : `Accept the counselor transfer for ${transfer.ownerName || "this user"}? You will become the assigned counselor for this counseling case.`
       )
     ) {
 
@@ -3810,6 +3812,302 @@ function Dashboard() {
           "transferRequests",
           transfer.id
         );
+
+
+      const isProfileOnlyTransfer =
+        transfer.sourceType ===
+          "profile" ||
+        !transfer.consultationId;
+
+
+      if (isProfileOnlyTransfer) {
+        const profileRef =
+          doc(
+            db,
+            "counselingProfiles",
+            transfer.ownerId
+          );
+
+        const accessRef =
+          doc(
+            db,
+            "transferAccess",
+            transferAccessDocumentId(
+              transfer.ownerId,
+              user.id
+            )
+          );
+
+
+        await runTransaction(
+          db,
+          async transaction => {
+            const transferSnap =
+              await transaction.get(
+                transferRef
+              );
+
+            const profileSnap =
+              await transaction.get(
+                profileRef
+              );
+
+            if (!transferSnap.exists()) {
+              throw new Error(
+                "This transfer request no longer exists."
+              );
+            }
+
+            if (!profileSnap.exists()) {
+              throw new Error(
+                "The user's counselor assignment profile no longer exists."
+              );
+            }
+
+            const current =
+              transferSnap.data();
+
+            const currentProfile =
+              profileSnap.data();
+
+            if (
+              current.status !==
+                "Pending approval" ||
+              current.targetCounselorId !==
+                user.id
+            ) {
+              throw new Error(
+                "This transfer request has already been handled or is assigned to another counselor."
+              );
+            }
+
+            if (
+              current.requestedById ===
+                user.id
+            ) {
+              throw new Error(
+                "The requesting counselor cannot accept their own transfer request."
+              );
+            }
+
+            if (
+              currentProfile.assignedCounselorId !==
+                current.requestedById ||
+              currentProfile.profileTransferStatus !==
+                "Pending approval" ||
+              currentProfile.profileTransferRequestId !==
+                transfer.id
+            ) {
+              throw new Error(
+                "This profile transfer is no longer linked to the user's current counselor assignment."
+              );
+            }
+
+            transaction.update(
+              transferRef,
+              {
+                status:
+                  "Approved",
+                acceptedById:
+                  user.id,
+                acceptedByName:
+                  user.name ||
+                  "Guidance Counselor",
+                acceptedByDepartment:
+                  user.department ||
+                  "",
+                approvedAt:
+                  serverTimestamp(),
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+
+            transaction.set(
+              profileRef,
+              {
+                ownerId:
+                  transfer.ownerId,
+                ownerName:
+                  transfer.ownerName ||
+                  "",
+                department:
+                  transfer.ownerDepartment ||
+                  "",
+                assignedCounselorId:
+                  user.id,
+                assignedCounselorName:
+                  user.name ||
+                  "Guidance Counselor",
+                assignedCounselorDepartment:
+                  user.department ||
+                  "",
+                transferActive:
+                  true,
+                transferRequestId:
+                  transfer.id,
+                transferredFromCounselorId:
+                  current.requestedById,
+                transferredFromCounselorName:
+                  current.requestedByName ||
+                  "",
+                transferApprovedAt:
+                  serverTimestamp(),
+                previousCounselorIds:
+                  arrayUnion(
+                    current.requestedById
+                  ),
+                previousCounselorNames:
+                  arrayUnion(
+                    current.requestedByName ||
+                    "Guidance Counselor"
+                  ),
+                profileTransferStatus:
+                  "",
+                profileTransferRequestId:
+                  "",
+                transferredAt:
+                  serverTimestamp(),
+                lastTransferId:
+                  transfer.id,
+                updatedById:
+                  user.id,
+                updatedByName:
+                  user.name ||
+                  "Guidance Counselor",
+                updatedAt:
+                  serverTimestamp()
+              },
+              {
+                merge:
+                  true
+              }
+            );
+
+            transaction.set(
+              accessRef,
+              {
+                ownerId:
+                  transfer.ownerId,
+                ownerName:
+                  transfer.ownerName ||
+                  "",
+                ownerDepartment:
+                  transfer.ownerDepartment ||
+                  "",
+                counselorId:
+                  user.id,
+                counselorName:
+                  user.name ||
+                  "Guidance Counselor",
+                counselorDepartment:
+                  user.department ||
+                  "",
+                previousCounselorId:
+                  current.requestedById,
+                previousCounselorName:
+                  current.requestedByName ||
+                  "",
+                transferRequestId:
+                  transfer.id,
+                consultationId:
+                  "",
+                sourceType:
+                  "profile",
+                active:
+                  true,
+                createdAt:
+                  serverTimestamp(),
+                updatedAt:
+                  serverTimestamp()
+              },
+              {
+                merge:
+                  true
+              }
+            );
+          }
+        );
+
+
+        await Promise.allSettled([
+          addRecord(
+            "notifications",
+            {
+              ownerId:
+                transfer.ownerId,
+              title:
+                "Counselor transfer approved",
+              message:
+                `${user.name || "The selected Guidance Counselor"} accepted the transfer and is now your assigned counselor.`,
+              notificationType:
+                "counselor_transfer_update",
+              senderRole:
+                "counselor",
+              senderId:
+                user.id,
+              senderName:
+                user.name ||
+                "Guidance Counselor",
+              targetPath:
+                "/profile",
+              sourceType:
+                "transfer",
+              sourceId:
+                transfer.id,
+              transferRequestId:
+                transfer.id,
+              read:
+                false
+            }
+          ),
+          addRecord(
+            "notifications",
+            {
+              ownerId:
+                transfer.requestedById,
+              title:
+                "Counselor transfer accepted",
+              message:
+                `${user.name || "The selected counselor"} accepted the transfer for ${transfer.ownerName || "the user"}.`,
+              notificationType:
+                "transfer_status",
+              senderRole:
+                "counselor",
+              senderId:
+                user.id,
+              senderName:
+                user.name ||
+                "Guidance Counselor",
+              targetPath:
+                "/dashboard",
+              sourceType:
+                "transfer",
+              sourceId:
+                transfer.id,
+              read:
+                false
+            }
+          )
+        ]);
+
+        setUnavailableTransferIds(
+          current => {
+            const next =
+              new Set(current);
+            next.add(
+              transfer.id
+            );
+            return next;
+          }
+        );
+
+        alert(
+          `Transfer approved. ${transfer.ownerName || "The user"} is now assigned to you and is available in User Profiles.`
+        );
+
+        return;
+      }
 
 
       const consultationRef =
@@ -4574,6 +4872,210 @@ function Dashboard() {
         );
 
 
+      const isProfileOnlyTransfer =
+        transfer.sourceType ===
+          "profile" ||
+        !transfer.consultationId;
+
+
+      if (isProfileOnlyTransfer) {
+        const profileRef =
+          doc(
+            db,
+            "counselingProfiles",
+            transfer.ownerId
+          );
+
+        const requesterNotificationRef =
+          doc(
+            collection(
+              db,
+              "notifications"
+            )
+          );
+
+        const userNotificationRef =
+          doc(
+            collection(
+              db,
+              "notifications"
+            )
+          );
+
+        await runTransaction(
+          db,
+          async transaction => {
+            const transferSnap =
+              await transaction.get(
+                transferRef
+              );
+
+            const profileSnap =
+              await transaction.get(
+                profileRef
+              );
+
+            if (
+              !transferSnap.exists() ||
+              !profileSnap.exists()
+            ) {
+              throw new Error(
+                "The pending profile transfer no longer exists."
+              );
+            }
+
+            const currentTransfer =
+              transferSnap.data();
+            const currentProfile =
+              profileSnap.data();
+
+            if (
+              currentTransfer.status !==
+                "Pending approval" ||
+              currentTransfer.targetCounselorId !==
+                user.id
+            ) {
+              throw new Error(
+                "This transfer is no longer available for cancellation."
+              );
+            }
+
+            if (
+              currentProfile.assignedCounselorId !==
+                currentTransfer.requestedById ||
+              currentProfile.profileTransferStatus !==
+                "Pending approval" ||
+              currentProfile.profileTransferRequestId !==
+                transfer.id
+            ) {
+              throw new Error(
+                "This transfer is no longer the active pending profile transfer."
+              );
+            }
+
+            transaction.update(
+              transferRef,
+              {
+                status:
+                  "Cancelled",
+                cancellationReason:
+                  cleanReason,
+                cancelledById:
+                  user.id,
+                cancelledByName:
+                  user.name ||
+                  "Guidance Counselor",
+                cancelledByDepartment:
+                  user.department ||
+                  "",
+                cancelledAt:
+                  serverTimestamp(),
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+
+            transaction.update(
+              profileRef,
+              {
+                ...(
+                  currentTransfer.requesterWasAssigned ===
+                    false
+                    ? {
+                        assignedCounselorId:
+                          "",
+                        assignedCounselorName:
+                          "",
+                        assignedCounselorDepartment:
+                          ""
+                      }
+                    : {}
+                ),
+                profileTransferStatus:
+                  "",
+                profileTransferRequestId:
+                  "",
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+
+            transaction.set(
+              requesterNotificationRef,
+              {
+                ownerId:
+                  currentTransfer.requestedById,
+                title:
+                  "Transfer request not accepted",
+                message:
+                  `${user.name || "The selected Guidance Counselor"} did not accept the transfer of ${transfer.ownerName || "the user"}. Reason: ${cleanReason}`,
+                notificationType:
+                  "transfer_status",
+                senderRole:
+                  "counselor",
+                senderId:
+                  user.id,
+                senderName:
+                  user.name ||
+                  "Guidance Counselor",
+                targetPath:
+                  "/dashboard",
+                sourceType:
+                  "transfer",
+                sourceId:
+                  transfer.id,
+                read:
+                  false,
+                createdAt:
+                  serverTimestamp()
+              }
+            );
+
+            transaction.set(
+              userNotificationRef,
+              {
+                ownerId:
+                  transfer.ownerId,
+                title:
+                  "Counselor transfer not accepted",
+                message:
+                  currentTransfer.requesterWasAssigned === false
+                    ? `The selected counselor did not accept your counselor transfer. Reason: ${cleanReason}. No new counselor assignment was applied.`
+                    : `The selected counselor did not accept your counselor transfer. Reason: ${cleanReason}. Your current counselor remains ${currentTransfer.requestedByName || "your assigned Guidance Counselor"}.`,
+                notificationType:
+                  "counselor_transfer_update",
+                senderRole:
+                  "counselor",
+                senderId:
+                  user.id,
+                senderName:
+                  user.name ||
+                  "Guidance Counselor",
+                targetPath:
+                  "/profile",
+                sourceType:
+                  "transfer",
+                sourceId:
+                  transfer.id,
+                transferRequestId:
+                  transfer.id,
+                read:
+                  false,
+                createdAt:
+                  serverTimestamp()
+              }
+            );
+          }
+        );
+
+        alert(
+          "The transfer was cancelled. The requesting counselor and the user were notified, and the current counselor assignment remains unchanged."
+        );
+
+        return;
+      }
+
+
       const consultationRef =
         doc(
           db,
@@ -5047,7 +5549,9 @@ function Dashboard() {
                           </p>
 
                           <small>
-                            Schedule: {transfer.date || "No date"} · {transfer.time || "No time"}
+                            {transfer.sourceType === "profile" || !transfer.consultationId
+                              ? "Source: User Profile"
+                              : `Schedule: ${transfer.date || "No date"} · ${transfer.time || "No time"}`}
                           </small>
 
                           <small>
@@ -14127,6 +14631,47 @@ function UserProfilesContent({
   const [profileTransferMap, setProfileTransferMap] =
     useState({});
 
+
+  const profileTransferCounselorRows =
+    useRows(
+      "counselorDirectory",
+      currentUser.role ===
+        "counselor"
+        ? {
+            active:
+              true
+          }
+        : {
+            disabled:
+              true
+          }
+    );
+
+
+  const profileTransferCounselors =
+    useMemo(
+      () =>
+        profileTransferCounselorRows
+          .filter(
+            counselor =>
+              counselor.active ===
+                true &&
+              Boolean(
+                counselor.counselorId ||
+                counselor.id
+              )
+          )
+          .map(
+            counselor => ({
+              ...counselor,
+              id:
+                counselor.counselorId ||
+                counselor.id
+            })
+          ),
+      [profileTransferCounselorRows]
+    );
+
   const [loadingUsers, setLoadingUsers] =
     useState(true);
 
@@ -14647,63 +15192,634 @@ function UserProfilesContent({
   }
 
 
-  function openProfileTransfer(
-    consultation
+  async function openProfileTransfer(
+    account,
+    counselingProfileState,
+    targetCounselor,
+    linkedConsultation = null
   ) {
 
     if (
       currentUser.role !==
         "counselor" ||
-      !consultation?.id
+      !account?.id ||
+      !targetCounselor?.id
     ) {
-
       return;
     }
 
 
     if (
-      consultation.assignedCounselorId !==
+      targetCounselor.id ===
         currentUser.id
     ) {
-
       alert(
-        "Only the currently assigned counselor can transfer this user."
+        "Please choose another Guidance Counselor to receive the transfer."
       );
+      return;
+    }
 
+
+    const knownPreviousCounselors =
+      Array.isArray(
+        counselingProfileState
+          ?.previousCounselorIds
+      )
+        ? counselingProfileState.previousCounselorIds
+        : [];
+
+
+    if (
+      knownPreviousCounselors.includes(
+        currentUser.id
+      )
+    ) {
+      alert(
+        "You already transferred this user before. You may keep read-only documentation access, but you cannot transfer the same user again."
+      );
       return;
     }
 
 
     if (
-      consultation.transferStatus ===
-        "Pending approval"
+      counselingProfileState
+        ?.assignedCounselorId &&
+      counselingProfileState
+        .assignedCounselorId !==
+        currentUser.id
     ) {
-
       alert(
-        "A counselor transfer request is already waiting for approval for this counseling case."
+        `This user is currently assigned to ${counselingProfileState.assignedCounselorName || "another counselor"}. Only the current assigned counselor can transfer the user.`
       );
-
       return;
     }
 
 
-    setSelected(
-      null
-    );
+    if (
+      !counselingProfileState
+        ?.assignedCounselorId &&
+      account.department !==
+        currentUser.department
+    ) {
+      alert(
+        "Only a counselor from the user's home college/office may initiate the first profile transfer when no counselor is assigned yet."
+      );
+      return;
+    }
 
 
-    navigate(
-      "/counseling-requests",
-      {
-        state: {
-          requestId:
-            consultation.id,
+    if (
+      counselingProfileState
+        ?.profileTransferStatus ===
+        "Pending approval"
+    ) {
+      alert(
+        "A profile transfer request is already waiting for a selected counselor decision."
+      );
+      return;
+    }
 
-          requestNavigationKey:
-            `profile-transfer:${consultation.id}`
-        }
+
+    const reason =
+      window.prompt(
+        `Briefly state why ${account.name || "this user"} should be transferred to ${targetCounselor.name || "the selected counselor"}.`
+      );
+
+
+    if (reason === null) {
+      return;
+    }
+
+
+    const cleanReason =
+      reason.trim();
+
+
+    if (!cleanReason) {
+      alert(
+        "Please enter a short reason for the counselor transfer."
+      );
+      return;
+    }
+
+
+    if (cleanReason.length > 1000) {
+      alert(
+        "The transfer reason must be 1000 characters or fewer."
+      );
+      return;
+    }
+
+
+    if (
+      !window.confirm(
+        `Transfer ${account.name || "this user"} to ${targetCounselor.name || "the selected Guidance Counselor"} directly from the user profile?\n\nThe selected counselor must accept the transfer before the assignment changes.`
+      )
+    ) {
+      return;
+    }
+
+
+    try {
+      // If the profile already has a counseling request assigned to this
+      // counselor, use it as the transfer anchor automatically. The counselor
+      // does not need to open the Counseling Requests page, and the existing
+      // schedule/slot-aware acceptance flow remains intact.
+      if (
+        linkedConsultation?.id &&
+        linkedConsultation.assignedCounselorId ===
+          currentUser.id
+      ) {
+        const transferRef =
+          doc(
+            collection(
+              db,
+              "transferRequests"
+            )
+          );
+
+        const consultationRef =
+          doc(
+            db,
+            "consultations",
+            linkedConsultation.id
+          );
+
+        const scheduledAt =
+          counselingScheduledAtDate(
+            linkedConsultation
+          );
+
+        await runTransaction(
+          db,
+          async transaction => {
+            const consultationSnap =
+              await transaction.get(
+                consultationRef
+              );
+
+            if (!consultationSnap.exists()) {
+              throw new Error(
+                "The counseling request linked to this user profile no longer exists."
+              );
+            }
+
+            const currentConsultation =
+              consultationSnap.data();
+
+            if (
+              currentConsultation.ownerId !==
+                account.id ||
+              currentConsultation.assignedCounselorId !==
+                currentUser.id
+            ) {
+              throw new Error(
+                "Only the currently assigned counselor can transfer this user."
+              );
+            }
+
+            if (
+              currentConsultation.transferStatus ===
+                "Pending approval"
+            ) {
+              throw new Error(
+                "A transfer request is already waiting for the selected counselor."
+              );
+            }
+
+            transaction.set(
+              transferRef,
+              {
+                ownerId:
+                  account.id,
+                ownerName:
+                  account.name ||
+                  currentConsultation.ownerName ||
+                  "",
+                ownerDepartment:
+                  account.department ||
+                  currentConsultation.department ||
+                  "",
+                consultationId:
+                  linkedConsultation.id,
+                consultationStatus:
+                  normalizeCounselingRequestStatus(
+                    currentConsultation.status
+                  ),
+                sessionNumber:
+                  Number(
+                    currentConsultation.sessionNumber ||
+                    0
+                  ) ||
+                  0,
+                date:
+                  currentConsultation.date ||
+                  "",
+                time:
+                  currentConsultation.time ||
+                  "",
+                scheduledAt:
+                  scheduledAt ||
+                  null,
+                mode:
+                  currentConsultation.mode ||
+                  "Face-to-face",
+                sourceType:
+                  "consultation",
+                requestedById:
+                  currentUser.id,
+                requestedByName:
+                  currentUser.name ||
+                  "Guidance Counselor",
+                requestedByDepartment:
+                  currentUser.department ||
+                  "",
+                targetCounselorId:
+                  targetCounselor.id,
+                targetCounselorName:
+                  targetCounselor.name ||
+                  "Guidance Counselor",
+                targetCounselorDepartment:
+                  targetCounselor.department ||
+                  "",
+                reason:
+                  cleanReason,
+                status:
+                  "Pending approval",
+                acceptedById:
+                  "",
+                acceptedByName:
+                  "",
+                acceptedByDepartment:
+                  "",
+                createdAt:
+                  serverTimestamp(),
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+
+            transaction.update(
+              consultationRef,
+              {
+                transferStatus:
+                  "Pending approval",
+                transferRequestId:
+                  transferRef.id,
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+          }
+        );
+
+        await Promise.allSettled([
+          addRecord(
+            "notifications",
+            {
+              ownerId:
+                targetCounselor.id,
+              title:
+                "Counselor transfer request",
+              message:
+                `${currentUser.name || "The assigned counselor"} selected you to receive ${account.name || "a user"}. Open your Dashboard to accept or cancel the transfer.`,
+              notificationType:
+                "transfer_request",
+              senderRole:
+                "counselor",
+              senderId:
+                currentUser.id,
+              senderName:
+                currentUser.name ||
+                "Guidance Counselor",
+              targetPath:
+                "/dashboard",
+              sourceType:
+                "transfer",
+              sourceId:
+                transferRef.id,
+              consultationId:
+                linkedConsultation.id,
+              read:
+                false
+            }
+          ),
+          addRecord(
+            "notifications",
+            {
+              ownerId:
+                account.id,
+              title:
+                "Counselor transfer requested",
+              message:
+                `${currentUser.name || "Your assigned counselor"} requested to transfer your counseling case to ${targetCounselor.name || "another Guidance Counselor"}. The assignment will change after the selected counselor accepts.`,
+              notificationType:
+                "counselor_transfer_update",
+              senderRole:
+                "counselor",
+              senderId:
+                currentUser.id,
+              senderName:
+                currentUser.name ||
+                "Guidance Counselor",
+              targetPath:
+                "/consultations",
+              sourceType:
+                "consultation",
+              sourceId:
+                linkedConsultation.id,
+              transferRequestId:
+                transferRef.id,
+              read:
+                false
+            }
+          )
+        ]);
+
+        alert(
+          `Transfer request sent to ${targetCounselor.name || "the selected Guidance Counselor"} directly from User Profiles. You did not need to open the counseling request.`
+        );
+
+        return;
       }
-    );
+
+
+      const profileRef =
+        doc(
+          db,
+          "counselingProfiles",
+          account.id
+        );
+
+      const transferRef =
+        doc(
+          collection(
+            db,
+            "transferRequests"
+          )
+        );
+
+
+      await runTransaction(
+        db,
+        async transaction => {
+          const profileSnap =
+            await transaction.get(
+              profileRef
+            );
+
+          const existingProfile =
+            profileSnap.exists()
+              ? profileSnap.data()
+              : null;
+
+          const previousCounselorIds =
+            Array.isArray(
+              existingProfile
+                ?.previousCounselorIds
+            )
+              ? existingProfile.previousCounselorIds
+              : [];
+
+          if (
+            previousCounselorIds.includes(
+              currentUser.id
+            )
+          ) {
+            throw new Error(
+              "You already transferred this user before and cannot transfer the same user again."
+            );
+          }
+
+          if (
+            existingProfile
+              ?.assignedCounselorId &&
+            existingProfile.assignedCounselorId !==
+              currentUser.id
+          ) {
+            throw new Error(
+              `This user is currently assigned to ${existingProfile.assignedCounselorName || "another counselor"}. Only the current assigned counselor can transfer the user.`
+            );
+          }
+
+          if (
+            !existingProfile
+              ?.assignedCounselorId &&
+            account.department !==
+              currentUser.department
+          ) {
+            throw new Error(
+              "You are not allowed to initiate the first transfer for this user."
+            );
+          }
+
+          if (
+            existingProfile
+              ?.profileTransferStatus ===
+              "Pending approval"
+          ) {
+            throw new Error(
+              "Another profile transfer is already waiting for a counselor decision."
+            );
+          }
+
+          transaction.set(
+            profileRef,
+            {
+              ownerId:
+                account.id,
+              ownerName:
+                account.name ||
+                "",
+              department:
+                account.department ||
+                "",
+              assignedCounselorId:
+                existingProfile
+                  ?.assignedCounselorId ||
+                currentUser.id,
+              assignedCounselorName:
+                existingProfile
+                  ?.assignedCounselorName ||
+                currentUser.name ||
+                "Guidance Counselor",
+              assignedCounselorDepartment:
+                existingProfile
+                  ?.assignedCounselorDepartment ||
+                currentUser.department ||
+                "",
+              previousCounselorIds:
+                previousCounselorIds,
+              previousCounselorNames:
+                Array.isArray(
+                  existingProfile
+                    ?.previousCounselorNames
+                )
+                  ? existingProfile.previousCounselorNames
+                  : [],
+              profileTransferStatus:
+                "Pending approval",
+              profileTransferRequestId:
+                transferRef.id,
+              updatedById:
+                currentUser.id,
+              updatedByName:
+                currentUser.name ||
+                "Guidance Counselor",
+              updatedAt:
+                serverTimestamp()
+            },
+            {
+              merge:
+                true
+            }
+          );
+
+          transaction.set(
+            transferRef,
+            {
+              ownerId:
+                account.id,
+              ownerName:
+                account.name ||
+                "",
+              ownerDepartment:
+                account.department ||
+                "",
+              consultationId:
+                "",
+              consultationStatus:
+                "Profile transfer",
+              sessionNumber:
+                0,
+              date:
+                "",
+              time:
+                "",
+              scheduledAt:
+                null,
+              mode:
+                "Profile transfer",
+              sourceType:
+                "profile",
+              requesterWasAssigned:
+                Boolean(
+                  existingProfile
+                    ?.assignedCounselorId
+                ),
+              requestedById:
+                currentUser.id,
+              requestedByName:
+                currentUser.name ||
+                "Guidance Counselor",
+              requestedByDepartment:
+                currentUser.department ||
+                "",
+              targetCounselorId:
+                targetCounselor.id,
+              targetCounselorName:
+                targetCounselor.name ||
+                "Guidance Counselor",
+              targetCounselorDepartment:
+                targetCounselor.department ||
+                "",
+              reason:
+                cleanReason,
+              status:
+                "Pending approval",
+              acceptedById:
+                "",
+              acceptedByName:
+                "",
+              acceptedByDepartment:
+                "",
+              createdAt:
+                serverTimestamp(),
+              updatedAt:
+                serverTimestamp()
+            }
+          );
+        }
+      );
+
+
+      await Promise.allSettled([
+        addRecord(
+          "notifications",
+          {
+            ownerId:
+              targetCounselor.id,
+            title:
+              "Counselor transfer request",
+            message:
+              `${currentUser.name || "The assigned counselor"} selected you to receive ${account.name || "a user"}. Open your Dashboard to accept or cancel the transfer.`,
+            notificationType:
+              "transfer_request",
+            senderRole:
+              "counselor",
+            senderId:
+              currentUser.id,
+            senderName:
+              currentUser.name ||
+              "Guidance Counselor",
+            targetPath:
+              "/dashboard",
+            sourceType:
+              "transfer",
+            sourceId:
+              transferRef.id,
+            read:
+              false
+          }
+        ),
+        addRecord(
+          "notifications",
+          {
+            ownerId:
+              account.id,
+            title:
+              "Counselor transfer requested",
+            message:
+              `${currentUser.name || "Your counselor"} requested to transfer your counselor assignment to ${targetCounselor.name || "another Guidance Counselor"}. The assignment will change after the selected counselor accepts.`,
+            notificationType:
+              "counselor_transfer_update",
+            senderRole:
+              "counselor",
+            senderId:
+              currentUser.id,
+            senderName:
+              currentUser.name ||
+              "Guidance Counselor",
+            targetPath:
+              "/profile",
+            sourceType:
+              "transfer",
+            sourceId:
+              transferRef.id,
+            transferRequestId:
+              transferRef.id,
+            read:
+              false
+          }
+        )
+      ]);
+
+
+      alert(
+        `Transfer request sent to ${targetCounselor.name || "the selected Guidance Counselor"}. No counseling request was required.`
+      );
+
+    } catch (error) {
+      console.error(
+        "Unable to request profile counselor transfer:",
+        error
+      );
+
+      alert(
+        error?.message ||
+        "Unable to request the counselor transfer from the user profile."
+      );
+    }
   }
 
 
@@ -14895,6 +16011,9 @@ function UserProfilesContent({
               "counselor"
               ? openProfileTransfer
               : null
+          }
+          transferCounselors={
+            profileTransferCounselors
           }
         />
       )}
@@ -21855,6 +22974,20 @@ function CounselingRequestsManagement() {
 
 
         if (
+          Array.isArray(
+            existingProfile.previousCounselorIds
+          ) &&
+          existingProfile.previousCounselorIds.includes(
+            user.id
+          )
+        ) {
+          throw new Error(
+            "You already transferred this user before and cannot transfer the same user again."
+          );
+        }
+
+
+        if (
           existingProfile.assignedCounselorId &&
           existingProfile.assignedCounselorId !==
             user.id
@@ -22074,6 +23207,9 @@ function CounselingRequestsManagement() {
               mode:
                 row.mode ||
                 "Face-to-face",
+
+              sourceType:
+                "consultation",
 
               requestedById:
                 user.id,

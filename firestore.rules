@@ -77,6 +77,17 @@ service cloud.firestore {
         ).data.assignedCounselorId == request.auth.uid;
     }
 
+    function wasPreviousCounselor(userId) {
+      return isCounselor()
+        && counselingProfileExists(userId)
+        && "previousCounselorIds" in get(
+          /databases/$(database)/documents/counselingProfiles/$(userId)
+        ).data
+        && request.auth.uid in get(
+          /databases/$(database)/documents/counselingProfiles/$(userId)
+        ).data.previousCounselorIds;
+    }
+
     function canCounselUser(userId, department) {
       return isCounselor()
         && (
@@ -116,6 +127,7 @@ service cloud.firestore {
             resource.data.department == profile().department
             || resource.data.role == "counselor"
             || isAssignedCounselor(userId)
+            || wasPreviousCounselor(userId)
           )
         )
       );
@@ -604,11 +616,56 @@ service cloud.firestore {
       allow read: if isSuperAdmin()
         || (
           isCounselor() && (
-            resource.data.department == profile().department
-            || resource.data.assignedCounselorId == request.auth.uid
+            targetUser(userId).department == profile().department
             || (
-              "previousCounselorIds" in resource.data
-              && request.auth.uid in resource.data.previousCounselorIds
+              exists(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              )
+              && get(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              ).data.assignedCounselorId == request.auth.uid
+            )
+            || (
+              exists(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              )
+              && "previousCounselorIds" in get(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              ).data
+              && request.auth.uid in get(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              ).data.previousCounselorIds
+            )
+            || (
+              exists(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              )
+              && get(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              ).data.profileTransferStatus == "Pending approval"
+              && get(
+                /databases/$(database)/documents/counselingProfiles/$(userId)
+              ).data.profileTransferRequestId is string
+              && exists(
+                /databases/$(database)/documents/transferRequests/$(get(
+                  /databases/$(database)/documents/counselingProfiles/$(userId)
+                ).data.profileTransferRequestId)
+              )
+              && get(
+                /databases/$(database)/documents/transferRequests/$(get(
+                  /databases/$(database)/documents/counselingProfiles/$(userId)
+                ).data.profileTransferRequestId)
+              ).data.status == "Pending approval"
+              && get(
+                /databases/$(database)/documents/transferRequests/$(get(
+                  /databases/$(database)/documents/counselingProfiles/$(userId)
+                ).data.profileTransferRequestId)
+              ).data.targetCounselorId == request.auth.uid
+              && get(
+                /databases/$(database)/documents/transferRequests/$(get(
+                  /databases/$(database)/documents/counselingProfiles/$(userId)
+                ).data.profileTransferRequestId)
+              ).data.ownerId == userId
             )
           )
         );
@@ -625,13 +682,13 @@ service cloud.firestore {
         || (
           isCounselor()
           && request.resource.data.transferRequestId is string
-          && get(
+          && getAfter(
             /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
           ).data.status == "Approved"
-          && get(
+          && getAfter(
             /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
           ).data.acceptedById == request.auth.uid
-          && get(
+          && getAfter(
             /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
           ).data.ownerId == userId
           && request.resource.data.ownerId == userId
@@ -658,17 +715,64 @@ service cloud.firestore {
       // New counselor may take ownership only through the approved transfer.
       allow update: if isCounselor()
         && request.resource.data.transferRequestId is string
-        && get(
+        && getAfter(
           /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
         ).data.status == "Approved"
-        && get(
+        && getAfter(
           /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
         ).data.acceptedById == request.auth.uid
-        && get(
+        && getAfter(
           /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
         ).data.ownerId == userId
         && request.resource.data.ownerId == userId
         && request.resource.data.assignedCounselorId == request.auth.uid;
+
+      // The selected counselor may reject a profile-only transfer.
+      // The current assignment is preserved and only pending-transfer markers
+      // are cleared after the linked transfer request becomes Cancelled.
+      allow update: if isCounselor()
+        && resource.data.profileTransferStatus == "Pending approval"
+        && resource.data.profileTransferRequestId is string
+        && getAfter(
+          /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+        ).data.status == "Cancelled"
+        && getAfter(
+          /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+        ).data.targetCounselorId == request.auth.uid
+        && getAfter(
+          /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+        ).data.cancelledById == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.profileTransferStatus == ""
+        && request.resource.data.profileTransferRequestId == ""
+        && (
+          (
+            getAfter(
+              /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+            ).data.requesterWasAssigned == true
+            && request.resource.data.assignedCounselorId == resource.data.assignedCounselorId
+            && request.resource.data.assignedCounselorName == resource.data.assignedCounselorName
+            && request.resource.data.assignedCounselorDepartment == resource.data.assignedCounselorDepartment
+          )
+          ||
+          (
+            getAfter(
+              /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+            ).data.requesterWasAssigned == false
+            && request.resource.data.assignedCounselorId == ""
+            && request.resource.data.assignedCounselorName == ""
+            && request.resource.data.assignedCounselorDepartment == ""
+          )
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "assignedCounselorId",
+          "assignedCounselorName",
+          "assignedCounselorDepartment",
+          "profileTransferStatus",
+          "profileTransferRequestId",
+          "updatedAt"
+        ]);
 
       allow update: if isSuperAdmin()
         && request.resource.data.ownerId == resource.data.ownerId;
@@ -728,12 +832,35 @@ service cloud.firestore {
         && request.resource.data.consultationId is string
         && request.resource.data.reason is string
         && request.resource.data.reason.size() > 0
-        && get(
-          /databases/$(database)/documents/consultations/$(request.resource.data.consultationId)
-        ).data.ownerId == request.resource.data.ownerId
-        && get(
-          /databases/$(database)/documents/consultations/$(request.resource.data.consultationId)
-        ).data.assignedCounselorId == request.auth.uid;
+        && request.resource.data.reason.size() <= 1000
+        && !wasPreviousCounselor(request.resource.data.ownerId)
+        && (
+          (
+            request.resource.data.sourceType == "consultation"
+            && request.resource.data.consultationId.size() > 0
+            && get(
+              /databases/$(database)/documents/consultations/$(request.resource.data.consultationId)
+            ).data.ownerId == request.resource.data.ownerId
+            && get(
+              /databases/$(database)/documents/consultations/$(request.resource.data.consultationId)
+            ).data.assignedCounselorId == request.auth.uid
+          )
+          ||
+          (
+            request.resource.data.sourceType == "profile"
+            && request.resource.data.requesterWasAssigned is bool
+            && request.resource.data.consultationId == ""
+            && getAfter(
+              /databases/$(database)/documents/counselingProfiles/$(request.resource.data.ownerId)
+            ).data.assignedCounselorId == request.auth.uid
+            && getAfter(
+              /databases/$(database)/documents/counselingProfiles/$(request.resource.data.ownerId)
+            ).data.profileTransferStatus == "Pending approval"
+            && getAfter(
+              /databases/$(database)/documents/counselingProfiles/$(request.resource.data.ownerId)
+            ).data.profileTransferRequestId == transferId
+          )
+        );
 
       // The specifically targeted counselor may accept a pending transfer.
       allow update: if isCounselor()
@@ -799,13 +926,13 @@ service cloud.firestore {
         && request.resource.data.counselorId == request.auth.uid
         && request.resource.data.transferRequestId is string
         && request.resource.data.active == true
-        && get(
+        && getAfter(
           /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
         ).data.status == "Approved"
-        && get(
+        && getAfter(
           /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
         ).data.acceptedById == request.auth.uid
-        && get(
+        && getAfter(
           /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
         ).data.ownerId == request.resource.data.ownerId;
 

@@ -412,6 +412,7 @@ export default function UserProfileFullScreen({
   currentUser,
   onClose,
   onTransferUser = null,
+  transferCounselors = [],
 
   displayRole = role => {
 
@@ -528,6 +529,20 @@ export default function UserProfileFullScreen({
     counselingProfile,
     setCounselingProfile
   ] = useState(null);
+
+
+  const [
+    profileTransferTargetId,
+    setProfileTransferTargetId
+  ] = useState("");
+
+
+  useEffect(
+    () => {
+      setProfileTransferTargetId("");
+    },
+    [profile?.id]
+  );
 
 
   useEffect(
@@ -1259,10 +1274,77 @@ export default function UserProfileFullScreen({
     );
 
 
+  const previousCounselorIds =
+    Array.isArray(
+      counselingProfile
+        ?.previousCounselorIds
+    )
+      ? counselingProfile.previousCounselorIds
+      : [];
+
+
+  const currentCounselorTransferredUserBefore =
+    currentUser.role ===
+      "counselor" &&
+    previousCounselorIds.includes(
+      currentUser.id
+    );
+
+
   const profileTransferPending =
+    counselingProfile
+      ?.profileTransferStatus ===
+      "Pending approval" ||
     transferableConsultation
       ?.transferStatus ===
       "Pending approval";
+
+
+  const canTransferFromProfile =
+    currentUser.role ===
+      "counselor" &&
+    typeof onTransferUser ===
+      "function" &&
+    !notesLoading &&
+    !profileTransferPending &&
+    !currentCounselorTransferredUserBefore &&
+    (
+      isCurrentAssignedCounselor ||
+      (
+        !assignedCounselorId &&
+        isSameDepartmentCounselor
+      )
+    );
+
+
+  const availableTransferCounselors =
+    (
+      Array.isArray(
+        transferCounselors
+      )
+        ? transferCounselors
+        : []
+    )
+      .filter(
+        counselor =>
+          counselor?.id &&
+          counselor.id !==
+            currentUser.id &&
+          counselor.active !==
+            false
+      )
+      .sort(
+        (first, second) =>
+          String(
+            first.name ||
+            ""
+          ).localeCompare(
+            String(
+              second.name ||
+              ""
+            )
+          )
+      );
 
 
   const terminatedSessions =
@@ -1662,38 +1744,91 @@ export default function UserProfileFullScreen({
                   currentUser.role ===
                     "counselor" &&
                   typeof onTransferUser ===
-                    "function" &&
-                  transferableConsultation && (
+                    "function" && (
 
                     <div className="user-profile-transfer-action">
 
-                      <button
-                        type="button"
-                        className="secondary-button user-profile-transfer-button"
-                        disabled={
-                          profileTransferPending
-                        }
-                        onClick={
-                          () =>
-                            onTransferUser(
-                              transferableConsultation
-                            )
-                        }
-                      >
-                        {
-                          profileTransferPending
-                            ? "Transfer pending"
-                            : "Transfer user to another counselor"
-                        }
-                      </button>
+                      {canTransferFromProfile ? (
+                        <>
+                          <select
+                            value={
+                              profileTransferTargetId
+                            }
+                            onChange={
+                              event =>
+                                setProfileTransferTargetId(
+                                  event.target.value
+                                )
+                            }
+                          >
+                            <option value="">
+                              Choose receiving counselor
+                            </option>
 
-                      <small>
-                        {
-                          profileTransferPending
-                            ? "A transfer request is already waiting for the selected counselor."
-                            : "Open the current counseling case and choose the receiving counselor."
-                        }
-                      </small>
+                            {availableTransferCounselors.map(
+                              counselor => (
+                                <option
+                                  key={counselor.id}
+                                  value={counselor.id}
+                                >
+                                  {counselor.name || "Guidance Counselor"}
+                                  {counselor.department
+                                    ? ` — ${counselor.department}`
+                                    : ""}
+                                </option>
+                              )
+                            )}
+                          </select>
+
+                          <button
+                            type="button"
+                            className="secondary-button user-profile-transfer-button"
+                            disabled={
+                              !profileTransferTargetId
+                            }
+                            onClick={
+                              () => {
+                                const targetCounselor =
+                                  availableTransferCounselors.find(
+                                    counselor =>
+                                      counselor.id ===
+                                        profileTransferTargetId
+                                  );
+
+                                if (targetCounselor) {
+                                  onTransferUser(
+                                    profile,
+                                    counselingProfile,
+                                    targetCounselor,
+                                    transferableConsultation
+                                  );
+                                }
+                              }
+                            }
+                          >
+                            Transfer user to selected counselor
+                          </button>
+
+                          <small>
+                            This transfer is created directly from the user profile. An existing counseling request is not required.
+                          </small>
+                        </>
+                      ) : (
+                        <small>
+                          {
+                            profileTransferPending
+                              ? "A transfer request is already waiting for the selected counselor."
+                              : currentCounselorTransferredUserBefore
+                                ? "You already transferred this user before. You retain read-only access but cannot transfer the same user again."
+                                : assignedCounselorId &&
+                                  !isCurrentAssignedCounselor
+                                  ? `This user is currently assigned to ${assignedCounselorLabel}. Only the current assigned counselor can transfer the user.`
+                                  : notesLoading
+                                    ? "Checking counselor assignment..."
+                                    : "Only the assigned counselor, or the user's home-department counselor when no counselor is assigned yet, can initiate this transfer."
+                          }
+                        </small>
+                      )}
 
                     </div>
 
