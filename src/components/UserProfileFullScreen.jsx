@@ -926,6 +926,13 @@ export default function UserProfileFullScreen({
           "Escape"
         ) {
 
+          if (selectedAssessmentHistoryId) {
+            setSelectedAssessmentHistoryId(
+              ""
+            );
+            return;
+          }
+
           onClose();
         }
       }
@@ -959,7 +966,10 @@ export default function UserProfileFullScreen({
 
     },
 
-    [onClose]
+    [
+      onClose,
+      selectedAssessmentHistoryId
+    ]
   );
 
 
@@ -1089,6 +1099,15 @@ export default function UserProfileFullScreen({
 
   const latestAssessment =
     sortedAssessments[0] ||
+    null;
+
+
+  const selectedAssessmentHistory =
+    sortedAssessments.find(
+      row =>
+        row.id ===
+        selectedAssessmentHistoryId
+    ) ||
     null;
 
 
@@ -1249,7 +1268,11 @@ export default function UserProfileFullScreen({
               currentUser.role ===
                 "counselor" &&
               row.assignedCounselorId ===
-                currentUser.id
+                currentUser.id &&
+              normalizeCounselingStatus(
+                row.status
+              ) !==
+                "Terminated"
           )
           .sort(
             (
@@ -1291,11 +1314,22 @@ export default function UserProfileFullScreen({
     );
 
 
+  const pendingConsultationTransfer =
+    consultations.find(
+      row =>
+        row.assignedCounselorId ===
+          currentUser.id &&
+        row.transferStatus ===
+          "Pending approval"
+    ) ||
+    null;
+
+
   const profileTransferPending =
     counselingProfile
       ?.profileTransferStatus ===
       "Pending approval" ||
-    transferableConsultation
+    pendingConsultationTransfer
       ?.transferStatus ===
       "Pending approval";
 
@@ -1330,6 +1364,9 @@ export default function UserProfileFullScreen({
           counselor?.id &&
           counselor.id !==
             currentUser.id &&
+          !previousCounselorIds.includes(
+            counselor.id
+          ) &&
           counselor.active !==
             false
       )
@@ -1810,7 +1847,7 @@ export default function UserProfileFullScreen({
                           </button>
 
                           <small>
-                            This transfer is created directly from the user profile. An existing counseling request is not required.
+                            Transfer from the user profile. If the latest counseling session is Terminated, the terminated session stays read-only and is not used as the transfer source.
                           </small>
                         </>
                       ) : (
@@ -2208,16 +2245,18 @@ export default function UserProfileFullScreen({
                           row.instrumentResults;
 
 
-                        const answersOpen =
-                          selectedAssessmentHistoryId ===
-                            row.id;
-
-
                         return (
 
                           <article
                             key={row.id}
-                            className="profile-history-card assessment-profile-history-card"
+                            className={
+                              `profile-history-card assessment-profile-history-card assessment-priority-${String(
+                                row.priority || "none"
+                              )
+                                .trim()
+                                .toLowerCase()
+                                .replace(/[^a-z0-9]+/g, "-")}`
+                            }
                           >
 
                             <div className="profile-history-card-top">
@@ -2333,110 +2372,14 @@ export default function UserProfileFullScreen({
                                 onClick={
                                   () =>
                                     setSelectedAssessmentHistoryId(
-                                      current =>
-                                        current ===
-                                          row.id
-                                          ? ""
-                                          : row.id
+                                      row.id
                                     )
                                 }
                               >
-                                {
-                                  answersOpen
-                                    ? "Hide answers"
-                                    : "View answers"
-                                }
+                                View answers
                               </button>
 
                             </div>
-
-
-                            {answersOpen && (
-
-                              <div className="profile-assessment-answers-panel">
-
-                                {!row.answers ||
-                                typeof row.answers !==
-                                  "object"
-
-                                  ? (
-
-                                    <div className="user-profile-empty">
-                                      This older assessment does not contain saved item-level answers.
-                                    </div>
-
-                                  )
-
-                                  : (
-
-                                    <>
-
-                                      {
-                                        renderProfileAssessmentAnswerGroup(
-                                          "WHO-5 Well-Being Index",
-                                          who5Questions,
-                                          who5Choices,
-                                          row
-                                        )
-                                      }
-
-
-                                      {
-                                        renderProfileAssessmentAnswerGroup(
-                                          "PHQ-9",
-                                          phq9Questions,
-                                          phq9Choices,
-                                          row
-                                        )
-                                      }
-
-
-                                      <div className="profile-assessment-difficulty-row">
-
-                                        <span>
-                                          PHQ-9 Functional Difficulty
-                                        </span>
-
-                                        <strong>
-                                          {
-                                            row.instrumentResults
-                                              ?.phq9
-                                              ?.difficulty ||
-                                            row.phq9Difficulty ||
-                                            "Not provided"
-                                          }
-                                        </strong>
-
-                                      </div>
-
-
-                                      {
-                                        renderProfileAssessmentAnswerGroup(
-                                          "GAD-7",
-                                          gad7Questions,
-                                          gad7Choices,
-                                          row
-                                        )
-                                      }
-
-
-                                      {
-                                        renderProfileAssessmentAnswerGroup(
-                                          "DASS-21",
-                                          dass21Questions,
-                                          dass21Choices,
-                                          row
-                                        )
-                                      }
-
-                                    </>
-
-                                  )
-                                }
-
-                              </div>
-
-                            )}
 
                           </article>
 
@@ -2826,6 +2769,456 @@ export default function UserProfileFullScreen({
         </div>
 
       </section>
+
+
+      {selectedAssessmentHistory && (
+
+        <div
+          className="review-request-modal-backdrop"
+          role="presentation"
+          onMouseDown={
+            event => {
+
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                setSelectedAssessmentHistoryId(
+                  ""
+                );
+              }
+            }
+          }
+        >
+
+          <section
+            className="review-request-modal assessment-history-review-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              `Review psychological assessment history for ${
+                profile.name ||
+                "user"
+              }`
+            }
+          >
+
+            <header className="review-request-modal-header">
+
+              <div>
+
+                <p className="review-request-modal-eyebrow">
+                  Psychological Assessment Case
+                </p>
+
+                <div className="review-request-modal-title-row">
+
+                  <h2>
+                    {
+                      profile.name ||
+                      "User"
+                    }
+                  </h2>
+
+                  <span
+                    className={
+                      `priority ${String(
+                        selectedAssessmentHistory.priority ||
+                        "none"
+                      )
+                        .trim()
+                        .toLowerCase()}`
+                    }
+                  >
+                    {
+                      selectedAssessmentHistory.priority ||
+                      "No priority"
+                    }
+                  </span>
+
+                </div>
+
+                <p className="review-request-modal-subtitle">
+                  {sortedAssessments.length}
+                  {" "}
+                  assessment
+                  {
+                    sortedAssessments.length === 1
+                      ? ""
+                      : "s"
+                  }
+                  {" "}
+                  recorded for this account. Select an assessment below to review its item-level answers and scoring details.
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                className="review-request-close-button"
+                onClick={
+                  () =>
+                    setSelectedAssessmentHistoryId(
+                      ""
+                    )
+                }
+                aria-label="Close psychological assessment review"
+                title="Close"
+              >
+                ×
+              </button>
+
+            </header>
+
+
+            <div className="review-request-modal-body assessment-history-review-body">
+
+              <section className="review-request-modal-card assessment-user-history-card">
+
+                <div className="assessment-history-heading">
+                  <h3>
+                    Assessment History
+                  </h3>
+                  <p>
+                    Newest assessment first. Select a record to review its saved answers and scoring summary.
+                  </p>
+                </div>
+
+                <div className="assessment-history-list">
+
+                  {sortedAssessments.map(
+                    assessmentRow => {
+
+                      const assessmentResults =
+                        assessmentRow.instrumentResults;
+
+                      return (
+
+                        <button
+                          type="button"
+                          key={assessmentRow.id}
+                          className={
+                            assessmentRow.id ===
+                              selectedAssessmentHistory.id
+                              ? "assessment-history-item active"
+                              : "assessment-history-item"
+                          }
+                          onClick={
+                            () =>
+                              setSelectedAssessmentHistoryId(
+                                assessmentRow.id
+                              )
+                          }
+                        >
+
+                          <div className="assessment-history-item-top">
+
+                            <div>
+                              <strong>
+                                {
+                                  formatTimestamp(
+                                    assessmentRow.createdAt
+                                  )
+                                }
+                              </strong>
+                              <small>
+                                {
+                                  assessmentRow.status ||
+                                  "For review"
+                                }
+                              </small>
+                            </div>
+
+                            <span
+                              className={
+                                `priority ${String(
+                                  assessmentRow.priority ||
+                                  "none"
+                                )
+                                  .trim()
+                                  .toLowerCase()}`
+                              }
+                            >
+                              {
+                                assessmentRow.priority ||
+                                "No priority"
+                              }
+                            </span>
+
+                          </div>
+
+                          {assessmentResults && (
+                            <div className="assessment-history-score-list">
+                              <span>
+                                WHO-5: {assessmentResults?.who5?.percentageScore ?? "—"}/100
+                              </span>
+                              <span>
+                                PHQ-9: {assessmentResults?.phq9?.totalScore ?? "—"}/27
+                              </span>
+                              <span>
+                                GAD-7: {assessmentResults?.gad7?.totalScore ?? "—"}/21
+                              </span>
+                              {assessmentResults?.dass21?.depression && (
+                                <>
+                                  <span>
+                                    DASS-D: {assessmentResults.dass21.depression.adjustedScore}/42
+                                  </span>
+                                  <span>
+                                    DASS-A: {assessmentResults.dass21.anxiety.adjustedScore}/42
+                                  </span>
+                                  <span>
+                                    DASS-S: {assessmentResults.dass21.stress.adjustedScore}/42
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          <span className="assessment-history-open-label">
+                            {
+                              assessmentRow.id ===
+                                selectedAssessmentHistory.id
+                                ? "Currently viewing"
+                                : "View this assessment"
+                            }
+                          </span>
+
+                        </button>
+
+                      );
+                    }
+                  )}
+
+                </div>
+
+              </section>
+
+
+              <section className="review-request-modal-card assessment-selected-detail-card">
+
+                <div className="assessment-selected-detail-heading">
+                  <h3>
+                    Selected Assessment Details
+                  </h3>
+                  <p>
+                    {
+                      formatTimestamp(
+                        selectedAssessmentHistory.createdAt
+                      )
+                    }
+                  </p>
+                </div>
+
+                {selectedAssessmentHistory.instrumentResults
+                  ? (
+                    <>
+                      <div className="assessment-review-score-grid">
+
+                        <div className="review-request-detail-item">
+                          <span>WHO-5</span>
+                          <strong>
+                            {selectedAssessmentHistory.instrumentResults?.who5?.percentageScore ?? "—"}/100
+                          </strong>
+                          <small>
+                            Raw: {selectedAssessmentHistory.instrumentResults?.who5?.rawScore ?? "—"}/25
+                          </small>
+                          <p>
+                            {selectedAssessmentHistory.instrumentResults?.who5?.interpretation || ""}
+                          </p>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>PHQ-9</span>
+                          <strong>
+                            {selectedAssessmentHistory.instrumentResults?.phq9?.totalScore ?? "—"}/27
+                          </strong>
+                          <small>
+                            {selectedAssessmentHistory.instrumentResults?.phq9?.severity || "Not available"} symptom range
+                          </small>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>GAD-7</span>
+                          <strong>
+                            {selectedAssessmentHistory.instrumentResults?.gad7?.totalScore ?? "—"}/21
+                          </strong>
+                          <small>
+                            {selectedAssessmentHistory.instrumentResults?.gad7?.severity || "Not available"} symptom range
+                          </small>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>DASS-21 Depression</span>
+                          <strong>
+                            {selectedAssessmentHistory.instrumentResults?.dass21?.depression?.adjustedScore ?? "—"}/42
+                          </strong>
+                          <small>
+                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.depression?.rawScore ?? "—"}/21
+                          </small>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>DASS-21 Anxiety</span>
+                          <strong>
+                            {selectedAssessmentHistory.instrumentResults?.dass21?.anxiety?.adjustedScore ?? "—"}/42
+                          </strong>
+                          <small>
+                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.anxiety?.rawScore ?? "—"}/21
+                          </small>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>DASS-21 Stress</span>
+                          <strong>
+                            {selectedAssessmentHistory.instrumentResults?.dass21?.stress?.adjustedScore ?? "—"}/42
+                          </strong>
+                          <small>
+                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.stress?.rawScore ?? "—"}/21
+                          </small>
+                        </div>
+
+                      </div>
+
+                      <div className="review-request-detail-grid">
+
+                        <div className="review-request-detail-item">
+                          <span>MindTrack Monitoring Priority</span>
+                          <strong>
+                            {selectedAssessmentHistory.priority || "Not available"}
+                          </strong>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>PHQ-9 Functional Difficulty</span>
+                          <strong>
+                            {selectedAssessmentHistory.instrumentResults?.phq9?.difficulty || selectedAssessmentHistory.phq9Difficulty || "Not provided"}
+                          </strong>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>College / Office</span>
+                          <strong>
+                            {selectedAssessmentHistory.department || profile.department || "Not provided"}
+                          </strong>
+                        </div>
+
+                        <div className="review-request-detail-item">
+                          <span>Program</span>
+                          <strong>
+                            {selectedAssessmentHistory.program || profile.program || "Not provided"}
+                          </strong>
+                        </div>
+
+                        <div className="review-request-detail-item full">
+                          <span>Monitoring Recommendation</span>
+                          <strong className="review-request-details-text">
+                            {selectedAssessmentHistory.recommendation || "No recommendation available."}
+                          </strong>
+                        </div>
+
+                        {selectedAssessmentHistory.counselorRemarks && (
+                          <div className="review-request-detail-item full">
+                            <span>Counselor Remarks</span>
+                            <strong className="review-request-details-text">
+                              {selectedAssessmentHistory.counselorRemarks}
+                            </strong>
+                          </div>
+                        )}
+
+                      </div>
+                    </>
+                  )
+                  : (
+                    <div className="user-profile-empty">
+                      This older assessment does not contain the complete scoring summary.
+                    </div>
+                  )
+                }
+
+              </section>
+
+
+              <section className="review-request-modal-card assessment-answer-review-card">
+
+                <div className="assessment-answer-review-heading">
+                  <span className="assessment-answer-review-kicker">
+                    Item-level responses
+                  </span>
+                  <h3>
+                    Saved Assessment Answers
+                  </h3>
+                  <p>
+                    Review the responses recorded for this selected assessment.
+                  </p>
+                </div>
+
+                {!selectedAssessmentHistory.answers ||
+                typeof selectedAssessmentHistory.answers !==
+                  "object"
+                  ? (
+                    <div className="user-profile-empty">
+                      This older assessment does not contain saved item-level answers.
+                    </div>
+                  )
+                  : (
+                    <div className="assessment-answer-review">
+                      {
+                        renderProfileAssessmentAnswerGroup(
+                          "WHO-5 Well-Being Index",
+                          who5Questions,
+                          who5Choices,
+                          selectedAssessmentHistory
+                        )
+                      }
+
+                      {
+                        renderProfileAssessmentAnswerGroup(
+                          "PHQ-9",
+                          phq9Questions,
+                          phq9Choices,
+                          selectedAssessmentHistory
+                        )
+                      }
+
+                      <div className="profile-assessment-difficulty-row">
+                        <span>
+                          PHQ-9 Functional Difficulty
+                        </span>
+                        <strong>
+                          {selectedAssessmentHistory.instrumentResults?.phq9?.difficulty || selectedAssessmentHistory.phq9Difficulty || "Not provided"}
+                        </strong>
+                      </div>
+
+                      {
+                        renderProfileAssessmentAnswerGroup(
+                          "GAD-7",
+                          gad7Questions,
+                          gad7Choices,
+                          selectedAssessmentHistory
+                        )
+                      }
+
+                      {
+                        renderProfileAssessmentAnswerGroup(
+                          "DASS-21",
+                          dass21Questions,
+                          dass21Choices,
+                          selectedAssessmentHistory
+                        )
+                      }
+                    </div>
+                  )
+                }
+
+              </section>
+
+            </div>
+
+          </section>
+
+        </div>
+
+      )}
 
     </div>
 

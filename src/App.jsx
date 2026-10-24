@@ -5761,7 +5761,15 @@ function Dashboard() {
       />
 
 
-      <section className="panel home-monitoring-summary-panel">
+      <section
+        className={
+          `panel home-monitoring-summary-panel ${
+            assessmentPriorityOutlineClassName(
+              latestReviewedMonitoring?.priority
+            )
+          }`
+        }
+      >
 
         <div className="home-monitoring-summary-heading">
 
@@ -8788,6 +8796,29 @@ function priorityClassName(
 }
 
 
+function assessmentPriorityOutlineClassName(
+  priority
+) {
+
+  const cleanPriority =
+    String(
+      priority || ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        "-"
+      );
+
+
+  return `assessment-priority-${
+    cleanPriority ||
+    "none"
+  }`;
+}
+
+
 function counselingTimeMinutes(
   timeText
 ) {
@@ -11762,6 +11793,346 @@ function Consultations() {
 
 
 // ======================================================
+// PRIVATE REFERRAL COUNSELING NOTES
+// ======================================================
+
+function ReferralPrivateCounselingNotes({
+  referral,
+  counselor
+}) {
+
+  const emptyNotes = {
+    caseHistory: "",
+    counselingSessionSummary: "",
+    counselorObservation: "",
+    recommendations: ""
+  };
+
+  const [notes, setNotes] =
+    useState(emptyNotes);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+
+  useEffect(
+    () => {
+      if (
+        !referral?.id ||
+        !counselor?.id ||
+        !db
+      ) {
+        setLoading(false);
+        return undefined;
+      }
+
+      setLoading(true);
+      setError("");
+
+      const notesRef =
+        doc(
+          db,
+          "referralCounselingNotes",
+          referral.id
+        );
+
+      return onSnapshot(
+        notesRef,
+        snapshot => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+
+            setNotes({
+              caseHistory:
+                data.caseHistory || "",
+              counselingSessionSummary:
+                data.counselingSessionSummary || "",
+              counselorObservation:
+                data.counselorObservation || "",
+              recommendations:
+                data.recommendations || ""
+            });
+          } else {
+            setNotes(emptyNotes);
+          }
+
+          setLoading(false);
+        },
+        snapshotError => {
+          console.error(
+            "Unable to load private referral counseling notes:",
+            snapshotError
+          );
+
+          setError(
+            snapshotError?.code ===
+              "permission-denied"
+              ? "You do not have permission to view these private counseling notes."
+              : "Unable to load private counseling notes."
+          );
+
+          setLoading(false);
+        }
+      );
+    },
+    [
+      referral?.id,
+      counselor?.id
+    ]
+  );
+
+
+  function updateNote(
+    field,
+    value
+  ) {
+    setNotes(
+      current => ({
+        ...current,
+        [field]: value
+      })
+    );
+  }
+
+
+  async function saveNotes() {
+    if (
+      !referral?.id ||
+      !counselor?.id ||
+      !db
+    ) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setMessage("");
+      setError("");
+
+      const notesRef =
+        doc(
+          db,
+          "referralCounselingNotes",
+          referral.id
+        );
+
+      const existing =
+        await getDoc(
+          notesRef
+        );
+
+      const payload = {
+        referralId:
+          referral.id,
+
+        assignedCounselorId:
+          counselor.id,
+
+        assignedCounselorName:
+          counselor.name ||
+          "Guidance Counselor",
+
+        referredPersonName:
+          referral.personName ||
+          "Referred user",
+
+        caseHistory:
+          String(
+            notes.caseHistory || ""
+          ).trim(),
+
+        counselingSessionSummary:
+          String(
+            notes.counselingSessionSummary || ""
+          ).trim(),
+
+        counselorObservation:
+          String(
+            notes.counselorObservation || ""
+          ).trim(),
+
+        recommendations:
+          String(
+            notes.recommendations || ""
+          ).trim(),
+
+        updatedById:
+          counselor.id,
+
+        updatedByName:
+          counselor.name ||
+          "Guidance Counselor",
+
+        updatedAt:
+          serverTimestamp()
+      };
+
+      if (!existing.exists()) {
+        payload.createdAt =
+          serverTimestamp();
+      }
+
+      await setDoc(
+        notesRef,
+        payload,
+        { merge: true }
+      );
+
+      setMessage(
+        "Private counseling notes saved."
+      );
+
+    } catch (saveError) {
+      console.error(
+        "Unable to save private referral counseling notes:",
+        saveError
+      );
+
+      setError(
+        saveError?.code ===
+          "permission-denied"
+          ? "Firebase blocked this private counseling note update. Deploy the latest Firestore rules."
+          : (
+              saveError?.message ||
+              "Unable to save private counseling notes."
+            )
+      );
+
+    } finally {
+      setSaving(false);
+    }
+  }
+
+
+  return (
+    <section className="referral-private-notes">
+      <div className="referral-private-notes-heading">
+        <div>
+          <h4>
+            Private counseling notes
+          </h4>
+          <small>
+            Visible only to the assigned Guidance Counselor and Super Admin.
+          </small>
+        </div>
+      </div>
+
+      {loading
+        ? (
+          <small>
+            Loading private counseling notes...
+          </small>
+        )
+        : (
+          <>
+            {message && (
+              <div className="success-box referral-note-message">
+                {message}
+              </div>
+            )}
+
+            {error && (
+              <div className="error-box referral-note-message">
+                {error}
+              </div>
+            )}
+
+            <div className="referral-private-notes-grid">
+              <label>
+                Case History
+                <textarea
+                  rows="4"
+                  value={notes.caseHistory}
+                  disabled={saving}
+                  onChange={event =>
+                    updateNote(
+                      "caseHistory",
+                      event.target.value
+                    )
+                  }
+                  placeholder="Document the relevant case history."
+                />
+              </label>
+
+              <label>
+                Summary of Counseling Session
+                <textarea
+                  rows="4"
+                  value={notes.counselingSessionSummary}
+                  disabled={saving}
+                  onChange={event =>
+                    updateNote(
+                      "counselingSessionSummary",
+                      event.target.value
+                    )
+                  }
+                  placeholder="Summarize the counseling session."
+                />
+              </label>
+
+              <label>
+                Counselor's Observation
+                <textarea
+                  rows="4"
+                  value={notes.counselorObservation}
+                  disabled={saving}
+                  onChange={event =>
+                    updateNote(
+                      "counselorObservation",
+                      event.target.value
+                    )
+                  }
+                  placeholder="Record counselor observations."
+                />
+              </label>
+
+              <label>
+                Recommended Actions
+                <textarea
+                  rows="4"
+                  value={notes.recommendations}
+                  disabled={saving}
+                  onChange={event =>
+                    updateNote(
+                      "recommendations",
+                      event.target.value
+                    )
+                  }
+                  placeholder="Record recommended actions."
+                />
+              </label>
+            </div>
+
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={saving}
+              onClick={saveNotes}
+            >
+              {
+                saving
+                  ? "Saving private notes..."
+                  : "Save private counseling notes"
+              }
+            </button>
+          </>
+        )
+      }
+    </section>
+  );
+}
+
+
+// ======================================================
 // REFERRALS
 // ======================================================
 
@@ -11796,11 +12167,27 @@ function Referrals() {
 
   const referralStatusOptions = [
     "Received",
-    "Under review",
     "Contacted",
-    "In progress",
     "Completed"
   ];
+
+
+  function normalizedReferralStatus(
+    value
+  ) {
+    if (
+      value === "Under review" ||
+      value === "In progress"
+    ) {
+      return "Contacted";
+    }
+
+    return referralStatusOptions.includes(
+      value
+    )
+      ? value
+      : "Received";
+  }
 
 
   const [
@@ -12142,15 +12529,18 @@ function Referrals() {
 
 
     const currentStatus =
-      row.status ||
-      "Received";
+      normalizedReferralStatus(
+        row.status
+      );
 
 
     const nextStatus =
-      referralStatusDrafts[
-        row.id
-      ] ??
-      currentStatus;
+      normalizedReferralStatus(
+        referralStatusDrafts[
+          row.id
+        ] ??
+        currentStatus
+      );
 
 
     const nextRemarks =
@@ -12179,7 +12569,10 @@ function Referrals() {
 
     const statusChanged =
       nextStatus !==
-      currentStatus;
+      String(
+        row.status ||
+        "Received"
+      );
 
 
     const remarksChanged =
@@ -12665,6 +13058,32 @@ function Referrals() {
   }
 
 
+  const counselorReferralRows =
+    [...rows].sort(
+      (a, b) => {
+        const first =
+          recordDateObject(
+            a.createdAt ||
+            a.updatedAt
+          );
+
+        const second =
+          recordDateObject(
+            b.createdAt ||
+            b.updatedAt
+          );
+
+        return (
+          second?.getTime?.() ||
+          0
+        ) - (
+          first?.getTime?.() ||
+          0
+        );
+      }
+    );
+
+
   if (isCounselor) {
 
     return (
@@ -12713,7 +13132,7 @@ function Referrals() {
           )}
 
 
-          {rows.length === 0
+          {counselorReferralRows.length === 0
 
             ? (
 
@@ -12727,11 +13146,11 @@ function Referrals() {
 
               <div className="record-list">
 
-                {rows.map(
+                {counselorReferralRows.map(
                   row => (
 
                     <article
-                      className="record-card"
+                      className="record-card referral-assigned-card"
                       key={row.id}
                     >
 
@@ -12763,7 +13182,7 @@ function Referrals() {
 
 
                         <span className="status">
-                          {row.status || "Received"}
+                          {normalizedReferralStatus(row.status)}
                         </span>
 
                       </div>
@@ -12786,24 +13205,33 @@ function Referrals() {
                       )}
 
 
-                      {row.contact && (
-
-                        <p>
+                      <div className="referral-meta-grid">
+                        <div className="referral-meta-item">
+                          <span>Submitted</span>
                           <strong>
-                            Contact:
+                            {
+                              formatRecordDateTime(
+                                row.createdAt ||
+                                row.updatedAt
+                              )
+                            }
                           </strong>
-                          {" "}
-                          {row.contact}
-                        </p>
+                        </div>
 
-                      )}
+                        <div className="referral-meta-item">
+                          <span>Referred by</span>
+                          <strong>
+                            {row.referrerName || "Teaching / Non-teaching"}
+                          </strong>
+                        </div>
 
-
-                      <small>
-                        Referred by:
-                        {" "}
-                        {row.referrerName || "Teaching / Non-teaching"}
-                      </small>
+                        <div className="referral-meta-item">
+                          <span>Contact</span>
+                          <strong>
+                            {row.contact || "Not provided"}
+                          </strong>
+                        </div>
+                      </div>
 
 
                       <div
@@ -12832,8 +13260,9 @@ function Referrals() {
                               referralStatusDrafts[
                                 row.id
                               ] ??
-                              row.status ??
-                              "Received"
+                              normalizedReferralStatus(
+                                row.status
+                              )
                             }
                             disabled={
                               savingReferralId ===
@@ -12919,6 +13348,12 @@ function Referrals() {
                           />
 
                         </label>
+
+
+                        <ReferralPrivateCounselingNotes
+                          referral={row}
+                          counselor={user}
+                        />
 
 
                         <button
@@ -13316,7 +13751,9 @@ function Referrals() {
 
                     <span className="status">
                       {
-                        row.status
+                        normalizedReferralStatus(
+                          row.status
+                        )
                       }
                     </span>
 
@@ -13340,13 +13777,6 @@ function Referrals() {
                       }
 
                     </p>
-
-
-                    <small>
-
-                      Private assessment and counseling notes are not shown to the referrer.
-
-                    </small>
 
 
                     {row.updatedByName && (
@@ -15328,7 +15758,11 @@ function UserProfilesContent({
       if (
         linkedConsultation?.id &&
         linkedConsultation.assignedCounselorId ===
-          currentUser.id
+          currentUser.id &&
+        normalizeCounselingRequestStatus(
+          linkedConsultation.status
+        ) !==
+          "Terminated"
       ) {
         const transferRef =
           doc(
@@ -15375,6 +15809,17 @@ function UserProfilesContent({
             ) {
               throw new Error(
                 "Only the currently assigned counselor can transfer this user."
+              );
+            }
+
+            if (
+              normalizeCounselingRequestStatus(
+                currentConsultation.status
+              ) ===
+                "Terminated"
+            ) {
+              throw new Error(
+                "This counseling session is already Terminated and cannot be used for a counselor transfer. Close the session details and transfer the user from User Profiles instead."
               );
             }
 
@@ -16988,7 +17433,13 @@ function UserMonitoringContent({
                 id={
                   `monitoring-assessment-${latest.assessmentId || latest.id}`
                 }
-                className="panel monitoring-summary-panel"
+                className={
+                  `panel monitoring-summary-panel ${
+                    assessmentPriorityOutlineClassName(
+                      latest.priority
+                    )
+                  }`
+                }
               >
 
                 <div className="monitoring-summary-header">
@@ -17224,7 +17675,13 @@ function UserMonitoringContent({
                         id={
                           `monitoring-assessment-${row.assessmentId || row.id}`
                         }
-                        className="monitoring-history-item"
+                        className={
+                          `monitoring-history-item ${
+                            assessmentPriorityOutlineClassName(
+                              row.priority
+                            )
+                          }`
+                        }
                       >
 
                         <div>
@@ -17734,21 +18191,20 @@ function Cases() {
       let assessmentUnsubscribers = [];
 
 
+      // Assessment Cases must follow CURRENT counselor ownership.
+      // transferAccess intentionally keeps transfer history, so using it here
+      // can make a previous counselor query assessments they no longer own.
+      // counselingProfiles is the authoritative current assignment source.
       const accessQuery =
         query(
           collection(
             db,
-            "transferAccess"
+            "counselingProfiles"
           ),
           where(
-            "counselorId",
+            "assignedCounselorId",
             "==",
             user.id
-          ),
-          where(
-            "active",
-            "==",
-            true
           )
         );
 
@@ -17773,6 +18229,7 @@ function Cases() {
                   snapshot.docs
                     .map(
                       item =>
+                        item.id ||
                         item.data()
                           .ownerId
                     )
@@ -17876,7 +18333,7 @@ function Cases() {
           error => {
 
             console.error(
-              "Unable to load transfer access for assessment cases:",
+              "Unable to load current counselor assignment for assessment cases:",
               error
             );
 
@@ -17885,7 +18342,7 @@ function Cases() {
 
             setTransferredAssessmentsError(
               error?.message ||
-              "Unable to load transferred assessment access."
+              "Unable to load the current transferred assessment assignment."
             );
 
             setTransferredAssessmentsLoading(
@@ -19796,23 +20253,52 @@ function Cases() {
               </div>
 
 
-              <button
+              <div className="review-request-modal-header-actions">
 
-                type="button"
+                {isSuperAdmin && (
 
-                className="review-request-close-button"
+                  <button
+                    type="button"
+                    className="danger-button review-request-header-delete-button"
+                    onClick={
+                      deleteSelectedAssessmentRecord
+                    }
+                    disabled={
+                      deletingAssessmentId ===
+                      selected.id
+                    }
+                    title="Delete this psychological assessment record"
+                  >
+                    {
+                      deletingAssessmentId ===
+                        selected.id
+                        ? "Deleting..."
+                        : "Delete assessment"
+                    }
+                  </button>
 
-                onClick={
-                  closeAssessmentReview
-                }
+                )}
 
-                aria-label="Close psychological assessment review"
 
-                title="Close"
+                <button
 
-              >
-                ×
-              </button>
+                  type="button"
+
+                  className="review-request-close-button"
+
+                  onClick={
+                    closeAssessmentReview
+                  }
+
+                  aria-label="Close psychological assessment review"
+
+                  title="Close"
+
+                >
+                  ×
+                </button>
+
+              </div>
 
             </header>
 
@@ -19852,10 +20338,16 @@ function Cases() {
                         }
 
                         className={
-                          row.id ===
-                            selected.id
-                            ? "assessment-history-item active"
-                            : "assessment-history-item"
+                          `${
+                            row.id ===
+                              selected.id
+                              ? "assessment-history-item active"
+                              : "assessment-history-item"
+                          } ${
+                            assessmentPriorityOutlineClassName(
+                              row.priority
+                            )
+                          }`
                         }
 
                         onClick={
@@ -20601,7 +21093,7 @@ function Cases() {
                         deletingAssessmentId ===
                           selected.id
                           ? "Deleting assessment..."
-                          : "Delete"
+                          : "Delete assessment"
                       }
                     </button>
 
@@ -21945,6 +22437,10 @@ function CounselingRequestsManagement() {
     if (
       user.role !== "counselor" ||
       !row?.id ||
+      normalizeCounselingRequestStatus(
+        row.status
+      ) ===
+        "Terminated" ||
       requestIsReadOnly(
         row
       ) ||
@@ -22888,6 +23384,19 @@ function CounselingRequestsManagement() {
     row
   ) {
 
+    if (
+      normalizeCounselingRequestStatus(
+        row?.status
+      ) ===
+        "Terminated"
+    ) {
+      alert(
+        "A Terminated counseling session cannot be used to transfer the user. Open User Profiles and transfer the user from the profile instead."
+      );
+      return;
+    }
+
+
     if (!canRequestTransfer(row)) {
 
       alert(
@@ -23148,6 +23657,18 @@ function CounselingRequestsManagement() {
 
             throw new Error(
               "Only the currently assigned counselor can request this transfer."
+            );
+          }
+
+
+          if (
+            normalizeCounselingRequestStatus(
+              currentConsultation.status
+            ) ===
+              "Terminated"
+          ) {
+            throw new Error(
+              "This counseling session is already Terminated. Transfer the user from User Profiles instead."
             );
           }
 
@@ -24473,23 +24994,63 @@ function CounselingRequestsManagement() {
               </div>
 
 
-              <button
+              <div className="review-request-modal-header-actions">
 
-                type="button"
+                {isSuperAdmin && (
 
-                className="review-request-close-button"
+                  <button
+                    type="button"
+                    className="danger-button review-request-header-delete-button"
+                    onClick={
+                      deleteSelectedCounselingRequest
+                    }
+                    disabled={
+                      deletingCounselingId ===
+                        selected.id ||
+                      Boolean(
+                        approvedTransferForConsultation(
+                          selected.id
+                        )
+                      )
+                    }
+                    title={
+                      approvedTransferForConsultation(
+                        selected.id
+                      )
+                        ? "This request has approved transfer history and is protected from deletion."
+                        : "Delete this counseling request"
+                    }
+                  >
+                    {
+                      deletingCounselingId ===
+                        selected.id
+                        ? "Deleting..."
+                        : "Delete counseling request"
+                    }
+                  </button>
 
-                onClick={
-                  closeRequestReview
-                }
+                )}
 
-                aria-label="Close counseling request review"
 
-                title="Close"
+                <button
 
-              >
-                ×
-              </button>
+                  type="button"
+
+                  className="review-request-close-button"
+
+                  onClick={
+                    closeRequestReview
+                  }
+
+                  aria-label="Close counseling request review"
+
+                  title="Close"
+
+                >
+                  ×
+                </button>
+
+              </div>
 
             </header>
 
@@ -25126,7 +25687,7 @@ function CounselingRequestsManagement() {
                         deletingCounselingId ===
                           selected.id
                           ? "Deleting counseling request..."
-                          : "Delete"
+                          : "Delete counseling request"
                       }
                     </button>
 
@@ -25680,14 +26241,9 @@ function Schedule() {
   ) {
 
     return Boolean(
-      pendingTransferFor(
-        row
-      ) ||
-      row.transferStatus ||
       row.transferredFromCounselorId ||
-      canTransferFromSchedule(
-        row
-      )
+      row.transferStatus ===
+        "Approved"
     );
   }
 
@@ -26478,20 +27034,9 @@ function Schedule() {
                     "4px"
                 }}
               >
-                Counseling cases assigned to you can be transferred to a
-                specific Guidance Counselor regardless of the current request status. Cards will show
-                {" "}
-                <strong>
-                  Transfer available
-                </strong>
-                {" "}
-                or
-                {" "}
-                <strong>
-                  Transfer awaiting approval
-                </strong>
-                {" "}
-                when applicable.
+                The Transfers filter shows only counseling records that were
+                already transferred. Pending transfer requests remain available
+                through the transfer request workflow.
               </div>
 
             </div>
@@ -26575,7 +27120,7 @@ function Schedule() {
                     : scheduleFilter ===
                         "Transfers"
 
-                      ? "No transfer-related counseling requests."
+                      ? "No transferred counseling users."
 
                       : `No ${scheduleFilter.toLowerCase()} appointments.`
                 }
@@ -26695,12 +27240,6 @@ function Schedule() {
 
                           const pendingTransfer =
                             pendingTransferFor(
-                              row
-                            );
-
-
-                          const transferAvailable =
-                            canTransferFromSchedule(
                               row
                             );
 
@@ -26966,7 +27505,6 @@ function Schedule() {
                                 {
                                   (
                                     pendingTransfer ||
-                                    transferAvailable ||
                                     transferredToCurrentCounselor
                                   ) && (
 
@@ -27013,38 +27551,6 @@ function Schedule() {
                                           }}
                                         >
                                           Transfer awaiting approval
-                                        </span>
-
-                                      )}
-
-
-                                      {transferAvailable && (
-
-                                        <span
-                                          style={{
-                                            background:
-                                              "#eef2ff",
-
-                                            color:
-                                              "#3730a3",
-
-                                            border:
-                                              "1px solid #c7d2fe",
-
-                                            borderRadius:
-                                              "999px",
-
-                                            padding:
-                                              "4px 8px",
-
-                                            fontSize:
-                                              "0.72rem",
-
-                                            fontWeight:
-                                              800
-                                          }}
-                                        >
-                                          Transfer available
                                         </span>
 
                                       )}
@@ -27154,9 +27660,7 @@ function Schedule() {
                                     {
                                       pendingTransfer
                                         ? "View transfer"
-                                        : transferAvailable
-                                          ? "Open to transfer"
-                                          : "Open request"
+                                        : "Open request"
                                     }
                                   </span>
 

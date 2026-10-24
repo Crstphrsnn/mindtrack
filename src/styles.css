@@ -2668,6 +2668,20 @@ th {
   background: #f5f8ff;
 }
 
+.review-request-modal-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.review-request-header-delete-button {
+  min-height: 44px;
+  min-width: 148px;
+  white-space: nowrap;
+}
+
 .review-request-modal-body {
   height: calc(100% - 118px);
   overflow-y: auto;
@@ -2854,6 +2868,15 @@ th {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .review-request-modal-header-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .review-request-header-delete-button {
+    min-width: 0;
   }
 
   .review-request-modal-title-row h2 {
@@ -5914,6 +5937,42 @@ th {
 .assessment-profile-history-card {
   padding: 16px;
   background: #fbfcfe;
+  border-width: 2px;
+  border-left-width: 6px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.assessment-profile-history-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.09);
+}
+
+/* Priority-colored assessment outlines make separate records easier to scan. */
+.assessment-profile-history-card.assessment-priority-low {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-profile-history-card.assessment-priority-moderate {
+  border-color: #fde68a;
+  border-left-color: #d97706;
+}
+
+.assessment-profile-history-card.assessment-priority-high {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-profile-history-card.assessment-priority-critical {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-profile-history-card.assessment-priority-none,
+.assessment-profile-history-card:not([class*="assessment-priority-"]) {
+  border-color: #cbd5e1;
+  border-left-color: #64748b;
 }
 
 .profile-history-card-top {
@@ -6940,3 +6999,172 @@ th {
   }
 }
 
+
+/* =====================================================
+   REFERRALS - COUNSELOR UI
+   ===================================================== */
+
+.referral-assigned-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
+  padding: 18px;
+}
+
+.referral-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.referral-meta-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.referral-meta-item span {
+  display: block;
+  color: #64748b;
+  font-size: 0.76rem;
+  margin-bottom: 4px;
+}
+
+.referral-meta-item strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.referral-private-notes {
+  margin: 18px 0 14px;
+  padding: 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.referral-private-notes-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.referral-private-notes-heading h4 {
+  margin: 0 0 4px;
+  color: #0f172a;
+}
+
+.referral-private-notes-heading small {
+  color: #64748b;
+}
+
+.referral-private-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.referral-private-notes-grid label {
+  margin: 0;
+}
+
+.referral-private-notes-grid textarea {
+  margin-top: 6px;
+  min-height: 112px;
+  resize: vertical;
+}
+
+.referral-note-message {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 820px) {
+  .referral-meta-grid,
+  .referral-private-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   SYSTEM-WIDE ASSESSMENT PRIORITY OUTLINES
+   Used on user Home/Monitoring cards, counselor Assessment
+   Cases history, and counselor User Profile assessment cards.
+===================================================== */
+
+.assessment-history-item[class*="assessment-priority-"],
+.monitoring-history-item[class*="assessment-priority-"],
+.monitoring-summary-panel[class*="assessment-priority-"],
+.home-monitoring-summary-panel[class*="assessment-priority-"] {
+  border-style: solid;
+  border-width: 2px;
+  border-left-width: 6px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.assessment-history-item.assessment-priority-low,
+.monitoring-history-item.assessment-priority-low,
+.monitoring-summary-panel.assessment-priority-low,
+.home-monitoring-summary-panel.assessment-priority-low {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-history-item.assessment-priority-moderate,
+.monitoring-history-item.assessment-priority-moderate,
+.monitoring-summary-panel.assessment-priority-moderate,
+.home-monitoring-summary-panel.assessment-priority-moderate {
+  border-color: #fde68a;
+  border-left-color: #d97706;
+}
+
+.assessment-history-item.assessment-priority-high,
+.monitoring-history-item.assessment-priority-high,
+.monitoring-summary-panel.assessment-priority-high,
+.home-monitoring-summary-panel.assessment-priority-high {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-history-item.assessment-priority-critical,
+.monitoring-history-item.assessment-priority-critical,
+.monitoring-summary-panel.assessment-priority-critical,
+.home-monitoring-summary-panel.assessment-priority-critical {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-history-item.assessment-priority-none,
+.monitoring-history-item.assessment-priority-none,
+.monitoring-summary-panel.assessment-priority-none,
+.home-monitoring-summary-panel.assessment-priority-none {
+  border-color: #cbd5e1;
+  border-left-color: #64748b;
+}
+
+.monitoring-history-item[class*="assessment-priority-"]:hover,
+.assessment-history-item[class*="assessment-priority-"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.09);
+}
+
+/* Keep the selected counselor assessment unmistakable while
+   preserving its priority-colored outline. */
+.assessment-history-item.active[class*="assessment-priority-"] {
+  background: #f2f6ff;
+  box-shadow:
+    0 0 0 2px rgba(23, 63, 143, 0.12),
+    0 5px 14px rgba(15, 23, 42, 0.08);
+}

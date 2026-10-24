@@ -58,6 +58,12 @@ service cloud.firestore {
         || role == "personnel";
     }
 
+    function isValidReferralStatus(status) {
+      return status == "Received"
+        || status == "Contacted"
+        || status == "Completed";
+    }
+
     function sameDepartment(department) {
       return isCounselor()
         && profile().department == department;
@@ -451,6 +457,13 @@ service cloud.firestore {
         )
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.department == resource.data.department
+        && (
+          resource.data.status != "Terminated"
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            "transferStatus",
+            "transferRequestId"
+          ])
+        )
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "status",
           "counselorRemarks",
@@ -466,6 +479,7 @@ service cloud.firestore {
       // The specifically targeted counselor may accept an approved transfer
       // in the same transaction and become the new assigned counselor.
       allow update: if isCounselor()
+        && resource.data.status != "Terminated"
         && request.resource.data.transferRequestId is string
         && getAfter(
           /databases/$(database)/documents/transferRequests/$(request.resource.data.transferRequestId)
@@ -616,55 +630,37 @@ service cloud.firestore {
       allow read: if isSuperAdmin()
         || (
           isCounselor() && (
-            targetUser(userId).department == profile().department
-            || (
-              exists(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              )
-              && get(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              ).data.assignedCounselorId == request.auth.uid
+            // IMPORTANT: use resource.data directly so Firestore can
+            // authorize collection queries such as:
+            // where("assignedCounselorId", "==", request.auth.uid)
+            (
+              "assignedCounselorId" in resource.data
+              && resource.data.assignedCounselorId == request.auth.uid
             )
             || (
-              exists(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              )
-              && "previousCounselorIds" in get(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              ).data
-              && request.auth.uid in get(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              ).data.previousCounselorIds
+              "department" in resource.data
+              && resource.data.department == profile().department
             )
             || (
-              exists(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              )
-              && get(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              ).data.profileTransferStatus == "Pending approval"
-              && get(
-                /databases/$(database)/documents/counselingProfiles/$(userId)
-              ).data.profileTransferRequestId is string
+              "previousCounselorIds" in resource.data
+              && request.auth.uid in resource.data.previousCounselorIds
+            )
+            || (
+              "profileTransferStatus" in resource.data
+              && resource.data.profileTransferStatus == "Pending approval"
+              && "profileTransferRequestId" in resource.data
+              && resource.data.profileTransferRequestId is string
               && exists(
-                /databases/$(database)/documents/transferRequests/$(get(
-                  /databases/$(database)/documents/counselingProfiles/$(userId)
-                ).data.profileTransferRequestId)
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
               )
               && get(
-                /databases/$(database)/documents/transferRequests/$(get(
-                  /databases/$(database)/documents/counselingProfiles/$(userId)
-                ).data.profileTransferRequestId)
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
               ).data.status == "Pending approval"
               && get(
-                /databases/$(database)/documents/transferRequests/$(get(
-                  /databases/$(database)/documents/counselingProfiles/$(userId)
-                ).data.profileTransferRequestId)
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
               ).data.targetCounselorId == request.auth.uid
               && get(
-                /databases/$(database)/documents/transferRequests/$(get(
-                  /databases/$(database)/documents/counselingProfiles/$(userId)
-                ).data.profileTransferRequestId)
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
               ).data.ownerId == userId
             )
           )
@@ -835,6 +831,19 @@ service cloud.firestore {
         && request.resource.data.reason.size() <= 1000
         && !wasPreviousCounselor(request.resource.data.ownerId)
         && (
+          !counselingProfileExists(request.resource.data.ownerId)
+          || !(
+            "previousCounselorIds" in get(
+              /databases/$(database)/documents/counselingProfiles/$(request.resource.data.ownerId)
+            ).data
+          )
+          || !(
+            request.resource.data.targetCounselorId in get(
+              /databases/$(database)/documents/counselingProfiles/$(request.resource.data.ownerId)
+            ).data.previousCounselorIds
+          )
+        )
+        && (
           (
             request.resource.data.sourceType == "consultation"
             && request.resource.data.consultationId.size() > 0
@@ -844,6 +853,12 @@ service cloud.firestore {
             && get(
               /databases/$(database)/documents/consultations/$(request.resource.data.consultationId)
             ).data.assignedCounselorId == request.auth.uid
+            && get(
+              /databases/$(database)/documents/consultations/$(request.resource.data.consultationId)
+            ).data.status != "Terminated"
+            && request.resource.data.consultationStatus == get(
+              /databases/$(database)/documents/consultations/$(request.resource.data.consultationId)
+            ).data.status
           )
           ||
           (
@@ -871,6 +886,16 @@ service cloud.firestore {
         && request.resource.data.acceptedById == request.auth.uid
         && request.resource.data.acceptedByName == profile().name
         && request.resource.data.acceptedByDepartment == profile().department
+        && (
+          resource.data.sourceType != "consultation"
+          || (
+            resource.data.consultationId is string
+            && resource.data.consultationId.size() > 0
+            && get(
+              /databases/$(database)/documents/consultations/$(resource.data.consultationId)
+            ).data.status != "Terminated"
+          )
+        )
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "status",
           "acceptedById",
@@ -971,6 +996,7 @@ service cloud.firestore {
         && resource.data.assignedCounselorId == request.auth.uid
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.assignedCounselorId == resource.data.assignedCounselorId
+        && isValidReferralStatus(request.resource.data.status)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "status",
           "counselorRemarks",
@@ -979,6 +1005,72 @@ service cloud.firestore {
           "updatedAt"
         ])
         && request.resource.data.updatedById == request.auth.uid;
+
+      allow delete: if isSuperAdmin();
+    }
+
+
+    // =====================================================
+    // PRIVATE REFERRAL COUNSELING NOTES
+    // =====================================================
+    // Stored separately from referrals so Teaching / Non-teaching
+    // referrers cannot receive private counselor documentation.
+    match /referralCounselingNotes/{referralId} {
+      allow read: if isSuperAdmin()
+        || (
+          isCounselor()
+          && exists(
+            /databases/$(database)/documents/referrals/$(referralId)
+          )
+          && get(
+            /databases/$(database)/documents/referrals/$(referralId)
+          ).data.assignedCounselorId == request.auth.uid
+        );
+
+      allow create: if isCounselor()
+        && request.resource.data.referralId == referralId
+        && request.resource.data.assignedCounselorId == request.auth.uid
+        && request.resource.data.updatedById == request.auth.uid
+        && request.resource.data.caseHistory is string
+        && request.resource.data.counselingSessionSummary is string
+        && request.resource.data.counselorObservation is string
+        && request.resource.data.recommendations is string
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && exists(
+          /databases/$(database)/documents/referrals/$(referralId)
+        )
+        && get(
+          /databases/$(database)/documents/referrals/$(referralId)
+        ).data.assignedCounselorId == request.auth.uid;
+
+      allow update: if isCounselor()
+        && resource.data.assignedCounselorId == request.auth.uid
+        && request.resource.data.referralId == referralId
+        && request.resource.data.assignedCounselorId == resource.data.assignedCounselorId
+        && request.resource.data.updatedById == request.auth.uid
+        && request.resource.data.caseHistory is string
+        && request.resource.data.counselingSessionSummary is string
+        && request.resource.data.counselorObservation is string
+        && request.resource.data.recommendations is string
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "caseHistory",
+          "counselingSessionSummary",
+          "counselorObservation",
+          "recommendations",
+          "assignedCounselorName",
+          "referredPersonName",
+          "updatedById",
+          "updatedByName",
+          "updatedAt"
+        ])
+        && exists(
+          /databases/$(database)/documents/referrals/$(referralId)
+        )
+        && get(
+          /databases/$(database)/documents/referrals/$(referralId)
+        ).data.assignedCounselorId == request.auth.uid;
 
       allow delete: if isSuperAdmin();
     }
