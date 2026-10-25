@@ -933,6 +933,13 @@ export default function UserProfileFullScreen({
             return;
           }
 
+          if (selectedHistorySessionId) {
+            setSelectedHistorySessionId(
+              ""
+            );
+            return;
+          }
+
           onClose();
         }
       }
@@ -968,7 +975,8 @@ export default function UserProfileFullScreen({
 
     [
       onClose,
-      selectedAssessmentHistoryId
+      selectedAssessmentHistoryId,
+      selectedHistorySessionId
     ]
   );
 
@@ -2469,11 +2477,7 @@ export default function UserProfileFullScreen({
                             onClick={
                               () =>
                                 setSelectedHistorySessionId(
-                                  current =>
-                                    current ===
-                                      row.id
-                                      ? ""
-                                      : row.id
+                                  row.id
                                 )
                             }
                           >
@@ -2489,103 +2493,7 @@ export default function UserProfileFullScreen({
                   </div>
 
 
-                  {selectedHistorySession && (
 
-                    <div className="profile-session-note-view">
-
-                      <div className="profile-session-note-heading">
-
-                        <strong>
-                          Session
-                          {" "}
-                          {
-                            selectedHistorySession.sessionNumber ||
-                            "—"
-                          }
-                          {" "}
-                          Counseling Notes
-                        </strong>
-
-                        <span>
-                          Counselor-only documentation
-                        </span>
-
-                      </div>
-
-
-                      {selectedHistoryNote
-
-                        ? (
-
-                          <div className="profile-session-note-grid">
-
-                            <div className="profile-session-note-field">
-                              <span>
-                                Case History
-                              </span>
-                              <p>
-                                {
-                                  selectedHistoryNote.caseHistory ||
-                                  "No case history recorded for this session."
-                                }
-                              </p>
-                            </div>
-
-
-                            <div className="profile-session-note-field">
-                              <span>
-                                Summary of Counseling Session
-                              </span>
-                              <p>
-                                {
-                                  selectedHistoryNote.counselingSessionSummary ||
-                                  "No counseling session summary recorded."
-                                }
-                              </p>
-                            </div>
-
-
-                            <div className="profile-session-note-field">
-                              <span>
-                                Counselor's Observation
-                              </span>
-                              <p>
-                                {
-                                  selectedHistoryNote.counselorObservation ||
-                                  "No counselor observation recorded."
-                                }
-                              </p>
-                            </div>
-
-
-                            <div className="profile-session-note-field">
-                              <span>
-                                Recommended Actions
-                              </span>
-                              <p>
-                                {
-                                  selectedHistoryNote.recommendedActions ||
-                                  "No recommended actions recorded."
-                                }
-                              </p>
-                            </div>
-
-                          </div>
-
-                        )
-
-                        : (
-
-                          <div className="user-profile-empty">
-                            No private counseling notes were saved for this session.
-                          </div>
-
-                        )
-                      }
-
-                    </div>
-
-                  )}
 
                 </>
 
@@ -2769,6 +2677,261 @@ export default function UserProfileFullScreen({
         </div>
 
       </section>
+
+
+      {selectedHistorySession && (
+
+        <div
+          className="review-request-modal-backdrop"
+          role="presentation"
+          onMouseDown={
+            event => {
+
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                setSelectedHistorySessionId(
+                  ""
+                );
+              }
+            }
+          }
+        >
+
+          <section
+            className="review-request-modal counseling-session-history-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              `Counseling notes for session ${
+                selectedHistorySession.sessionNumber ||
+                "—"
+              }`
+            }
+          >
+
+            <header className="review-request-modal-header">
+
+              <div>
+
+                <p className="review-request-modal-eyebrow">
+                  Counseling Request History
+                </p>
+
+                <div className="review-request-modal-title-row">
+
+                  <h2>
+                    Session
+                    {" "}
+                    {
+                      selectedHistorySession.sessionNumber ||
+                      "—"
+                    }
+                  </h2>
+
+                  <span className="status">
+                    {
+                      selectedHistorySession.status ||
+                      "Terminated"
+                    }
+                  </span>
+
+                </div>
+
+                <p className="review-request-modal-subtitle">
+                  Private counseling documentation for
+                  {" "}
+                  {profile.name || "this user"}.
+                  These notes are visible only to authorized counselors and the Super Admin.
+                </p>
+
+              </div>
+
+
+              <button
+                type="button"
+                className="review-request-close-button"
+                onClick={
+                  () =>
+                    setSelectedHistorySessionId(
+                      ""
+                    )
+                }
+                aria-label="Close counseling session notes"
+              >
+                ×
+              </button>
+
+            </header>
+
+
+            <div className="review-request-modal-body counseling-session-history-modal-body">
+
+              <section className="review-request-modal-card counseling-session-history-summary">
+
+                <h3>
+                  Session Information
+                </h3>
+
+
+                <div className="referral-review-summary-grid">
+
+                  <div className="review-request-detail-item">
+                    <span>Session</span>
+                    <strong>
+                      Session
+                      {" "}
+                      {
+                        selectedHistorySession.sessionNumber ||
+                        "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div className="review-request-detail-item">
+                    <span>Status</span>
+                    <strong>
+                      {
+                        selectedHistorySession.status ||
+                        "Terminated"
+                      }
+                    </strong>
+                  </div>
+
+                  <div className="review-request-detail-item">
+                    <span>Date</span>
+                    <strong>
+                      {
+                        formatDate(
+                          selectedHistorySession.date
+                        )
+                      }
+                    </strong>
+                  </div>
+
+                  <div className="review-request-detail-item">
+                    <span>Time</span>
+                    <strong>
+                      {
+                        selectedHistorySession.time ||
+                        "Not provided"
+                      }
+                    </strong>
+                  </div>
+
+                  <div className="review-request-detail-item">
+                    <span>Concern</span>
+                    <strong>
+                      {
+                        selectedHistorySession.category ||
+                        selectedHistorySession.concern ||
+                        "Not provided"
+                      }
+                    </strong>
+                  </div>
+
+                  <div className="review-request-detail-item">
+                    <span>Counselor</span>
+                    <strong>
+                      {
+                        selectedHistorySession.assignedCounselorName ||
+                        "Not provided"
+                      }
+                    </strong>
+                  </div>
+
+                </div>
+
+              </section>
+
+
+              <section className="review-request-modal-card counseling-session-history-notes">
+
+                <h3>
+                  Private Counseling Notes
+                </h3>
+
+
+                {selectedHistoryNote
+
+                  ? (
+
+                    <div className="profile-session-note-grid counseling-session-fullscreen-grid">
+
+                      <div className="profile-session-note-field">
+                        <span>
+                          Case History
+                        </span>
+                        <p>
+                          {
+                            selectedHistoryNote.caseHistory ||
+                            "No case history recorded for this session."
+                          }
+                        </p>
+                      </div>
+
+
+                      <div className="profile-session-note-field">
+                        <span>
+                          Summary of Counseling Session
+                        </span>
+                        <p>
+                          {
+                            selectedHistoryNote.counselingSessionSummary ||
+                            "No counseling session summary recorded."
+                          }
+                        </p>
+                      </div>
+
+
+                      <div className="profile-session-note-field">
+                        <span>
+                          Counselor's Observation
+                        </span>
+                        <p>
+                          {
+                            selectedHistoryNote.counselorObservation ||
+                            "No counselor observation recorded."
+                          }
+                        </p>
+                      </div>
+
+
+                      <div className="profile-session-note-field">
+                        <span>
+                          Recommended Actions
+                        </span>
+                        <p>
+                          {
+                            selectedHistoryNote.recommendedActions ||
+                            "No recommended actions recorded."
+                          }
+                        </p>
+                      </div>
+
+                    </div>
+
+                  )
+
+                  : (
+
+                    <div className="user-profile-empty">
+                      No private counseling notes were saved for this session.
+                    </div>
+
+                  )
+                }
+
+              </section>
+
+            </div>
+
+          </section>
+
+        </div>
+
+      )}
 
 
       {selectedAssessmentHistory && (

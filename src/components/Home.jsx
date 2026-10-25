@@ -19,8 +19,8 @@ export default function Home() {
 
   const services = [
     {
-      title: "Mental Health Assessment",
-      text: "Complete mental health assessments to check your well-being.",
+      title: "Psychological Assessment",
+      text: "Complete psychological assessments to check your well-being.",
       icon: ClipboardList,
       color: "blue"
     },
@@ -61,9 +61,6 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="home-system-name">
-            PSU Lingayen Mental Health Monitoring System
-          </div>
         </header>
 
         <main className="home-main">

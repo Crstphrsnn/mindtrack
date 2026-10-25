@@ -1910,11 +1910,11 @@ function Register() {
         />
 
         <h1>
-          Create Account
+          Create Mindtrack Account
         </h1>
 
         <p>
-          PSU Lingayen Mental Health Monitoring System
+          A secure space for psychological assessment, mental health monitoring, counseling, and referrals.
         </p>
 
 
@@ -5454,6 +5454,7 @@ function Dashboard() {
             icon={
               <ClipboardList />
             }
+            tone="primary"
           />
 
 
@@ -5463,7 +5464,7 @@ function Dashboard() {
             icon={
               <AlertTriangle />
             }
-            danger
+            tone="critical"
           />
 
 
@@ -5473,7 +5474,7 @@ function Dashboard() {
             icon={
               <Clock3 />
             }
-            warning
+            tone="high"
           />
 
 
@@ -5485,6 +5486,7 @@ function Dashboard() {
             icon={
               <Calendar />
             }
+            tone="info"
           />
 
         </div>
@@ -12238,6 +12240,12 @@ function Referrals() {
   ] = useState("");
 
 
+  const [
+    selectedReferralId,
+    setSelectedReferralId
+  ] = useState("");
+
+
   const rows =
     useRows(
       "referrals",
@@ -12826,6 +12834,41 @@ function Referrals() {
 
   if (isSuperAdmin) {
 
+    const superAdminReferralRows =
+      [...rows].sort(
+        (a, b) => {
+          const first =
+            recordDateObject(
+              a.createdAt ||
+              a.updatedAt
+            );
+
+          const second =
+            recordDateObject(
+              b.createdAt ||
+              b.updatedAt
+            );
+
+          return (
+            second?.getTime?.() ||
+            0
+          ) - (
+            first?.getTime?.() ||
+            0
+          );
+        }
+      );
+
+
+    const selectedSuperAdminReferral =
+      superAdminReferralRows.find(
+        row =>
+          row.id ===
+          selectedReferralId
+      ) ||
+      null;
+
+
     return (
       <>
 
@@ -12837,221 +12880,368 @@ function Referrals() {
 
         <section className="panel">
 
-          <div
-            style={{
-              display:
-                "flex",
-
-              alignItems:
-                "center",
-
-              justifyContent:
-                "space-between",
-
-              gap:
-                "12px",
-
-              flexWrap:
-                "wrap",
-
-              marginBottom:
-                "16px"
-            }}
-          >
+          <div className="user-list-heading">
 
             <div>
-
-              <h2
-                style={{
-                  marginBottom:
-                    "4px"
-                }}
-              >
+              <h2>
                 All referrals
               </h2>
 
-              <small>
-                {
-                  rows.length
-                }
-                {" "}
-                referral
-                {
-                  rows.length ===
-                  1
-                    ? ""
-                    : "s"
-                }
-                {" "}
-                recorded
-              </small>
-
+              <p>
+                Open a referral to view its complete information.
+              </p>
             </div>
+
+            <span className="profile-result-count">
+              {superAdminReferralRows.length}
+              {" "}
+              {
+                superAdminReferralRows.length === 1
+                  ? "referral"
+                  : "referrals"
+              }
+            </span>
 
           </div>
 
 
-          {
-            rows.length ===
-            0
+          {superAdminReferralRows.length === 0
 
-              ? (
+            ? (
 
-                <Empty
-                  text="No referral records yet."
-                />
+              <Empty
+                text="No referral records yet."
+              />
 
-              )
+            )
 
-              : (
+            : (
 
-                <div className="record-list">
+              <div className="table-wrap referral-list-table-wrap">
 
-                  {
-                    rows.map(
+                <table className="referral-list-table">
+
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>College / Office</th>
+                      <th>Urgency</th>
+                      <th>Status</th>
+                      <th>Assigned Counselor</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+
+                    {superAdminReferralRows.map(
                       row => (
 
-                        <article
-                          className="record-card"
-                          key={
-                            row.id
-                          }
-                        >
+                        <tr key={row.id}>
 
-                          <div
-                            style={{
-                              display:
-                                "flex",
+                          <td>
+                            <strong>
+                              {
+                                row.personName ||
+                                "Referred user"
+                              }
+                            </strong>
 
-                              justifyContent:
-                                "space-between",
+                            <small className="referral-table-subtext">
+                              {
+                                formatRecordDateTime(
+                                  row.createdAt ||
+                                  row.updatedAt
+                                )
+                              }
+                            </small>
+                          </td>
 
-                              gap:
-                                "12px",
+                          <td>
+                            {
+                              row.department ||
+                              "Not provided"
+                            }
+                          </td>
 
-                              alignItems:
-                                "flex-start",
+                          <td>
+                            {
+                              row.urgency ||
+                              "Routine"
+                            }
+                          </td>
 
-                              flexWrap:
-                                "wrap"
-                            }}
-                          >
-
-                            <div>
-
-                              <strong>
-                                {
-                                  row.personName ||
-                                  "Referred user"
-                                }
-                              </strong>
-
-                              <p>
-                                {
-                                  row.personType ||
-                                  "User"
-                                }
-                                {" · "}
-                                {
-                                  row.department ||
-                                  "No college / office"
-                                }
-                                {" · "}
-                                {
-                                  row.urgency ||
-                                  "Routine"
-                                }
-                              </p>
-
-                            </div>
-
-
+                          <td>
                             <span className="status">
                               {
-                                row.status ||
-                                "Received"
+                                normalizedReferralStatus(
+                                  row.status
+                                )
                               }
                             </span>
+                          </td>
 
-                          </div>
-
-
-                          {
-                            row.reason &&
-                            (
-
-                              <p
-                                style={{
-                                  whiteSpace:
-                                    "pre-wrap"
-                                }}
-                              >
-                                <strong>
-                                  Reason:
-                                </strong>
-                                {" "}
-                                {
-                                  row.reason
-                                }
-                              </p>
-
-                            )
-                          }
-
-
-                          <p>
-                            <strong>
-                              Referred by:
-                            </strong>
-                            {" "}
-                            {
-                              row.referrerName ||
-                              "Teaching / Non-teaching"
-                            }
-                          </p>
-
-
-                          <p>
-                            <strong>
-                              Assigned counselor:
-                            </strong>
-                            {" "}
+                          <td>
                             {
                               row.assignedCounselorName ||
                               "Not assigned"
                             }
-                          </p>
+                          </td>
 
-
-                          {
-                            row.contact &&
-                            (
-
-                              <p>
-                                <strong>
-                                  Contact:
-                                </strong>
-                                {" "}
-                                {
-                                  row.contact
+                          <td>
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={
+                                () => {
+                                  setReferralUpdateMessage("");
+                                  setReferralUpdateError("");
+                                  setSelectedReferralId(
+                                    row.id
+                                  );
                                 }
-                              </p>
+                              }
+                            >
+                              View Referral
+                            </button>
+                          </td>
 
-                            )
-                          }
-
-                        </article>
+                        </tr>
 
                       )
-                    )
-                  }
+                    )}
 
-                </div>
+                  </tbody>
 
-              )
+                </table>
+
+              </div>
+
+            )
           }
 
         </section>
+
+
+        {selectedSuperAdminReferral && (
+
+          <div
+            className="review-request-modal-backdrop"
+            role="presentation"
+            onMouseDown={
+              event => {
+                if (
+                  event.target ===
+                  event.currentTarget
+                ) {
+                  setSelectedReferralId("");
+                }
+              }
+            }
+          >
+
+            <section
+              className="review-request-modal referral-review-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={
+                `Referral details for ${
+                  selectedSuperAdminReferral.personName ||
+                  "referred user"
+                }`
+              }
+            >
+
+              <header className="review-request-modal-header">
+
+                <div>
+
+                  <p className="review-request-modal-eyebrow">
+                    Referral Record
+                  </p>
+
+                  <div className="review-request-modal-title-row">
+
+                    <h2>
+                      {
+                        selectedSuperAdminReferral.personName ||
+                        "Referred user"
+                      }
+                    </h2>
+
+                    <span className="status">
+                      {
+                        normalizedReferralStatus(
+                          selectedSuperAdminReferral.status
+                        )
+                      }
+                    </span>
+
+                  </div>
+
+                  <p className="review-request-modal-subtitle">
+                    View the complete referral information and counselor assignment.
+                  </p>
+
+                </div>
+
+
+                <button
+                  type="button"
+                  className="review-request-close-button"
+                  onClick={
+                    () =>
+                      setSelectedReferralId("")
+                  }
+                  aria-label="Close referral details"
+                >
+                  ×
+                </button>
+
+              </header>
+
+
+              <div className="review-request-modal-body referral-review-modal-body">
+
+                <section className="review-request-modal-card referral-review-summary-card superadmin-referral-summary-card">
+
+                  <h3>
+                    Referral Information
+                  </h3>
+
+
+                  <div className="referral-review-summary-grid">
+
+                    <div className="review-request-detail-item">
+                      <span>Referred user</span>
+                      <strong>
+                        {
+                          selectedSuperAdminReferral.personName ||
+                          "Not provided"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Type</span>
+                      <strong>
+                        {
+                          selectedSuperAdminReferral.personType ||
+                          "User"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>College / Office</span>
+                      <strong>
+                        {
+                          selectedSuperAdminReferral.department ||
+                          "Not provided"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Submitted</span>
+                      <strong>
+                        {
+                          formatRecordDateTime(
+                            selectedSuperAdminReferral.createdAt ||
+                            selectedSuperAdminReferral.updatedAt
+                          )
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Referred by</span>
+                      <strong>
+                        {
+                          selectedSuperAdminReferral.referrerName ||
+                          "Teaching / Non-teaching"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Contact</span>
+                      <strong>
+                        {
+                          selectedSuperAdminReferral.contact ||
+                          "Not provided"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Urgency</span>
+                      <strong>
+                        {
+                          selectedSuperAdminReferral.urgency ||
+                          "Routine"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Assigned counselor</span>
+                      <strong>
+                        {
+                          selectedSuperAdminReferral.assignedCounselorName ||
+                          "Not assigned"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item full">
+                      <span>Reason</span>
+                      <strong className="review-request-details-text">
+                        {
+                          selectedSuperAdminReferral.reason ||
+                          "No referral reason provided."
+                        }
+                      </strong>
+                    </div>
+
+                    {
+                      selectedSuperAdminReferral.counselorRemarks && (
+                        <div className="review-request-detail-item full">
+                          <span>Counselor remarks</span>
+                          <strong className="review-request-details-text">
+                            {
+                              selectedSuperAdminReferral.counselorRemarks
+                            }
+                          </strong>
+                        </div>
+                      )
+                    }
+
+                  </div>
+
+
+                  <div className="referral-review-actions">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={
+                        () =>
+                          setSelectedReferralId("")
+                      }
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                </section>
+
+              </div>
+
+            </section>
+
+          </div>
+
+        )}
 
       </>
     );
@@ -13084,6 +13274,15 @@ function Referrals() {
     );
 
 
+  const selectedCounselorReferral =
+    counselorReferralRows.find(
+      row =>
+        row.id ===
+        selectedReferralId
+    ) ||
+    null;
+
+
   if (isCounselor) {
 
     return (
@@ -13097,9 +13296,29 @@ function Referrals() {
 
         <section className="panel">
 
-          <h2>
-            Referrals assigned to me
-          </h2>
+          <div className="user-list-heading">
+
+            <div>
+              <h2>
+                Referrals assigned to me
+              </h2>
+
+              <p>
+                Open a referral to review its details, update the status, and manage counselor-only documentation.
+              </p>
+            </div>
+
+            <span className="profile-result-count">
+              {counselorReferralRows.length}
+              {" "}
+              {
+                counselorReferralRows.length === 1
+                  ? "referral"
+                  : "referrals"
+              }
+            </span>
+
+          </div>
 
 
           {referralUpdateMessage && (
@@ -13107,7 +13326,7 @@ function Referrals() {
             <div
               className="success-box"
               style={{
-                marginBottom:
+                marginTop:
                   "14px"
               }}
             >
@@ -13122,7 +13341,7 @@ function Referrals() {
             <div
               className="error-box"
               style={{
-                marginBottom:
+                marginTop:
                   "14px"
               }}
             >
@@ -13144,246 +13363,89 @@ function Referrals() {
 
             : (
 
-              <div className="record-list">
+              <div className="table-wrap referral-list-table-wrap">
 
-                {counselorReferralRows.map(
-                  row => (
+                <table className="referral-list-table">
 
-                    <article
-                      className="record-card referral-assigned-card"
-                      key={row.id}
-                    >
+                  <thead>
 
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: "12px",
-                          alignItems: "flex-start",
-                          flexWrap: "wrap"
-                        }}
-                      >
+                    <tr>
+                      <th>Referred user</th>
+                      <th>Type</th>
+                      <th>College / Office</th>
+                      <th>Submitted</th>
+                      <th>Urgency</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
 
-                        <div>
+                  </thead>
 
-                          <strong>
-                            {row.personName || "Referred user"}
-                          </strong>
 
-                          <p>
+                  <tbody>
+
+                    {counselorReferralRows.map(
+                      row => (
+
+                        <tr key={row.id}>
+
+                          <td>
+                            <strong>
+                              {row.personName || "Referred user"}
+                            </strong>
+                          </td>
+
+                          <td>
                             {row.personType || "User"}
-                            {" · "}
-                            {row.department || "No college / office"}
-                            {" · "}
-                            {row.urgency || "Routine"}
-                          </p>
+                          </td>
 
-                        </div>
+                          <td>
+                            {row.department || "—"}
+                          </td>
 
-
-                        <span className="status">
-                          {normalizedReferralStatus(row.status)}
-                        </span>
-
-                      </div>
-
-
-                      {row.reason && (
-
-                        <p
-                          style={{
-                            whiteSpace: "pre-wrap"
-                          }}
-                        >
-                          <strong>
-                            Reason:
-                          </strong>
-                          {" "}
-                          {row.reason}
-                        </p>
-
-                      )}
-
-
-                      <div className="referral-meta-grid">
-                        <div className="referral-meta-item">
-                          <span>Submitted</span>
-                          <strong>
-                            {
-                              formatRecordDateTime(
-                                row.createdAt ||
-                                row.updatedAt
-                              )
-                            }
-                          </strong>
-                        </div>
-
-                        <div className="referral-meta-item">
-                          <span>Referred by</span>
-                          <strong>
-                            {row.referrerName || "Teaching / Non-teaching"}
-                          </strong>
-                        </div>
-
-                        <div className="referral-meta-item">
-                          <span>Contact</span>
-                          <strong>
-                            {row.contact || "Not provided"}
-                          </strong>
-                        </div>
-                      </div>
-
-
-                      <div
-                        style={{
-                          marginTop:
-                            "16px",
-
-                          paddingTop:
-                            "14px",
-
-                          borderTop:
-                            "1px solid #e2e8f0"
-                        }}
-                      >
-
-                        <label
-                          style={{
-                            marginBottom:
-                              "10px"
-                          }}
-                        >
-                          Referral status
-
-                          <select
-                            value={
-                              referralStatusDrafts[
-                                row.id
-                              ] ??
-                              normalizedReferralStatus(
-                                row.status
-                              )
-                            }
-                            disabled={
-                              savingReferralId ===
-                              row.id
-                            }
-                            onChange={
-                              event =>
-                                setReferralStatusDrafts(
-                                  current => ({
-                                    ...current,
-
-                                    [row.id]:
-                                      event.target.value
-                                  })
-                                )
-                            }
-                          >
-
-                            {referralStatusOptions.map(
-                              status => (
-
-                                <option
-                                  key={status}
-                                  value={status}
-                                >
-                                  {status}
-                                </option>
-
-                              )
+                          <td>
+                            {formatRecordDateTime(
+                              row.createdAt ||
+                              row.updatedAt
                             )}
+                          </td>
 
-                          </select>
+                          <td>
+                            {row.urgency || "Routine"}
+                          </td>
 
-                        </label>
+                          <td>
+                            <span className="status">
+                              {normalizedReferralStatus(row.status)}
+                            </span>
+                          </td>
 
+                          <td>
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={
+                                () => {
+                                  setReferralUpdateMessage("");
+                                  setReferralUpdateError("");
+                                  setSelectedReferralId(
+                                    row.id
+                                  );
+                                }
+                              }
+                            >
+                              View Referral
+                            </button>
+                          </td>
 
-                        <label
-                          style={{
-                            marginBottom:
-                              "10px"
-                          }}
-                        >
-                          Counselor remarks
-                          <span
-                            className="optional-text"
-                            style={{
-                              display:
-                                "block",
+                        </tr>
 
-                              marginBottom:
-                                "6px"
-                            }}
-                          >
-                            Internal referral documentation. The referrer is
-                            notified only when the status changes.
-                          </span>
+                      )
+                    )}
 
-                          <textarea
-                            rows="3"
-                            value={
-                              referralRemarksDrafts[
-                                row.id
-                              ] ??
-                              row.counselorRemarks ??
-                              ""
-                            }
-                            disabled={
-                              savingReferralId ===
-                              row.id
-                            }
-                            onChange={
-                              event =>
-                                setReferralRemarksDrafts(
-                                  current => ({
-                                    ...current,
+                  </tbody>
 
-                                    [row.id]:
-                                      event.target.value
-                                  })
-                                )
-                            }
-                            placeholder="Add referral review notes."
-                          />
-
-                        </label>
-
-
-                        <ReferralPrivateCounselingNotes
-                          referral={row}
-                          counselor={user}
-                        />
-
-
-                        <button
-                          type="button"
-                          className="primary-button"
-                          disabled={
-                            savingReferralId ===
-                            row.id
-                          }
-                          onClick={
-                            () =>
-                              saveReferralUpdate(
-                                row
-                              )
-                          }
-                        >
-                          {
-                            savingReferralId ===
-                              row.id
-                              ? "Saving..."
-                              : "Save referral update"
-                          }
-                        </button>
-
-                      </div>
-
-                    </article>
-
-                  )
-                )}
+                </table>
 
               </div>
 
@@ -13391,6 +13453,334 @@ function Referrals() {
           }
 
         </section>
+
+
+        {selectedCounselorReferral && (
+
+          <div
+            className="review-request-modal-backdrop"
+            role="presentation"
+            onMouseDown={
+              event => {
+                if (
+                  event.target ===
+                  event.currentTarget
+                ) {
+                  setSelectedReferralId("");
+                }
+              }
+            }
+          >
+
+            <section
+              className="review-request-modal referral-review-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label={
+                `Referral details for ${
+                  selectedCounselorReferral.personName ||
+                  "referred user"
+                }`
+              }
+            >
+
+              <header className="review-request-modal-header">
+
+                <div>
+
+                  <p className="review-request-modal-eyebrow">
+                    Assigned Referral
+                  </p>
+
+                  <div className="review-request-modal-title-row">
+
+                    <h2>
+                      {
+                        selectedCounselorReferral.personName ||
+                        "Referred user"
+                      }
+                    </h2>
+
+                    <span className="status">
+                      {
+                        normalizedReferralStatus(
+                          selectedCounselorReferral.status
+                        )
+                      }
+                    </span>
+
+                  </div>
+
+                  <p className="review-request-modal-subtitle">
+                    Review the referral details, update its status, add counselor remarks, and manage private counseling notes.
+                  </p>
+
+                </div>
+
+
+                <button
+                  type="button"
+                  className="review-request-close-button"
+                  onClick={
+                    () =>
+                      setSelectedReferralId(
+                        ""
+                      )
+                  }
+                  aria-label="Close referral details"
+                >
+                  ×
+                </button>
+
+              </header>
+
+
+              <div className="review-request-modal-body referral-review-modal-body">
+
+                <section className="review-request-modal-card referral-review-summary-card">
+
+                  <h3>
+                    Referral Information
+                  </h3>
+
+
+                  <div className="referral-review-summary-grid">
+
+                    <div className="review-request-detail-item">
+                      <span>Referred user</span>
+                      <strong>
+                        {
+                          selectedCounselorReferral.personName ||
+                          "Not provided"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Type</span>
+                      <strong>
+                        {
+                          selectedCounselorReferral.personType ||
+                          "User"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>College / Office</span>
+                      <strong>
+                        {
+                          selectedCounselorReferral.department ||
+                          "Not provided"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Submitted</span>
+                      <strong>
+                        {
+                          formatRecordDateTime(
+                            selectedCounselorReferral.createdAt ||
+                            selectedCounselorReferral.updatedAt
+                          )
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Referred by</span>
+                      <strong>
+                        {
+                          selectedCounselorReferral.referrerName ||
+                          "Teaching / Non-teaching"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Contact</span>
+                      <strong>
+                        {
+                          selectedCounselorReferral.contact ||
+                          "Not provided"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item">
+                      <span>Urgency</span>
+                      <strong>
+                        {
+                          selectedCounselorReferral.urgency ||
+                          "Routine"
+                        }
+                      </strong>
+                    </div>
+
+                    <div className="review-request-detail-item full">
+                      <span>Reason</span>
+                      <strong className="review-request-details-text">
+                        {
+                          selectedCounselorReferral.reason ||
+                          "No referral reason provided."
+                        }
+                      </strong>
+                    </div>
+
+                  </div>
+
+                </section>
+
+
+                <section className="review-request-modal-card referral-review-management-card">
+
+                  <h3>
+                    Referral Review
+                  </h3>
+
+
+                  <label>
+                    Referral status
+
+                    <select
+                      value={
+                        referralStatusDrafts[
+                          selectedCounselorReferral.id
+                        ] ??
+                        normalizedReferralStatus(
+                          selectedCounselorReferral.status
+                        )
+                      }
+                      disabled={
+                        savingReferralId ===
+                        selectedCounselorReferral.id
+                      }
+                      onChange={
+                        event =>
+                          setReferralStatusDrafts(
+                            current => ({
+                              ...current,
+
+                              [selectedCounselorReferral.id]:
+                                event.target.value
+                            })
+                          )
+                      }
+                    >
+
+                      {referralStatusOptions.map(
+                        status => (
+
+                          <option
+                            key={status}
+                            value={status}
+                          >
+                            {status}
+                          </option>
+
+                        )
+                      )}
+
+                    </select>
+
+                  </label>
+
+
+                  <label>
+                    Counselor remarks
+
+                    <span className="optional-text referral-review-helper-text">
+                      Internal referral documentation. The referrer is notified only when the status changes.
+                    </span>
+
+                    <textarea
+                      rows="4"
+                      value={
+                        referralRemarksDrafts[
+                          selectedCounselorReferral.id
+                        ] ??
+                        selectedCounselorReferral.counselorRemarks ??
+                        ""
+                      }
+                      disabled={
+                        savingReferralId ===
+                        selectedCounselorReferral.id
+                      }
+                      onChange={
+                        event =>
+                          setReferralRemarksDrafts(
+                            current => ({
+                              ...current,
+
+                              [selectedCounselorReferral.id]:
+                                event.target.value
+                            })
+                          )
+                      }
+                      placeholder="Add referral review notes."
+                    />
+
+                  </label>
+
+
+                  <ReferralPrivateCounselingNotes
+                    referral={
+                      selectedCounselorReferral
+                    }
+                    counselor={user}
+                  />
+
+
+                  <div className="referral-review-actions">
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={
+                        () =>
+                          setSelectedReferralId(
+                            ""
+                          )
+                      }
+                    >
+                      Close
+                    </button>
+
+
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={
+                        savingReferralId ===
+                        selectedCounselorReferral.id
+                      }
+                      onClick={
+                        () =>
+                          saveReferralUpdate(
+                            selectedCounselorReferral
+                          )
+                      }
+                    >
+                      {
+                        savingReferralId ===
+                          selectedCounselorReferral.id
+                          ? "Saving..."
+                          : "Save referral update"
+                      }
+                    </button>
+
+                  </div>
+
+                </section>
+
+              </div>
+
+            </section>
+
+          </div>
+
+        )}
 
       </>
     );
@@ -26830,7 +27220,10 @@ function Schedule() {
                 "Today",
 
               value:
-                scheduleCounts.today
+                scheduleCounts.today,
+
+              tone:
+                "primary"
             },
 
             {
@@ -26838,7 +27231,10 @@ function Schedule() {
                 "Pending",
 
               value:
-                scheduleCounts.pending
+                scheduleCounts.pending,
+
+              tone:
+                "moderate"
             },
 
             {
@@ -26846,7 +27242,10 @@ function Schedule() {
                 "Scheduled",
 
               value:
-                scheduleCounts.scheduled
+                scheduleCounts.scheduled,
+
+              tone:
+                "low"
             },
 
             {
@@ -26854,7 +27253,10 @@ function Schedule() {
                 "Terminated",
 
               value:
-                scheduleCounts.terminated
+                scheduleCounts.terminated,
+
+              tone:
+                "terminated"
             },
 
             {
@@ -26862,7 +27264,10 @@ function Schedule() {
                 "Transfers",
 
               value:
-                scheduleCounts.transfers
+                scheduleCounts.transfers,
+
+              tone:
+                "transfer"
             }
           ].map(
             item => (
@@ -26871,19 +27276,9 @@ function Schedule() {
                 key={
                   item.label
                 }
-                style={{
-                  border:
-                    "1px solid #d7e0ee",
-
-                  borderRadius:
-                    "14px",
-
-                  padding:
-                    "14px 16px",
-
-                  background:
-                    "#ffffff"
-                }}
+                className={
+                  `schedule-summary-card schedule-summary-${item.tone}`
+                }
               >
 
                 <div
@@ -29635,6 +30030,7 @@ function Reports() {
 
         <Stat
           title="Assessment cases"
+          tone="primary"
           value={
             assessments.length
           }
@@ -29646,6 +30042,7 @@ function Reports() {
 
         <Stat
           title="Counseling requests"
+          tone="indigo"
           value={
             consultations.length
           }
@@ -29657,6 +30054,7 @@ function Reports() {
 
         <Stat
           title="Scheduled counseling"
+          tone="info"
           value={
             scheduledSessions
           }
@@ -29668,6 +30066,7 @@ function Reports() {
 
         <Stat
           title="Critical priority"
+          tone="critical"
           value={
             priorityTotals.Critical ||
             0
@@ -29675,12 +30074,12 @@ function Reports() {
           icon={
             <AlertTriangle />
           }
-          danger
         />
 
 
         <Stat
           title="High priority"
+          tone="high"
           value={
             priorityTotals.High ||
             0
@@ -29688,12 +30087,12 @@ function Reports() {
           icon={
             <Activity />
           }
-          warning
         />
 
 
         <Stat
           title="Moderate priority"
+          tone="moderate"
           value={
             priorityTotals.Moderate ||
             0
@@ -29701,12 +30100,12 @@ function Reports() {
           icon={
             <ClipboardList />
           }
-          warning
         />
 
 
         <Stat
           title="Low priority"
+          tone="low"
           value={
             priorityTotals.Low ||
             0
@@ -29878,20 +30277,26 @@ function Stat({
   value,
   icon,
   danger,
-  warning
+  warning,
+  tone
 }) {
+
+  const resolvedTone =
+    tone ||
+    (
+      danger
+        ? "critical"
+        : warning
+          ? "high"
+          : "primary"
+    );
+
 
   return (
 
     <div
       className={
-        `stat-card ${
-          danger
-            ? "danger"
-            : warning
-              ? "warning"
-              : ""
-        }`
+        `stat-card stat-card-${resolvedTone}`
       }
     >
 
