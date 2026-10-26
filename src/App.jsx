@@ -55,6 +55,7 @@ import {
 } from "./services/dataService";
 
 import {
+  ASSESSMENT_SCORING_VERSION,
   calculateAssessment,
   dass21Choices,
   dass21Questions,
@@ -6809,7 +6810,7 @@ function Assessment() {
         user.program || "",
 
       assessmentVersion:
-        "WHO5-PHQ9-GAD7-DASS21-SUBSCALES-2026-09",
+        ASSESSMENT_SCORING_VERSION,
 
       instrumentTitles: [
         WHO5_TITLE,
@@ -10105,6 +10106,16 @@ function Consultations() {
     }
 
 
+    if (!form.message.trim()) {
+
+      alert(
+        "Please provide details about your counseling concern."
+      );
+
+      return;
+    }
+
+
     const dateError =
       validateRequestDate(
         form.date
@@ -10171,7 +10182,8 @@ function Consultations() {
           `Concern: ${form.category}`,
           `Mode: ${form.mode}`,
           `Date: ${formattedRequestDate(form.date)}`,
-          `Time: ${form.time}`
+          `Time: ${form.time}`,
+          `Details: ${form.message.trim()}`
         ].join("\n")
       );
 
@@ -10481,6 +10493,16 @@ function Consultations() {
     }
 
 
+    if (!editForm.message.trim()) {
+
+      alert(
+        "Please provide details about your counseling concern."
+      );
+
+      return;
+    }
+
+
     const dateError =
       validateRequestDate(
         editForm.date
@@ -10550,6 +10572,7 @@ function Consultations() {
           `Mode: ${editForm.mode}`,
           `Date: ${formattedRequestDate(editForm.date)}`,
           `Time: ${editForm.time}`,
+          `Details: ${editForm.message.trim()}`,
           "",
           "The request will return to Pending approval so the counselor can review the changes."
         ].join("\n")
@@ -11174,7 +11197,7 @@ function Consultations() {
 
           <label>
 
-            Details
+            Details *
 
             <textarea
 
@@ -11193,7 +11216,11 @@ function Consultations() {
                   })
               }
 
-              placeholder="Provide additional details about your concern."
+              required
+
+              minLength={2}
+
+              placeholder="Provide details about your concern. This field is required."
 
             />
 
@@ -11514,7 +11541,7 @@ function Consultations() {
 
                             <label>
 
-                              Details
+                              Details *
 
                               <textarea
 
@@ -11533,7 +11560,11 @@ function Consultations() {
                                     })
                                 }
 
-                                placeholder="Provide additional details about your concern."
+                                required
+
+                                minLength={2}
+
+                                placeholder="Provide details about your concern. This field is required."
 
                               />
 
@@ -19015,6 +19046,7 @@ function Cases() {
 
 
         const matchesPriority =
+          isSuperAdmin ||
           priorityFilter === "all" ||
           priority ===
             priorityFilter;
@@ -20404,11 +20436,7 @@ function Cases() {
 
 
         <div
-          className={
-            isSuperAdmin
-              ? "counselor-filter-grid three-columns"
-              : "counselor-filter-grid"
-          }
+          className="counselor-filter-grid"
         >
 
           {isSuperAdmin && (
@@ -20533,10 +20561,6 @@ function Cases() {
 
               <option value="Extremely Severe">
                 Extremely Severe
-              </option>
-
-              <option value="No Assessment">
-                No severity
               </option>
 
             </select>
@@ -20992,6 +21016,14 @@ function Cases() {
                                       .depression
                                       .rawScore
                                   }/21
+                                  {" · "}
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .depression
+                                      .severity ||
+                                    "Not available"
+                                  }
                                 </small>
 
                               </div>
@@ -21021,6 +21053,14 @@ function Cases() {
                                       .anxiety
                                       .rawScore
                                   }/21
+                                  {" · "}
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .anxiety
+                                      .severity ||
+                                    "Not available"
+                                  }
                                 </small>
 
                               </div>
@@ -21050,6 +21090,14 @@ function Cases() {
                                       .stress
                                       .rawScore
                                   }/21
+                                  {" · "}
+                                  {
+                                    selected.instrumentResults
+                                      .dass21
+                                      .stress
+                                      .severity ||
+                                    "Not available"
+                                  }
                                 </small>
 
                               </div>
@@ -24907,7 +24955,7 @@ function CounselingRequestsManagement() {
             <p>
               {
                 isSuperAdmin
-                  ? "Filter requests by college, program, and the user's latest assessment severity."
+                  ? "Filter requests by college and program."
                   : "Filter requests by program and the user's latest assessment severity."
               }
             </p>
@@ -25062,10 +25110,6 @@ function CounselingRequestsManagement() {
 
               <option value="Extremely Severe">
                 Extremely Severe
-              </option>
-
-              <option value="No Assessment">
-                No assessment
               </option>
 
             </select>

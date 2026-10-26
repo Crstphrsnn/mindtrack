@@ -103,19 +103,15 @@ service cloud.firestore {
     }
 
     function isValidPriority(priority) {
-      // Current standardized severity labels from the MindTrack
-      // scoring standard. Legacy labels are retained temporarily
-      // so existing records remain compatible while the Admin SDK
-      // migration updates historical assessments.
+      // Standardized severity labels used by the current
+      // psychological-assessment scoring engine. Historical
+      // records are migrated with the Admin SDK script.
       return priority == "Minimal / none"
         || priority == "Mild"
         || priority == "Moderate"
         || priority == "Moderately severe"
         || priority == "Severe"
-        || priority == "Extremely Severe"
-        || priority == "Low"
-        || priority == "High"
-        || priority == "Critical";
+        || priority == "Extremely Severe";
     }
 
     function isValidFeedbackCategory(category) {
@@ -398,7 +394,9 @@ service cloud.firestore {
         && request.resource.data.ownerName == profile().name
         && request.resource.data.department == profile().department
         && request.resource.data.status == "Pending approval"
-        && request.resource.data.source == "Self-request";
+        && request.resource.data.source == "Self-request"
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0;
 
       allow read: if signedIn() && (
         (
@@ -443,6 +441,8 @@ service cloud.firestore {
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.department == resource.data.department
         && request.resource.data.status == "Pending approval"
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "mode",
           "date",

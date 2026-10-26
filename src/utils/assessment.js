@@ -366,10 +366,10 @@ function sumAnswers(
 
 
 export const ASSESSMENT_SCORING_VERSION =
-  "MINDTRACK-STANDARD-SCORING-2026-10-R2";
+  "MINDTRACK-STANDARD-SCORING-2026-10-R3";
 
 export const MONITORING_PRIORITY_VERSION =
-  "MINDTRACK-STANDARD-SEVERITY-2026-10";
+  "MINDTRACK-STANDARD-SEVERITY-2026-10-R2";
 
 
 function phq9Severity(score) {
@@ -852,6 +852,10 @@ function buildAssessmentResult({
           phq9Score,
         maximumScore:
           27,
+        itemScoreRange:
+          "0-3",
+        formula:
+          "Q1+Q2+Q3+Q4+Q5+Q6+Q7+Q8+Q9",
         severity:
           phq9SeverityLabel,
         screeningThreshold:
@@ -869,6 +873,10 @@ function buildAssessmentResult({
           gad7Score,
         maximumScore:
           21,
+        itemScoreRange:
+          "0-3",
+        formula:
+          "Q1+Q2+Q3+Q4+Q5+Q6+Q7",
         severity:
           gad7SeverityLabel,
         screeningThreshold:
@@ -980,6 +988,9 @@ export function calculateAssessment(
     who5RawScore * 4;
 
 
+  // PHQ-9 and GAD-7 use the same additive scoring mechanic:
+  // add each 0-3 item response. They differ only in item count,
+  // maximum total, and severity thresholds from the supplied standard.
   const phq9Score =
     sumAnswers(
       phq9Questions,

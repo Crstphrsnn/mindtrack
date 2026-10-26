@@ -1131,14 +1131,6 @@ export default function UserProfileFullScreen({
         )
           .trim()
           .toLowerCase()
-          .replace(
-            /[^a-z0-9]+/g,
-            "-"
-          )
-          .replace(
-            /^-+|-+$/g,
-            ""
-          )
       : "none";
 
 
@@ -2298,7 +2290,7 @@ export default function UserProfileFullScreen({
                             <p className="profile-assessment-priority-row">
 
                               <span>
-                                Monitoring Severity
+                                Monitoring Priority
                               </span>
 
                               <strong>
@@ -2998,14 +2990,12 @@ export default function UserProfileFullScreen({
                         "none"
                       )
                         .trim()
-                        .toLowerCase()
-                        .replace(/[^a-z0-9]+/g, "-")
-                        .replace(/^-+|-+$/g, "")}`
+                        .toLowerCase()}`
                     }
                   >
                     {
                       selectedAssessmentHistory.priority ||
-                      "No severity"
+                      "No priority"
                     }
                   </span>
 
@@ -3109,14 +3099,12 @@ export default function UserProfileFullScreen({
                                   "none"
                                 )
                                   .trim()
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9]+/g, "-")
-                                  .replace(/^-+|-+$/g, "")}`
+                                  .toLowerCase()}`
                               }
                             >
                               {
                                 assessmentRow.priority ||
-                                "No severity"
+                                "No priority"
                               }
                             </span>
 
@@ -3228,7 +3216,7 @@ export default function UserProfileFullScreen({
                             {selectedAssessmentHistory.instrumentResults?.dass21?.depression?.adjustedScore ?? "—"}/42
                           </strong>
                           <small>
-                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.depression?.rawScore ?? "—"}/21
+                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.depression?.rawScore ?? "—"}/21 · {selectedAssessmentHistory.instrumentResults?.dass21?.depression?.severity || "Not available"}
                           </small>
                         </div>
 
@@ -3238,7 +3226,7 @@ export default function UserProfileFullScreen({
                             {selectedAssessmentHistory.instrumentResults?.dass21?.anxiety?.adjustedScore ?? "—"}/42
                           </strong>
                           <small>
-                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.anxiety?.rawScore ?? "—"}/21
+                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.anxiety?.rawScore ?? "—"}/21 · {selectedAssessmentHistory.instrumentResults?.dass21?.anxiety?.severity || "Not available"}
                           </small>
                         </div>
 
@@ -3248,7 +3236,7 @@ export default function UserProfileFullScreen({
                             {selectedAssessmentHistory.instrumentResults?.dass21?.stress?.adjustedScore ?? "—"}/42
                           </strong>
                           <small>
-                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.stress?.rawScore ?? "—"}/21
+                            Raw: {selectedAssessmentHistory.instrumentResults?.dass21?.stress?.rawScore ?? "—"}/21 · {selectedAssessmentHistory.instrumentResults?.dass21?.stress?.severity || "Not available"}
                           </small>
                         </div>
 
@@ -3257,7 +3245,7 @@ export default function UserProfileFullScreen({
                       <div className="review-request-detail-grid">
 
                         <div className="review-request-detail-item">
-                          <span>MindTrack Monitoring Severity</span>
+                          <span>MindTrack Monitoring Priority</span>
                           <strong>
                             {selectedAssessmentHistory.priority || "Not available"}
                           </strong>
