@@ -22321,156 +22321,33 @@ function CounselingRequestsManagement() {
         );
 
 
-      async function loadLegacyCounselingProfileNotes() {
+      // Session notes are stored per counseling request.
+      // If this request has no notes yet, that is a normal first-use state.
+      // Do not fall back to the old user-level counselingProfiles notes here:
+      // those notes are not session-specific and may also be inaccessible after
+      // counselor transfers.
+      function clearPrivateSessionNotes() {
 
-        try {
+        setPrivateCaseHistoryDraft("");
 
-          const profileSnapshot =
-            await getDoc(
-              doc(
-                db,
-                "counselingProfiles",
-                selected.ownerId
-              )
-            );
+        setPrivateSessionSummaryDraft("");
 
+        setPrivateObservationDraft("");
 
-          if (
-            cancelled
-          ) {
+        setPrivateRecommendedActionsDraft("");
 
-            return;
-          }
+        setPrivateNotesUpdatedBy("");
 
+        setPrivateNotesLoadedFromLegacyProfile(
+          false
+        );
 
-          if (
-            !profileSnapshot.exists()
-          ) {
+        setPrivateNotesError("");
 
-            setPrivateCaseHistoryDraft("");
-
-            setPrivateSessionSummaryDraft("");
-
-            setPrivateObservationDraft("");
-
-            setPrivateRecommendedActionsDraft("");
-
-            setPrivateNotesUpdatedBy("");
-
-            setPrivateNotesLoadedFromLegacyProfile(
-              false
-            );
-
-            setPrivateNotesLoading(
-              false
-            );
-
-            return;
-          }
-
-
-          const legacy =
-            profileSnapshot.data();
-
-
-          const hasLegacyNotes =
-            Boolean(
-              String(
-                legacy.caseHistory ||
-                ""
-              ).trim() ||
-              String(
-                legacy.counselingSessionSummary ||
-                ""
-              ).trim() ||
-              String(
-                legacy.counselorObservation ||
-                ""
-              ).trim() ||
-              String(
-                legacy.recommendations ||
-                legacy.notes ||
-                ""
-              ).trim()
-            );
-
-
-          setPrivateCaseHistoryDraft(
-            legacy.caseHistory ||
-            ""
-          );
-
-
-          setPrivateSessionSummaryDraft(
-            legacy.counselingSessionSummary ||
-            ""
-          );
-
-
-          setPrivateObservationDraft(
-            legacy.counselorObservation ||
-            ""
-          );
-
-
-          setPrivateRecommendedActionsDraft(
-            legacy.recommendations ||
-            legacy.notes ||
-            ""
-          );
-
-
-          setPrivateNotesUpdatedBy(
-            legacy.updatedByName ||
-            legacy.assignedCounselorName ||
-            ""
-          );
-
-
-          setPrivateNotesLoadedFromLegacyProfile(
-            hasLegacyNotes
-          );
-
-
-          setPrivateNotesLoading(
-            false
-          );
-
-        } catch (error) {
-
-          if (
-            cancelled
-          ) {
-
-            return;
-          }
-
-
-          console.error(
-            "Unable to load legacy counseling profile notes:",
-            error
-          );
-
-
-          setPrivateNotesError(
-            error?.code ===
-              "permission-denied"
-
-              ? "You do not have permission to view the private counseling notes for this request."
-
-              : (
-                  error?.message ||
-                  "Unable to load private counseling notes."
-                )
-          );
-
-
-          setPrivateNotesLoading(
-            false
-          );
-        }
+        setPrivateNotesLoading(
+          false
+        );
       }
-
 
       const unsubscribe =
         onSnapshot(
@@ -22495,7 +22372,7 @@ function CounselingRequestsManagement() {
               );
 
 
-              loadLegacyCounselingProfileNotes();
+              clearPrivateSessionNotes();
 
               return;
             }
