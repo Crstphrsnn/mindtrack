@@ -5408,19 +5408,19 @@ function Dashboard() {
     )
   ) {
 
-    const critical =
+    const severe =
       departmentCases.filter(
         x =>
           x.priority ===
-          "Critical"
+          "Severe"
       ).length;
 
 
-    const high =
+    const extremelySevere =
       departmentCases.filter(
         x =>
           x.priority ===
-          "High"
+          "Extremely Severe"
       ).length;
 
 
@@ -5459,22 +5459,22 @@ function Dashboard() {
 
 
           <Stat
-            title="Critical"
-            value={critical}
+            title="Severe"
+            value={severe}
             icon={
               <AlertTriangle />
             }
-            tone="critical"
+            tone="severe"
           />
 
 
           <Stat
-            title="High priority"
-            value={high}
+            title="Extremely Severe"
+            value={extremelySevere}
             icon={
               <Clock3 />
             }
-            tone="high"
+            tone="extreme"
           />
 
 
@@ -5833,7 +5833,7 @@ function Dashboard() {
                     <div>
 
                       <span>
-                        Current Monitoring Priority
+                        Current Monitoring Severity
                       </span>
 
                       <strong>
@@ -5855,7 +5855,7 @@ function Dashboard() {
                     >
                       {
                         latestReviewedMonitoring.priority ||
-                        "No priority"
+                        "No severity"
                       }
                     </span>
 
@@ -7081,12 +7081,14 @@ function Assessment() {
 
         <div
           className={
-            `priority big ${saved.priority.toLowerCase()}`
+            `${priorityClassName(
+              saved.priority
+            )} big`
           }
         >
           {saved.priority}
           {" "}
-          monitoring priority
+          monitoring severity
         </div>
 
 
@@ -7110,8 +7112,10 @@ function Assessment() {
 
           WHO-5, PHQ-9, GAD-7, and DASS-21 are screening tools.
           These results do not provide a medical diagnosis.
-          The MindTrack priority is an internal monitoring aid
-          and is not an official category of the instruments.
+          The monitoring severity label follows the standardized
+          severity labels in the scoring guide. WHO-5 is shown using
+          its suggested well-being cut-off because the guide does not
+          define Mild, Moderate, or Severe categories for WHO-5.
 
         </div>
 
@@ -8786,8 +8790,12 @@ function priorityClassName(
       .trim()
       .toLowerCase()
       .replace(
-        /\s+/g,
+        /[^a-z0-9]+/g,
         "-"
+      )
+      .replace(
+        /^-+|-+$/g,
+        ""
       );
 
 
@@ -8809,8 +8817,12 @@ function assessmentPriorityOutlineClassName(
       .trim()
       .toLowerCase()
       .replace(
-        /\s+/g,
+        /[^a-z0-9]+/g,
         "-"
+      )
+      .replace(
+        /^-+|-+$/g,
+        ""
       );
 
 
@@ -17466,17 +17478,23 @@ function UserMonitoringContent({
   ) {
 
     const ranks = {
-      Low:
+      "Minimal / none":
         1,
 
-      Moderate:
+      Mild:
         2,
 
-      High:
+      Moderate:
         3,
 
-      Critical:
-        4
+      "Moderately severe":
+        4,
+
+      Severe:
+        5,
+
+      "Extremely Severe":
+        6
     };
 
 
@@ -17505,7 +17523,7 @@ function UserMonitoringContent({
           "Not enough reviewed assessments",
 
         summary:
-          "At least two counselor-reviewed assessments are needed to show a monitoring-priority trend."
+          "At least two counselor-reviewed assessments are needed to show a monitoring-severity trend."
       };
     }
 
@@ -17535,7 +17553,7 @@ function UserMonitoringContent({
           "Not enough comparable records",
 
         summary:
-          "The available reviewed assessments do not contain enough monitoring-priority information for comparison."
+          "The available reviewed assessments do not contain enough monitoring-severity information for comparison."
       };
     }
 
@@ -17550,10 +17568,10 @@ function UserMonitoringContent({
           "improving",
 
         label:
-          "Lower monitoring priority",
+          "Lower monitoring severity",
 
         summary:
-          "The latest counselor-reviewed assessment has a lower MindTrack monitoring priority than the previous reviewed assessment."
+          "The latest counselor-reviewed assessment has a lower standardized monitoring severity than the previous reviewed assessment."
       };
     }
 
@@ -17568,10 +17586,10 @@ function UserMonitoringContent({
           "worsening",
 
         label:
-          "Higher monitoring priority",
+          "Higher monitoring severity",
 
         summary:
-          "The latest counselor-reviewed assessment has a higher MindTrack monitoring priority than the previous reviewed assessment."
+          "The latest counselor-reviewed assessment has a higher standardized monitoring severity than the previous reviewed assessment."
       };
     }
 
@@ -17581,10 +17599,10 @@ function UserMonitoringContent({
         "stable",
 
       label:
-        "Same monitoring priority",
+        "Same monitoring severity",
 
       summary:
-        "The latest and previous counselor-reviewed assessments have the same MindTrack monitoring priority."
+        "The latest and previous counselor-reviewed assessments have the same standardized monitoring severity."
     };
   }
 
@@ -17664,7 +17682,7 @@ function UserMonitoringContent({
 
         <PageTitle
           title="Mental Health Monitoring"
-          subtitle="Your monitoring page shows counselor-reviewed status and priority only. Detailed assessment scores are private to authorized Guidance Counselors."
+          subtitle="Your monitoring page shows counselor-reviewed status and severity only. Detailed assessment scores are private to authorized Guidance Counselors."
         />
 
 
@@ -17690,7 +17708,7 @@ function UserMonitoringContent({
 
         <PageTitle
           title="Mental Health Monitoring"
-          subtitle="Your monitoring page shows counselor-reviewed status and priority only. Detailed assessment scores are private to authorized Guidance Counselors."
+          subtitle="Your monitoring page shows counselor-reviewed status and severity only. Detailed assessment scores are private to authorized Guidance Counselors."
         />
 
 
@@ -17709,7 +17727,7 @@ function UserMonitoringContent({
 
       <PageTitle
         title="Mental Health Monitoring"
-        subtitle="Your monitoring page shows counselor-reviewed status and priority only. Detailed WHO-5, PHQ-9, GAD-7, and DASS-21 scores are visible only to authorized Guidance Counselors and Super Admin."
+        subtitle="Your monitoring page shows counselor-reviewed status and severity only. Detailed WHO-5, PHQ-9, GAD-7, and DASS-21 scores are visible only to authorized Guidance Counselors and Super Admin."
       />
 
 
@@ -17733,7 +17751,7 @@ function UserMonitoringContent({
             <p>
               Complete a psychological assessment first. After a Guidance
               Counselor reviews it, this page will show your monitoring
-              priority and review status without displaying assessment scores.
+              severity and review status without displaying assessment scores.
             </p>
 
 
@@ -17868,7 +17886,7 @@ function UserMonitoringContent({
                   >
                     {
                       latest.priority ||
-                      "No priority"
+                      "No severity"
                     }
                   </span>
 
@@ -17971,7 +17989,7 @@ function UserMonitoringContent({
                   <div>
 
                     <span className="monitoring-kicker">
-                      Monitoring Priority Trend
+                      Monitoring Severity Trend
                     </span>
 
                     <h2>
@@ -18015,7 +18033,7 @@ function UserMonitoringContent({
 
                 <div className="notice monitoring-trend-note">
                   This comparison uses only the counselor-reviewed MindTrack
-                  monitoring priority. Numerical assessment scores are not
+                  monitoring severity. Numerical assessment scores are not
                   displayed to the user.
                 </div>
 
@@ -18037,7 +18055,7 @@ function UserMonitoringContent({
                     </h2>
 
                     <p>
-                      Review status and monitoring priority are shown from
+                      Review status and monitoring severity is shown from
                       newest to oldest. Detailed assessment scores remain
                       counselor-only.
                     </p>
@@ -18104,7 +18122,7 @@ function UserMonitoringContent({
                         >
                           {
                             row.priority ||
-                            "No priority"
+                            "No severity"
                           }
                         </span>
 
@@ -18310,7 +18328,7 @@ function History() {
                     </th>
 
                     <th>
-                      Monitoring Priority
+                      Monitoring Severity
                     </th>
 
                     <th>
@@ -18382,7 +18400,7 @@ function History() {
                             >
                               {
                                 row.priority ||
-                                "No priority"
+                                "No severity"
                               }
                             </span>
 
@@ -19699,7 +19717,7 @@ function Cases() {
               priority:
                 storedAssessment.priority ||
                 selected.priority ||
-                "Low",
+                "Minimal / none",
 
               recommendation:
                 storedAssessment.recommendation ||
@@ -20360,8 +20378,8 @@ function Cases() {
             <p>
               {
                 isSuperAdmin
-                  ? "Filter user cases by college, program, and latest monitoring priority."
-                  : "Filter user cases by program and latest monitoring priority."
+                  ? "Filter user cases by college, program, and latest monitoring severity."
+                  : "Filter user cases by program and latest monitoring severity."
               }
             </p>
 
@@ -20477,7 +20495,7 @@ function Cases() {
 
           <label>
 
-            Priority
+            Severity
 
             <select
               value={priorityFilter}
@@ -20490,27 +20508,35 @@ function Cases() {
             >
 
               <option value="all">
-                All priorities
+                All severities
               </option>
 
-              <option value="Low">
-                Low
+              <option value="Minimal / none">
+                Minimal / none
+              </option>
+
+              <option value="Mild">
+                Mild
               </option>
 
               <option value="Moderate">
                 Moderate
               </option>
 
-              <option value="High">
-                High
+              <option value="Moderately severe">
+                Moderately severe
               </option>
 
-              <option value="Critical">
-                Critical
+              <option value="Severe">
+                Severe
+              </option>
+
+              <option value="Extremely Severe">
+                Extremely Severe
               </option>
 
               <option value="No Assessment">
-                No priority
+                No severity
               </option>
 
             </select>
@@ -20617,7 +20643,7 @@ function Cases() {
 
                     {
                       selected.priority ||
-                      "No priority"
+                      "No severity"
                     }
 
                   </span>
@@ -20781,7 +20807,7 @@ function Cases() {
                           >
                             {
                               row.priority ||
-                              "No priority"
+                              "No severity"
                             }
                           </span>
 
@@ -21066,7 +21092,7 @@ function Cases() {
                         <div className="review-request-detail-item">
 
                           <span>
-                            MindTrack Monitoring Priority
+                            Standardized Monitoring Severity
                           </span>
 
                           <strong>
@@ -21202,7 +21228,7 @@ function Cases() {
                       <div className="review-request-detail-item">
 
                         <span>
-                          Priority Level
+                          Severity Level
                         </span>
 
                         <strong>
@@ -24881,8 +24907,8 @@ function CounselingRequestsManagement() {
             <p>
               {
                 isSuperAdmin
-                  ? "Filter requests by college, program, and the user's latest assessment priority."
-                  : "Filter requests by program and the user's latest assessment priority."
+                  ? "Filter requests by college, program, and the user's latest assessment severity."
+                  : "Filter requests by program and the user's latest assessment severity."
               }
             </p>
 
@@ -24998,7 +25024,7 @@ function CounselingRequestsManagement() {
 
           <label>
 
-            Priority
+            Severity
 
             <select
               value={priorityFilter}
@@ -25011,23 +25037,31 @@ function CounselingRequestsManagement() {
             >
 
               <option value="all">
-                All priorities
+                All severities
               </option>
 
-              <option value="Low">
-                Low
+              <option value="Minimal / none">
+                Minimal / none
+              </option>
+
+              <option value="Mild">
+                Mild
               </option>
 
               <option value="Moderate">
                 Moderate
               </option>
 
-              <option value="High">
-                High
+              <option value="Moderately severe">
+                Moderately severe
               </option>
 
-              <option value="Critical">
-                Critical
+              <option value="Severe">
+                Severe
+              </option>
+
+              <option value="Extremely Severe">
+                Extremely Severe
               </option>
 
               <option value="No Assessment">
@@ -25385,7 +25419,7 @@ function CounselingRequestsManagement() {
                   <div className="review-request-detail-item">
 
                     <span>
-                      Priority
+                      Severity
                     </span>
 
                     <strong>
@@ -28892,25 +28926,33 @@ function Reports() {
 
 
   const priorityLevels = [
-    "Low",
+    "Minimal / none",
+    "Mild",
     "Moderate",
-    "High",
-    "Critical"
+    "Moderately severe",
+    "Severe",
+    "Extremely Severe"
   ];
 
 
   const priorityColors = {
-    Low:
+    "Minimal / none":
       "#168a4b",
+
+    Mild:
+      "#65a30d",
 
     Moderate:
       "#c89412",
 
-    High:
-      "#dc6d13",
+    "Moderately severe":
+      "#ea7c16",
 
-    Critical:
-      "#bd2424"
+    Severe:
+      "#dc3b2f",
+
+    "Extremely Severe":
+      "#991b1b"
   };
 
 
@@ -29128,10 +29170,12 @@ function Reports() {
             label,
             {
               label,
-              Low: 0,
+              "Minimal / none": 0,
+              Mild: 0,
               Moderate: 0,
-              High: 0,
-              Critical: 0,
+              "Moderately severe": 0,
+              Severe: 0,
+              "Extremely Severe": 0,
               total: 0
             }
           );
@@ -29880,7 +29924,7 @@ function Reports() {
 
         title="Reports and Analytics"
 
-        subtitle="Assessment priority and counseling analytics grouped by college, program, user type, and sex."
+        subtitle="Assessment severity and counseling analytics grouped by college, program, user type, and sex."
 
       />
 
@@ -29942,23 +29986,23 @@ function Reports() {
 
 
         <Stat
-          title="Critical priority"
-          tone="critical"
+          title="Minimal / none"
+          tone="low"
           value={
-            priorityTotals.Critical ||
+            priorityTotals["Minimal / none"] ||
             0
           }
           icon={
-            <AlertTriangle />
+            <CheckCircle2 />
           }
         />
 
 
         <Stat
-          title="High priority"
-          tone="high"
+          title="Mild"
+          tone="mild"
           value={
-            priorityTotals.High ||
+            priorityTotals.Mild ||
             0
           }
           icon={
@@ -29968,7 +30012,7 @@ function Reports() {
 
 
         <Stat
-          title="Moderate priority"
+          title="Moderate"
           tone="moderate"
           value={
             priorityTotals.Moderate ||
@@ -29981,14 +30025,40 @@ function Reports() {
 
 
         <Stat
-          title="Low priority"
-          tone="low"
+          title="Moderately severe"
+          tone="moderately-severe"
           value={
-            priorityTotals.Low ||
+            priorityTotals["Moderately severe"] ||
             0
           }
           icon={
-            <CheckCircle2 />
+            <Clock3 />
+          }
+        />
+
+
+        <Stat
+          title="Severe"
+          tone="severe"
+          value={
+            priorityTotals.Severe ||
+            0
+          }
+          icon={
+            <AlertTriangle />
+          }
+        />
+
+
+        <Stat
+          title="Extremely Severe"
+          tone="extreme"
+          value={
+            priorityTotals["Extremely Severe"] ||
+            0
+          }
+          icon={
+            <AlertTriangle />
           }
         />
 
@@ -30002,15 +30072,15 @@ function Reports() {
         </h2>
 
         <p>
-          Priority levels are counted from psychological assessment cases.
+          Severity labels are counted from psychological assessment cases.
         </p>
 
       </div>
 
 
       <AnalyticsBarChart
-        title="Assessment priorities by college / office"
-        subtitle="Low, Moderate, High, and Critical assessment cases for each college or office."
+        title="Assessment severities by college / office"
+        subtitle="Minimal / none, Mild, Moderate, Moderately severe, Severe, and Extremely Severe assessment cases for each college or office."
         rows={priorityByCollege}
         series={prioritySeries}
         emptyText="No assessment cases are available for college-level analytics."
@@ -30018,8 +30088,8 @@ function Reports() {
 
 
       <AnalyticsBarChart
-        title="Assessment priorities by program"
-        subtitle="Priority distribution for each academic program. Accounts without a program are grouped as No program / N/A."
+        title="Assessment severities by program"
+        subtitle="Severity distribution for each academic program. Accounts without a program are grouped as No program / N/A."
         rows={priorityByProgram}
         series={prioritySeries}
         emptyText="No assessment cases are available for program-level analytics."
@@ -30027,8 +30097,8 @@ function Reports() {
 
 
       <AnalyticsBarChart
-        title="Assessment priorities by user type"
-        subtitle="Priority distribution for Student, Teaching, and Non-teaching users."
+        title="Assessment severities by user type"
+        subtitle="Severity distribution for Student, Teaching, and Non-teaching users."
         rows={priorityByUserType}
         series={prioritySeries}
         emptyText="No assessment cases are available for user-type analytics."
@@ -30036,8 +30106,8 @@ function Reports() {
 
 
       <AnalyticsBarChart
-        title="Assessment priorities by sex"
-        subtitle="Priority distribution using the Male/Female value stored in the user's public account profile."
+        title="Assessment severities by sex"
+        subtitle="Severity distribution using the Male/Female value stored in the user's public account profile."
         rows={priorityBySex}
         series={prioritySeries}
         emptyText="No assessment cases are available for sex-level analytics."
@@ -30309,7 +30379,7 @@ function AssessmentAccountTable({
 
 
             <th>
-              Latest Priority
+              Latest Severity
             </th>
 
 
@@ -30390,7 +30460,7 @@ function AssessmentAccountTable({
                   >
                     {
                       row.priority ||
-                      "No priority"
+                      "No severity"
                     }
                   </span>
 
@@ -30519,7 +30589,7 @@ function CaseTable({
             </th>
 
             <th>
-              Monitoring Priority
+              Monitoring Severity
             </th>
 
             <th>

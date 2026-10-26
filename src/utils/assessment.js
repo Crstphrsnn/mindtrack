@@ -10,9 +10,13 @@
 //
 // IMPORTANT:
 // - Instrument scores are screening results, not diagnoses.
-// - "priority" below is a MindTrack operational monitoring
-//   priority. It is NOT an official score or category of
-//   WHO-5, PHQ-9, GAD-7, or DASS-21.
+// - The stored "priority" field now contains the highest
+//   standardized SEVERITY LABEL found across PHQ-9, GAD-7,
+//   and the three DASS-21 subscales.
+// - WHO-5 is NOT converted into a severity category because
+//   the provided scoring standard uses only its cut-off.
+// - PHQ-9 item 9 remains a separate safetyFlag and does not
+//   change the standardized severity label.
 // ======================================================
 
 
@@ -361,6 +365,13 @@ function sumAnswers(
 }
 
 
+export const ASSESSMENT_SCORING_VERSION =
+  "MINDTRACK-STANDARD-SCORING-2026-10-R2";
+
+export const MONITORING_PRIORITY_VERSION =
+  "MINDTRACK-STANDARD-SEVERITY-2026-10";
+
+
 function phq9Severity(score) {
 
   if (score >= 20) {
@@ -379,7 +390,7 @@ function phq9Severity(score) {
     return "Mild";
   }
 
-  return "Minimal";
+  return "Minimal / none";
 }
 
 
@@ -401,38 +412,203 @@ function gad7Severity(score) {
 }
 
 
-function deriveMonitoringPriority({
-  who5Percentage,
-  phq9Score,
-  gad7Score,
-  safetyFlag
-}) {
+function dass21DepressionSeverity(score) {
 
-  if (safetyFlag) {
-    return "Critical";
+  if (score >= 28) {
+    return "Extremely Severe";
   }
 
-
-  if (
-    who5Percentage < 50 ||
-    phq9Score >= 10 ||
-    gad7Score >= 10
-  ) {
-
-    return "High";
+  if (score >= 21) {
+    return "Severe";
   }
 
-
-  if (
-    phq9Score >= 5 ||
-    gad7Score >= 5
-  ) {
-
+  if (score >= 14) {
     return "Moderate";
   }
 
+  if (score >= 10) {
+    return "Mild";
+  }
 
-  return "Low";
+  return "Normal";
+}
+
+
+function dass21AnxietySeverity(score) {
+
+  if (score >= 20) {
+    return "Extremely Severe";
+  }
+
+  if (score >= 15) {
+    return "Severe";
+  }
+
+  if (score >= 10) {
+    return "Moderate";
+  }
+
+  if (score >= 8) {
+    return "Mild";
+  }
+
+  return "Normal";
+}
+
+
+function dass21StressSeverity(score) {
+
+  if (score >= 34) {
+    return "Extremely Severe";
+  }
+
+  if (score >= 26) {
+    return "Severe";
+  }
+
+  if (score >= 19) {
+    return "Moderate";
+  }
+
+  if (score >= 15) {
+    return "Mild";
+  }
+
+  return "Normal";
+}
+
+
+function severityRank(value) {
+
+  const severity =
+    String(value || "")
+      .trim()
+      .toLowerCase();
+
+
+  const ranks = {
+    "normal": 0,
+    "minimal": 0,
+    "minimal / none": 0,
+    "mild": 1,
+    "moderate": 2,
+    "moderately severe": 3,
+    "severe": 4,
+    "extremely severe": 5
+  };
+
+
+  return ranks[severity] ?? -1;
+}
+
+
+function deriveMonitoringPriority({
+  phq9SeverityLabel,
+  gad7SeverityLabel,
+  dass21DepressionSeverityLabel,
+  dass21AnxietySeverityLabel,
+  dass21StressSeverityLabel
+}) {
+
+  const candidates = [
+    {
+      source: "PHQ-9",
+      severity: phq9SeverityLabel
+    },
+    {
+      source: "GAD-7",
+      severity: gad7SeverityLabel
+    },
+    {
+      source: "DASS-21 Depression",
+      severity: dass21DepressionSeverityLabel
+    },
+    {
+      source: "DASS-21 Anxiety",
+      severity: dass21AnxietySeverityLabel
+    },
+    {
+      source: "DASS-21 Stress",
+      severity: dass21StressSeverityLabel
+    }
+  ];
+
+
+  const ranked =
+    candidates.map(
+      item => ({
+        ...item,
+        rank:
+          severityRank(
+            item.severity
+          )
+      })
+    );
+
+
+  const highestRank =
+    Math.max(
+      ...ranked.map(
+        item => item.rank
+      )
+    );
+
+
+  // When every instrument is in its lowest range, use the
+  // PHQ-9 wording from the provided standard as the overall
+  // display label instead of inventing a new category.
+  if (highestRank <= 0) {
+
+    return {
+      priority:
+        "Minimal / none",
+      source:
+        "PHQ-9 / GAD-7 / DASS-21",
+      reasons:
+        [
+          "PHQ-9 is Minimal / none, GAD-7 is Minimal, and all DASS-21 subscales are Normal."
+        ]
+    };
+  }
+
+
+  const highest =
+    ranked.filter(
+      item =>
+        item.rank ===
+        highestRank
+    );
+
+
+  const selectedLabel =
+    highestRank === 5
+      ? "Extremely Severe"
+      : highestRank === 4
+        ? "Severe"
+        : highestRank === 3
+          ? "Moderately severe"
+          : highestRank === 2
+            ? "Moderate"
+            : "Mild";
+
+
+  return {
+    priority:
+      selectedLabel,
+
+    source:
+      highest
+        .map(
+          item => item.source
+        )
+        .join(", "),
+
+    reasons:
+      highest.map(
+        item =>
+          `${item.source} is ${item.severity}.`
+      )
+  };
 }
 
 
@@ -442,43 +618,349 @@ function monitoringRecommendation({
   safetyFlag
 }) {
 
-  if (priority === "Critical") {
+  const notes = [];
 
-    return (
-      "Prompt counselor safety review is recommended because the PHQ-9 self-harm/death item was endorsed. " +
-      "This screening result is not a diagnosis."
+
+  if (
+    priority ===
+    "Extremely Severe"
+  ) {
+    notes.push(
+      "At least one DASS-21 subscale is in the Extremely Severe range."
+    );
+  } else if (
+    priority ===
+    "Severe"
+  ) {
+    notes.push(
+      "At least one screening result is in the Severe range; professional assessment is appropriate."
+    );
+  } else if (
+    priority ===
+    "Moderately severe"
+  ) {
+    notes.push(
+      "PHQ-9 is in the Moderately severe range; prompt professional assessment is appropriate."
+    );
+  } else if (
+    priority ===
+    "Moderate"
+  ) {
+    notes.push(
+      "At least one screening result is in the Moderate range; further assessment should be considered."
+    );
+  } else if (
+    priority ===
+    "Mild"
+  ) {
+    notes.push(
+      "At least one screening result is in the Mild range; monitoring may be appropriate."
+    );
+  } else {
+    notes.push(
+      "PHQ-9 and GAD-7 are in their minimal ranges and DASS-21 subscales are Normal."
     );
   }
 
 
-  if (priority === "High") {
-
-    if (who5BelowCutoff) {
-
-      return (
-        "Counselor review and further assessment are recommended. " +
-        "The WHO-5 result is below its suggested cut-off and/or another screening score is elevated."
-      );
-    }
-
-
-    return (
-      "Counselor review and further assessment are recommended based on the screening results."
+  if (who5BelowCutoff) {
+    notes.push(
+      "WHO-5 is below the suggested poor-well-being cut-off; further assessment may be appropriate."
+    );
+  } else {
+    notes.push(
+      "WHO-5 is at or above the suggested poor-well-being cut-off."
     );
   }
 
 
-  if (priority === "Moderate") {
-
-    return (
-      "Continue monitoring and consider counseling or follow-up support based on the user's concerns and functioning."
+  if (safetyFlag) {
+    notes.push(
+      "PHQ-9 item 9 was endorsed; MindTrack keeps this as a separate safety alert for counselor review."
     );
   }
 
 
-  return (
-    "Continue routine wellness monitoring. The screening results should still be interpreted together with the user's context."
+  notes.push(
+    "These screening results are not diagnoses."
   );
+
+
+  return notes.join(" ");
+}
+
+function numericValue(
+  value,
+  fallback = null
+) {
+
+  const number =
+    Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : fallback;
+}
+
+
+function storedDASSAdjustedScore(
+  scale
+) {
+
+  const adjusted =
+    numericValue(
+      scale?.adjustedScore
+    );
+
+  if (adjusted !== null) {
+    return adjusted;
+  }
+
+
+  const raw =
+    numericValue(
+      scale?.rawScore
+    );
+
+  return raw !== null
+    ? raw * 2
+    : null;
+}
+
+
+function buildAssessmentResult({
+  who5RawScore,
+  who5Percentage,
+  phq9Score,
+  gad7Score,
+  dass21DepressionRaw,
+  dass21AnxietyRaw,
+  dass21StressRaw,
+  dass21DepressionAdjusted,
+  dass21AnxietyAdjusted,
+  dass21StressAdjusted,
+  phq9Difficulty,
+  safetyFlag
+}) {
+
+  const who5BelowCutoff =
+    who5RawScore <= 12;
+
+
+  const phq9SeverityLabel =
+    phq9Severity(phq9Score);
+
+
+  const gad7SeverityLabel =
+    gad7Severity(gad7Score);
+
+
+  const dass21DepressionSeverityLabel =
+    dass21DepressionSeverity(
+      dass21DepressionAdjusted
+    );
+
+
+  const dass21AnxietySeverityLabel =
+    dass21AnxietySeverity(
+      dass21AnxietyAdjusted
+    );
+
+
+  const dass21StressSeverityLabel =
+    dass21StressSeverity(
+      dass21StressAdjusted
+    );
+
+
+  const priorityResult =
+    deriveMonitoringPriority({
+      phq9SeverityLabel,
+      gad7SeverityLabel,
+      dass21DepressionSeverityLabel,
+      dass21AnxietySeverityLabel,
+      dass21StressSeverityLabel
+    });
+
+
+  const recommendation =
+    monitoringRecommendation({
+      priority:
+        priorityResult.priority,
+      who5BelowCutoff,
+      safetyFlag
+    });
+
+
+  const dass21TotalRawScore =
+    dass21DepressionRaw +
+    dass21AnxietyRaw +
+    dass21StressRaw;
+
+
+  return {
+    score:
+      who5Percentage,
+
+    scoringVersion:
+      ASSESSMENT_SCORING_VERSION,
+
+    priorityModelVersion:
+      MONITORING_PRIORITY_VERSION,
+
+    priority:
+      priorityResult.priority,
+
+    prioritySource:
+      priorityResult.source,
+
+    priorityReasons:
+      priorityResult.reasons,
+
+    recommendation,
+
+    safetyFlag,
+
+
+    instrumentResults: {
+      who5: {
+        title:
+          WHO5_TITLE,
+        rawScore:
+          who5RawScore,
+        maximumRawScore:
+          25,
+        percentageScore:
+          who5Percentage,
+        belowCutoff:
+          who5BelowCutoff,
+        cutoffRawScore:
+          13,
+        cutoffPercentageScore:
+          52,
+        interpretation:
+          who5BelowCutoff
+            ? "Below the suggested WHO-5 poor-well-being cut-off (raw 0-12 / percentage 0-48); further assessment may be appropriate."
+            : "At or above the suggested WHO-5 poor-well-being cut-off (raw 13-25 / percentage 52-100)."
+      },
+
+
+      phq9: {
+        title:
+          PHQ9_TITLE,
+        totalScore:
+          phq9Score,
+        maximumScore:
+          27,
+        severity:
+          phq9SeverityLabel,
+        screeningThreshold:
+          10,
+        difficulty:
+          phq9Difficulty ||
+          "Not provided"
+      },
+
+
+      gad7: {
+        title:
+          GAD7_TITLE,
+        totalScore:
+          gad7Score,
+        maximumScore:
+          21,
+        severity:
+          gad7SeverityLabel,
+        screeningThreshold:
+          10
+      },
+
+
+      dass21: {
+        title:
+          DASS21_TITLE,
+        totalScore:
+          dass21TotalRawScore,
+        totalRawScore:
+          dass21TotalRawScore,
+        maximumTotalRawScore:
+          63,
+
+
+        depression: {
+          rawScore:
+            dass21DepressionRaw,
+          maximumRawScore:
+            21,
+          adjustedScore:
+            dass21DepressionAdjusted,
+          maximumAdjustedScore:
+            42,
+          severity:
+            dass21DepressionSeverityLabel,
+          itemNumbers: [
+            3,
+            5,
+            10,
+            13,
+            16,
+            17,
+            21
+          ]
+        },
+
+
+        anxiety: {
+          rawScore:
+            dass21AnxietyRaw,
+          maximumRawScore:
+            21,
+          adjustedScore:
+            dass21AnxietyAdjusted,
+          maximumAdjustedScore:
+            42,
+          severity:
+            dass21AnxietySeverityLabel,
+          itemNumbers: [
+            2,
+            4,
+            7,
+            9,
+            15,
+            19,
+            20
+          ]
+        },
+
+
+        stress: {
+          rawScore:
+            dass21StressRaw,
+          maximumRawScore:
+            21,
+          adjustedScore:
+            dass21StressAdjusted,
+          maximumAdjustedScore:
+            42,
+          severity:
+            dass21StressSeverityLabel,
+          itemNumbers: [
+            1,
+            6,
+            8,
+            11,
+            12,
+            14,
+            18
+          ]
+        },
+
+
+        scoringNote:
+          "DASS-21 uses three 7-item subscales. Each raw subscale score (0-21) is multiplied by 2 before applying the standard adult severity ranges."
+      }
+    }
+  };
 }
 
 
@@ -487,7 +969,6 @@ export function calculateAssessment(
   phq9Difficulty = ""
 ) {
 
-  // WHO-5
   const who5RawScore =
     sumAnswers(
       who5Questions,
@@ -499,12 +980,6 @@ export function calculateAssessment(
     who5RawScore * 4;
 
 
-  const who5BelowCutoff =
-    who5RawScore < 13 ||
-    who5Percentage < 50;
-
-
-  // PHQ-9
   const phq9Score =
     sumAnswers(
       phq9Questions,
@@ -512,17 +987,12 @@ export function calculateAssessment(
     );
 
 
-  // GAD-7
   const gad7Score =
     sumAnswers(
       gad7Questions,
       answers
     );
 
-
-  // ======================================================
-  // DASS-21 SUBSCALES
-  // ======================================================
 
   const dass21DepressionIds = [
     "dass21_q3",
@@ -557,9 +1027,7 @@ export function calculateAssessment(
   ];
 
 
-  function sumQuestionIds(
-    ids
-  ) {
+  function sumQuestionIds(ids) {
 
     return ids.reduce(
       (total, id) =>
@@ -591,25 +1059,6 @@ export function calculateAssessment(
     );
 
 
-  const dass21DepressionAdjusted =
-    dass21DepressionRaw * 2;
-
-
-  const dass21AnxietyAdjusted =
-    dass21AnxietyRaw * 2;
-
-
-  const dass21StressAdjusted =
-    dass21StressRaw * 2;
-
-
-  const dass21TotalRawScore =
-    dass21DepressionRaw +
-    dass21AnxietyRaw +
-    dass21StressRaw;
-
-
-  // PHQ-9 item 9 safety signal
   const safetyFlag =
     Number(
       answers.phq9_q9 ??
@@ -617,201 +1066,197 @@ export function calculateAssessment(
     ) > 0;
 
 
-  const priority =
-    deriveMonitoringPriority({
-      who5Percentage,
-      phq9Score,
-      gad7Score,
-      safetyFlag
-    });
+  return buildAssessmentResult({
+    who5RawScore,
+    who5Percentage,
+    phq9Score,
+    gad7Score,
+    dass21DepressionRaw,
+    dass21AnxietyRaw,
+    dass21StressRaw,
+    dass21DepressionAdjusted:
+      dass21DepressionRaw * 2,
+    dass21AnxietyAdjusted:
+      dass21AnxietyRaw * 2,
+    dass21StressAdjusted:
+      dass21StressRaw * 2,
+    phq9Difficulty,
+    safetyFlag
+  });
+}
 
 
-  const recommendation =
-    monitoringRecommendation({
-      priority,
-      who5BelowCutoff,
-      safetyFlag
-    });
+export function recalculateAssessmentRecord(
+  record
+) {
+
+  if (
+    record?.answers &&
+    typeof record.answers === "object"
+  ) {
+
+    const completeAnswerCount =
+      scoredQuestionIds.filter(
+        id =>
+          record.answers[id] !==
+            undefined
+      ).length;
 
 
-  return {
+    if (
+      completeAnswerCount ===
+      scoredQuestionIds.length
+    ) {
 
-    score:
-      who5Percentage,
-
-    priority,
-
-    recommendation,
-
-    safetyFlag,
-
-
-    instrumentResults: {
-
-      who5: {
-
-        title:
-          WHO5_TITLE,
-
-        rawScore:
-          who5RawScore,
-
-        maximumRawScore:
-          25,
-
-        percentageScore:
-          who5Percentage,
-
-        belowCutoff:
-          who5BelowCutoff,
-
-        interpretation:
-          who5BelowCutoff
-            ? "Below the WHO-5 suggested cut-off; further assessment is indicated."
-            : "At or above the WHO-5 suggested cut-off."
-      },
-
-
-      phq9: {
-
-        title:
-          PHQ9_TITLE,
-
-        totalScore:
-          phq9Score,
-
-        maximumScore:
-          27,
-
-        severity:
-          phq9Severity(
-            phq9Score
-          ),
-
-        difficulty:
-          phq9Difficulty ||
-          "Not provided"
-      },
-
-
-      gad7: {
-
-        title:
-          GAD7_TITLE,
-
-        totalScore:
-          gad7Score,
-
-        maximumScore:
-          21,
-
-        severity:
-          gad7Severity(
-            gad7Score
-          )
-      },
-
-
-      dass21: {
-
-        title:
-          DASS21_TITLE,
-
-
-        // Backward compatibility
-        totalScore:
-          dass21TotalRawScore,
-
-        totalRawScore:
-          dass21TotalRawScore,
-
-        maximumTotalRawScore:
-          63,
-
-
-        depression: {
-
-          rawScore:
-            dass21DepressionRaw,
-
-          maximumRawScore:
-            21,
-
-          adjustedScore:
-            dass21DepressionAdjusted,
-
-          maximumAdjustedScore:
-            42,
-
-          itemNumbers: [
-            3,
-            5,
-            10,
-            13,
-            16,
-            17,
-            21
-          ]
-        },
-
-
-        anxiety: {
-
-          rawScore:
-            dass21AnxietyRaw,
-
-          maximumRawScore:
-            21,
-
-          adjustedScore:
-            dass21AnxietyAdjusted,
-
-          maximumAdjustedScore:
-            42,
-
-          itemNumbers: [
-            2,
-            4,
-            7,
-            9,
-            15,
-            19,
-            20
-          ]
-        },
-
-
-        stress: {
-
-          rawScore:
-            dass21StressRaw,
-
-          maximumRawScore:
-            21,
-
-          adjustedScore:
-            dass21StressAdjusted,
-
-          maximumAdjustedScore:
-            42,
-
-          itemNumbers: [
-            1,
-            6,
-            8,
-            11,
-            12,
-            14,
-            18
-          ]
-        },
-
-
-        scoringNote:
-          "DASS-21 is scored as three separate 7-item scales: Depression, Anxiety, and Stress. Each raw subscale is 0-21. Adult DASS-21 raw subscale scores are multiplied by 2 for comparison with the corresponding full DASS scale. MindTrack does not assign DASS-21 severity labels."
-      }
-
+      return calculateAssessment(
+        record.answers,
+        record.phq9Difficulty ||
+        record.instrumentResults
+          ?.phq9
+          ?.difficulty ||
+        ""
+      );
     }
+  }
 
-  };
+
+  const results =
+    record?.instrumentResults;
+
+
+  if (!results) {
+    return null;
+  }
+
+
+  const who5Percentage =
+    numericValue(
+      results?.who5
+        ?.percentageScore,
+      numericValue(
+        record?.score
+      )
+    );
+
+
+  let who5RawScore =
+    numericValue(
+      results?.who5
+        ?.rawScore
+    );
+
+
+  if (
+    who5RawScore === null &&
+    who5Percentage !== null
+  ) {
+    who5RawScore =
+      Math.round(
+        who5Percentage / 4
+      );
+  }
+
+
+  const phq9Score =
+    numericValue(
+      results?.phq9
+        ?.totalScore
+    );
+
+
+  const gad7Score =
+    numericValue(
+      results?.gad7
+        ?.totalScore
+    );
+
+
+  const depressionAdjusted =
+    storedDASSAdjustedScore(
+      results?.dass21
+        ?.depression
+    );
+
+
+  const anxietyAdjusted =
+    storedDASSAdjustedScore(
+      results?.dass21
+        ?.anxiety
+    );
+
+
+  const stressAdjusted =
+    storedDASSAdjustedScore(
+      results?.dass21
+        ?.stress
+    );
+
+
+  if (
+    who5RawScore === null ||
+    who5Percentage === null ||
+    phq9Score === null ||
+    gad7Score === null ||
+    depressionAdjusted === null ||
+    anxietyAdjusted === null ||
+    stressAdjusted === null
+  ) {
+    return null;
+  }
+
+
+  const depressionRaw =
+    numericValue(
+      results?.dass21
+        ?.depression
+        ?.rawScore,
+      depressionAdjusted / 2
+    );
+
+
+  const anxietyRaw =
+    numericValue(
+      results?.dass21
+        ?.anxiety
+        ?.rawScore,
+      anxietyAdjusted / 2
+    );
+
+
+  const stressRaw =
+    numericValue(
+      results?.dass21
+        ?.stress
+        ?.rawScore,
+      stressAdjusted / 2
+    );
+
+
+  return buildAssessmentResult({
+    who5RawScore,
+    who5Percentage,
+    phq9Score,
+    gad7Score,
+    dass21DepressionRaw:
+      depressionRaw,
+    dass21AnxietyRaw:
+      anxietyRaw,
+    dass21StressRaw:
+      stressRaw,
+    dass21DepressionAdjusted:
+      depressionAdjusted,
+    dass21AnxietyAdjusted:
+      anxietyAdjusted,
+    dass21StressAdjusted:
+      stressAdjusted,
+    phq9Difficulty:
+      record.phq9Difficulty ||
+      results?.phq9
+        ?.difficulty ||
+      "",
+    safetyFlag:
+      Boolean(
+        record?.safetyFlag
+      )
+  });
 }

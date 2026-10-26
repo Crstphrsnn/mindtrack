@@ -7529,3 +7529,139 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =====================================================
+   STANDARDIZED ASSESSMENT SEVERITY LABELS
+   Labels follow the uploaded MindTrack scoring guide.
+===================================================== */
+
+.priority.minimal-none {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.priority.mild {
+  background: #ecfccb;
+  color: #3f6212;
+}
+
+.priority.moderate {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.priority.moderately-severe {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.priority.severe {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.priority.extremely-severe {
+  background: #991b1b;
+  color: #ffffff;
+}
+
+
+/* Assessment-history outlines use the same severity language. */
+
+.assessment-profile-history-card.assessment-priority-minimal-none,
+.assessment-history-item.assessment-priority-minimal-none,
+.monitoring-history-item.assessment-priority-minimal-none,
+.monitoring-summary-panel.assessment-priority-minimal-none,
+.home-monitoring-summary-panel.assessment-priority-minimal-none {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-profile-history-card.assessment-priority-mild,
+.assessment-history-item.assessment-priority-mild,
+.monitoring-history-item.assessment-priority-mild,
+.monitoring-summary-panel.assessment-priority-mild,
+.home-monitoring-summary-panel.assessment-priority-mild {
+  border-color: #bef264;
+  border-left-color: #65a30d;
+}
+
+.assessment-profile-history-card.assessment-priority-moderate,
+.assessment-history-item.assessment-priority-moderate,
+.monitoring-history-item.assessment-priority-moderate,
+.monitoring-summary-panel.assessment-priority-moderate,
+.home-monitoring-summary-panel.assessment-priority-moderate {
+  border-color: #fde68a;
+  border-left-color: #d97706;
+}
+
+.assessment-profile-history-card.assessment-priority-moderately-severe,
+.assessment-history-item.assessment-priority-moderately-severe,
+.monitoring-history-item.assessment-priority-moderately-severe,
+.monitoring-summary-panel.assessment-priority-moderately-severe,
+.home-monitoring-summary-panel.assessment-priority-moderately-severe {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-profile-history-card.assessment-priority-severe,
+.assessment-history-item.assessment-priority-severe,
+.monitoring-history-item.assessment-priority-severe,
+.monitoring-summary-panel.assessment-priority-severe,
+.home-monitoring-summary-panel.assessment-priority-severe {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-profile-history-card.assessment-priority-extremely-severe,
+.assessment-history-item.assessment-priority-extremely-severe,
+.monitoring-history-item.assessment-priority-extremely-severe,
+.monitoring-summary-panel.assessment-priority-extremely-severe,
+.home-monitoring-summary-panel.assessment-priority-extremely-severe {
+  border-color: #991b1b;
+  border-left-color: #7f1d1d;
+}
+
+
+/* Full-color dashboard/report cards for standardized severities. */
+
+.stat-card-mild {
+  background: linear-gradient(135deg, #ecfccb 0%, #d9f99d 100%);
+  border: 1px solid #bef264;
+}
+
+.stat-card-mild > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #4d7c0f;
+}
+
+.stat-card-moderately-severe {
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+  border: 1px solid #fdba74;
+}
+
+.stat-card-moderately-severe > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #c2410c;
+}
+
+.stat-card-severe {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 1px solid #fca5a5;
+}
+
+.stat-card-severe > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #b91c1c;
+}
+
+.stat-card-extreme {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  border: 1px solid #ef4444;
+}
+
+.stat-card-extreme > div {
+  background: rgba(255, 255, 255, 0.64);
+  color: #7f1d1d;
+}

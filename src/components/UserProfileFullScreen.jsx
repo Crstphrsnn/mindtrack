@@ -1131,6 +1131,14 @@ export default function UserProfileFullScreen({
         )
           .trim()
           .toLowerCase()
+          .replace(
+            /[^a-z0-9]+/g,
+            "-"
+          )
+          .replace(
+            /^-+|-+$/g,
+            ""
+          )
       : "none";
 
 
@@ -2290,7 +2298,7 @@ export default function UserProfileFullScreen({
                             <p className="profile-assessment-priority-row">
 
                               <span>
-                                Monitoring Priority
+                                Monitoring Severity
                               </span>
 
                               <strong>
@@ -2990,12 +2998,14 @@ export default function UserProfileFullScreen({
                         "none"
                       )
                         .trim()
-                        .toLowerCase()}`
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/^-+|-+$/g, "")}`
                     }
                   >
                     {
                       selectedAssessmentHistory.priority ||
-                      "No priority"
+                      "No severity"
                     }
                   </span>
 
@@ -3099,12 +3109,14 @@ export default function UserProfileFullScreen({
                                   "none"
                                 )
                                   .trim()
-                                  .toLowerCase()}`
+                                  .toLowerCase()
+                                  .replace(/[^a-z0-9]+/g, "-")
+                                  .replace(/^-+|-+$/g, "")}`
                               }
                             >
                               {
                                 assessmentRow.priority ||
-                                "No priority"
+                                "No severity"
                               }
                             </span>
 
@@ -3245,7 +3257,7 @@ export default function UserProfileFullScreen({
                       <div className="review-request-detail-grid">
 
                         <div className="review-request-detail-item">
-                          <span>MindTrack Monitoring Priority</span>
+                          <span>MindTrack Monitoring Severity</span>
                           <strong>
                             {selectedAssessmentHistory.priority || "Not available"}
                           </strong>

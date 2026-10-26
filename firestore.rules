@@ -103,8 +103,17 @@ service cloud.firestore {
     }
 
     function isValidPriority(priority) {
-      return priority == "Low"
+      // Current standardized severity labels from the MindTrack
+      // scoring standard. Legacy labels are retained temporarily
+      // so existing records remain compatible while the Admin SDK
+      // migration updates historical assessments.
+      return priority == "Minimal / none"
+        || priority == "Mild"
         || priority == "Moderate"
+        || priority == "Moderately severe"
+        || priority == "Severe"
+        || priority == "Extremely Severe"
+        || priority == "Low"
         || priority == "High"
         || priority == "Critical";
     }
