@@ -6277,7 +6277,7 @@ function Dashboard() {
 //
 // Keep the one-active-assessment rule enabled even while this is false.
 const ASSESSMENT_COOLDOWN_ENABLED =
-  false;
+  true;
 
 
 const ASSESSMENT_COOLDOWN_DAYS =
@@ -7819,7 +7819,7 @@ function Assessment() {
         <Shield size={22} aria-hidden="true" />
 
         <div>
-          <strong>Confidentiality Assurance</strong>
+          
 
           <p>
             Your psychological assessment answers will be kept confidential.
@@ -7832,41 +7832,8 @@ function Assessment() {
       </div>
 
 
-      {!ASSESSMENT_COOLDOWN_ENABLED && (
+     
 
-        <div
-          className="notice assessment-page-shell"
-          style={{
-            marginBottom:
-              "14px"
-          }}
-        >
-          <strong>
-            Testing mode:
-          </strong>
-          {" "}
-          the 14-day reassessment cooldown is temporarily disabled.
-          A new assessment can be taken immediately after the current
-          assessment is terminated.
-        </div>
-
-      )}
-
-
-      <div
-        className="notice assessment-page-shell"
-        style={{
-          marginBottom:
-            "14px"
-        }}
-      >
-        <strong>
-          Assessment draft autosave:
-        </strong>
-        {" "}
-        {assessmentDraftStatus ||
-          "Your answers are saved automatically while you complete the assessment."}
-      </div>
 
 
       <div
