@@ -703,7 +703,7 @@ const PROGRAMS_BY_COLLEGE = {
     "Bachelor of Science in Hospitality Management"
   ],
 
-  "College of Education": [
+  "College of Teacher Education": [
     "Bachelor of Secondary Education",
     "Bachelor of Technical-Vocational Teacher Education",
     "Bachelor of Technology and Livelihood Education"
@@ -721,6 +721,77 @@ const PROGRAMS_BY_COLLEGE = {
     "Bachelor of Industrial Technology - Major in Mechanical Technology"
   ]
 };
+
+
+// ======================================================
+// COLLEGE NAME NORMALIZATION
+// Keeps legacy counselor/user records compatible with current college names.
+// ======================================================
+
+function normalizeCollegeName(value) {
+
+  const normalized =
+    String(value || "")
+      .trim()
+      .toLowerCase();
+
+
+  const aliases = {
+    // College of Teacher Education (CTE)
+    "cte":
+      "college of teacher education",
+
+    "college of education":
+      "college of teacher education",
+
+    "college of teacher education":
+      "college of teacher education",
+
+    // College of Arts, Sciences and Letters (CASL)
+    "casl":
+      "college of arts, sciences and letters",
+
+    "college of arts sciences and letters":
+      "college of arts, sciences and letters",
+
+    "college of arts, sciences and letters":
+      "college of arts, sciences and letters",
+
+    // College of Business and Public Administration (CBPA)
+    "cbpa":
+      "college of business and public administration",
+
+    "college of business and public administration":
+      "college of business and public administration",
+
+    // College of Computing Sciences (CCS)
+    "ccs":
+      "college of computing sciences",
+
+    "college of computing sciences":
+      "college of computing sciences",
+
+    // College of Tourism and Hospitality Management (CTHM)
+    "cthm":
+      "college of tourism and hospitality management",
+
+    "college of tourism and hospitality management":
+      "college of tourism and hospitality management",
+
+    // College of Industrial Technology (CIT)
+    "cit":
+      "college of industrial technology",
+
+    "college of industrial technology":
+      "college of industrial technology"
+  };
+
+
+  return (
+    aliases[normalized] ||
+    normalized
+  );
+}
 
 
 const COLLEGE_OPTIONS =
@@ -909,18 +980,12 @@ function Register() {
     form.department
       ? activeRegistrationCounselors.filter(
           counselor =>
-            String(
-              counselor.department ||
-              ""
+            normalizeCollegeName(
+              counselor.department
+            ) ===
+            normalizeCollegeName(
+              form.department
             )
-              .trim()
-              .toLowerCase() ===
-            String(
-              form.department ||
-              ""
-            )
-              .trim()
-              .toLowerCase()
         )
       : [];
 
@@ -1563,14 +1628,12 @@ function Register() {
       const matchingStudentCounselors =
         activeRegistrationCounselors.filter(
           counselor =>
-            String(
-              counselor.department ||
-              ""
+            normalizeCollegeName(
+              counselor.department
+            ) ===
+            normalizeCollegeName(
+              registrationDepartment
             )
-              .trim()
-              .toLowerCase() ===
-            registrationDepartment
-              .toLowerCase()
         );
 
 
@@ -16420,6 +16483,9 @@ function UserProfilesContent({
         : currentUser.department
     );
 
+  const [selectedRole, setSelectedRole] =
+    useState("All Roles");
+
   const [selectedProgram, setSelectedProgram] =
     useState("All Programs");
 
@@ -16487,6 +16553,13 @@ function UserProfilesContent({
           account.department ===
             selectedCollege
         ) &&
+        (
+          !isSuperAdmin ||
+          selectedRole ===
+            "All Roles" ||
+          selectedRole ===
+            "Student"
+        ) &&
         account.role ===
           "student" &&
         String(
@@ -16523,11 +16596,43 @@ function UserProfilesContent({
             account.department ===
               selectedCollege;
 
+          const normalizedRole =
+            String(
+              account.role || ""
+            )
+              .trim()
+              .toLowerCase();
+
+          const roleMatches =
+            !isSuperAdmin ||
+            selectedRole ===
+              "All Roles" ||
+            (
+              selectedRole ===
+                "Student" &&
+              normalizedRole ===
+                "student"
+            ) ||
+            (
+              selectedRole ===
+                "Teaching" &&
+              teachingUserRole(
+                normalizedRole
+              )
+            ) ||
+            (
+              selectedRole ===
+                "Non-teaching" &&
+              nonTeachingUserRole(
+                normalizedRole
+              )
+            );
+
           const programMatches =
             selectedProgram ===
               "All Programs" ||
             (
-              account.role ===
+              normalizedRole ===
                 "student" &&
               account.program ===
                 selectedProgram
@@ -16554,6 +16659,7 @@ function UserProfilesContent({
 
           return (
             collegeMatches &&
+            roleMatches &&
             programMatches &&
             transferMatches
           );
@@ -16573,6 +16679,15 @@ function UserProfilesContent({
 
   function changeCollegeFilter(value) {
     setSelectedCollege(value);
+    setSelectedProgram(
+      "All Programs"
+    );
+    setSelected(null);
+  }
+
+
+  function changeRoleFilter(value) {
+    setSelectedRole(value);
     setSelectedProgram(
       "All Programs"
     );
@@ -16611,27 +16726,6 @@ function UserProfilesContent({
     ) {
       alert(
         "Please choose another Guidance Counselor to receive the transfer."
-      );
-      return;
-    }
-
-
-    const knownPreviousCounselors =
-      Array.isArray(
-        counselingProfileState
-          ?.previousCounselorIds
-      )
-        ? counselingProfileState.previousCounselorIds
-        : [];
-
-
-    if (
-      knownPreviousCounselors.includes(
-        currentUser.id
-      )
-    ) {
-      alert(
-        "You already transferred this user before. You may keep read-only documentation access, but you cannot transfer the same user again."
       );
       return;
     }
@@ -16993,16 +17087,6 @@ function UserProfilesContent({
               : [];
 
           if (
-            previousCounselorIds.includes(
-              currentUser.id
-            )
-          ) {
-            throw new Error(
-              "You already transferred this user before and cannot transfer the same user again."
-            );
-          }
-
-          if (
             existingProfile
               ?.assignedCounselorId &&
             existingProfile.assignedCounselorId !==
@@ -17242,7 +17326,7 @@ function UserProfilesContent({
         title="User Profiles"
         subtitle={
           isSuperAdmin
-            ? "Filter users by college/office, program, and transfer status, then open the complete user profile."
+            ? "Filter users by role, college/office, program, and transfer status, then open the complete user profile."
             : `View users from ${currentUser.department} together with users formally transferred to you.`
         }
       />
@@ -17267,6 +17351,27 @@ function UserProfilesContent({
 
 
         <div className="profile-filter-grid transfer-profile-filter-grid">
+
+          {isSuperAdmin && (
+            <label>
+              Role
+              <select
+                value={selectedRole}
+                onChange={
+                  event =>
+                    changeRoleFilter(
+                      event.target.value
+                    )
+                }
+              >
+                <option>All Roles</option>
+                <option>Student</option>
+                <option>Teaching</option>
+                <option>Non-teaching</option>
+              </select>
+            </label>
+          )}
+
 
           {isSuperAdmin && (
             <label>
@@ -17297,6 +17402,15 @@ function UserProfilesContent({
             Program
             <select
               value={selectedProgram}
+              disabled={
+                isSuperAdmin &&
+                ![
+                  "All Roles",
+                  "Student"
+                ].includes(
+                  selectedRole
+                )
+              }
               onChange={
                 event =>
                   setSelectedProgram(
@@ -18396,6 +18510,68 @@ function UserMonitoringContent({
 
 
               <section
+                className={
+                  `panel monitoring-trend-panel ${trend.key}`
+                }
+              >
+
+                <div className="monitoring-trend-header">
+
+                  <div>
+
+                    <span className="monitoring-kicker">
+                      Monitoring Severity Trend
+                    </span>
+
+                    <h2>
+                      {
+                        trend.label
+                      }
+                    </h2>
+
+                  </div>
+
+
+                  <Activity
+                    size={28}
+                  />
+
+                </div>
+
+
+                <p>
+                  {
+                    trend.summary
+                  }
+                </p>
+
+
+                {previous && (
+
+                  <small>
+                    Compared with the previous counselor-reviewed assessment
+                    from
+                    {" "}
+                    {
+                      formatRecordDateTime(
+                        previous.createdAt
+                      )
+                    }.
+                  </small>
+
+                )}
+
+
+                <div className="notice monitoring-trend-note">
+                  This comparison uses only the counselor-reviewed MindTrack
+                  monitoring severity. Numerical assessment scores are not
+                  displayed to the user.
+                </div>
+
+              </section>
+
+
+              <section
                 id={
                   `monitoring-assessment-${latest.assessmentId || latest.id}`
                 }
@@ -18531,68 +18707,6 @@ function UserMonitoringContent({
                   intentionally hidden on the user side. Authorized Guidance
                   Counselors and Super Admin can review the detailed screening
                   results when managing your assessment case.
-                </div>
-
-              </section>
-
-
-              <section
-                className={
-                  `panel monitoring-trend-panel ${trend.key}`
-                }
-              >
-
-                <div className="monitoring-trend-header">
-
-                  <div>
-
-                    <span className="monitoring-kicker">
-                      Monitoring Severity Trend
-                    </span>
-
-                    <h2>
-                      {
-                        trend.label
-                      }
-                    </h2>
-
-                  </div>
-
-
-                  <Activity
-                    size={28}
-                  />
-
-                </div>
-
-
-                <p>
-                  {
-                    trend.summary
-                  }
-                </p>
-
-
-                {previous && (
-
-                  <small>
-                    Compared with the previous counselor-reviewed assessment
-                    from
-                    {" "}
-                    {
-                      formatRecordDateTime(
-                        previous.createdAt
-                      )
-                    }.
-                  </small>
-
-                )}
-
-
-                <div className="notice monitoring-trend-note">
-                  This comparison uses only the counselor-reviewed MindTrack
-                  monitoring severity. Numerical assessment scores are not
-                  displayed to the user.
                 </div>
 
               </section>
@@ -24296,6 +24410,16 @@ function CounselingRequestsManagement() {
     }
 
 
+    if (reason.trim().length > 1000) {
+
+      alert(
+        "The counselor transfer reason must be 1000 characters or fewer."
+      );
+
+      return;
+    }
+
+
     if (
       !window.confirm(
         `Transfer ${row.ownerName || "this user"} to ${targetCounselor.name || "the selected Guidance Counselor"}?\n\nThe selected counselor will receive the transfer request and must accept it before the assignment changes.`
@@ -24329,20 +24453,6 @@ function CounselingRequestsManagement() {
 
 
         if (
-          Array.isArray(
-            existingProfile.previousCounselorIds
-          ) &&
-          existingProfile.previousCounselorIds.includes(
-            user.id
-          )
-        ) {
-          throw new Error(
-            "You already transferred this user before and cannot transfer the same user again."
-          );
-        }
-
-
-        if (
           existingProfile.assignedCounselorId &&
           existingProfile.assignedCounselorId !==
             user.id
@@ -24355,7 +24465,9 @@ function CounselingRequestsManagement() {
 
 
         if (
-          !existingProfile.assignedCounselorId
+          !existingProfile.assignedCounselorId &&
+          row.department ===
+            user.department
         ) {
 
           await setDoc(
@@ -24389,7 +24501,10 @@ function CounselingRequestsManagement() {
           );
         }
 
-      } else {
+      } else if (
+        row.department ===
+          user.department
+      ) {
 
         await setDoc(
           counselingProfileRef,
@@ -24745,9 +24860,26 @@ function CounselingRequestsManagement() {
       );
 
 
+      const permissionDenied =
+        error?.code ===
+          "permission-denied" ||
+        error?.code ===
+          "firestore/permission-denied" ||
+        String(
+          error?.message ||
+          ""
+        ).includes(
+          "Missing or insufficient permissions"
+        );
+
+
       alert(
-        error?.message ||
-        "Unable to request the counselor transfer."
+        permissionDenied
+          ? "Firebase blocked the counselor transfer. Deploy the updated Firestore transfer rules, refresh MindTrack, and try again."
+          : (
+              error?.message ||
+              "Unable to request the counselor transfer."
+            )
       );
     }
   }
@@ -24948,10 +25080,50 @@ function CounselingRequestsManagement() {
             );
 
 
-          const requestLockSnapshot =
-            await transaction.get(
-              requestLockRef
+          if (!requestSnap.exists()) {
+
+            throw new Error(
+              "This counseling request no longer exists."
             );
+          }
+
+
+          const storedRequest =
+            requestSnap.data();
+
+
+          const statusChangedInStorage =
+            normalizeCounselingRequestStatus(
+              storedRequest.status
+            ) !==
+              statusDraft;
+
+
+          // Read the eligibility lock only when the request status changes.
+          // Remarks-only edits should not depend on counselingRequestLocks.
+          const requestLockSnapshot =
+            statusChangedInStorage
+              ? await transaction.get(
+                  requestLockRef
+                )
+              : null;
+
+
+          if (
+            statusChangedInStorage &&
+            !requestLockSnapshot?.exists()
+          ) {
+
+            throw new Error(
+              "This user's counseling-request eligibility record is missing. Run the counseling-request lock migration first."
+            );
+          }
+
+
+          const storedRequestLock =
+            requestLockSnapshot?.exists()
+              ? requestLockSnapshot.data()
+              : null;
 
 
           const counselingProfileSnapshot =
@@ -24966,32 +25138,6 @@ function CounselingRequestsManagement() {
                   slotRef
                 )
               : null;
-
-
-          if (!requestSnap.exists()) {
-
-            throw new Error(
-              "This counseling request no longer exists."
-            );
-          }
-
-
-          if (
-            !requestLockSnapshot.exists()
-          ) {
-
-            throw new Error(
-              "This user's counseling-request eligibility record is missing. Run the counseling-request lock migration first."
-            );
-          }
-
-
-          const storedRequest =
-            requestSnap.data();
-
-
-          const storedRequestLock =
-            requestLockSnapshot.data();
 
 
           const storedCounselingProfile =
@@ -25166,11 +25312,8 @@ function CounselingRequestsManagement() {
 
 
           if (
-            normalizeCounselingRequestStatus(
-              storedRequest.status
-            ) !==
-              statusDraft &&
-            storedRequestLock.latestConsultationId ===
+            statusChangedInStorage &&
+            storedRequestLock?.latestConsultationId ===
               selected.id
           ) {
 
@@ -25352,9 +25495,26 @@ function CounselingRequestsManagement() {
       );
 
 
+      const permissionDenied =
+        err?.code ===
+          "permission-denied" ||
+        err?.code ===
+          "firestore/permission-denied" ||
+        String(
+          err?.message ||
+          ""
+        ).includes(
+          "Missing or insufficient permissions"
+        );
+
+
       alert(
-        err?.message ||
-        "Unable to update the counseling request."
+        permissionDenied
+          ? "Firebase blocked this counseling update. Replace and deploy the updated firestore.rules file, then refresh MindTrack and sign in again."
+          : (
+              err?.message ||
+              "Unable to update the counseling request."
+            )
       );
 
     } finally {
