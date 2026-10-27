@@ -317,10 +317,10 @@ export function AuthProvider({ children }) {
                     resolvedAssignedCounselorDepartment =
                         directoryCounselorDepartment;
                 }
-                else {
-                    // Student registration (and older compatible callers) sends the
-                    // department without a counselor ID. Resolve exactly one active
-                    // counselor for that college/office after Firebase Auth signs in.
+                else if (role === "student") {
+                    // Student accounts are automatically assigned from the selected
+                    // college / office. Resolve exactly one active counselor for that
+                    // college after Firebase Authentication creates the account.
                     const directorySnapshot = await getDocs(query(collection(db, "counselorDirectory"), where("department", "==", cleanDepartment)));
                     const activeCounselors = directorySnapshot.docs
                         .map(item => ({
@@ -353,6 +353,9 @@ export function AuthProvider({ children }) {
                         String(assignedCounselor.name).trim();
                     resolvedAssignedCounselorDepartment =
                         String(assignedCounselor.department).trim();
+                }
+                else {
+                    throw new Error("Teaching and Non-teaching registration requires a selected Guidance Counselor.");
                 }
             }
             catch (directoryError) {

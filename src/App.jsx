@@ -55,7 +55,6 @@ import {
 } from "./services/dataService";
 
 import {
-  ASSESSMENT_SCORING_VERSION,
   calculateAssessment,
   dass21Choices,
   dass21Questions,
@@ -903,6 +902,36 @@ function Register() {
     null;
 
 
+  // Student accounts do not choose a counselor manually.
+  // The selected college / office determines the counselor.
+  const studentDepartmentCounselors =
+    form.role === "student" &&
+    form.department
+      ? activeRegistrationCounselors.filter(
+          counselor =>
+            String(
+              counselor.department ||
+              ""
+            )
+              .trim()
+              .toLowerCase() ===
+            String(
+              form.department ||
+              ""
+            )
+              .trim()
+              .toLowerCase()
+        )
+      : [];
+
+
+  const studentAutoAssignedCounselor =
+    studentDepartmentCounselors.length ===
+      1
+      ? studentDepartmentCounselors[0]
+      : null;
+
+
   useEffect(() => {
 
     let active = true;
@@ -1506,6 +1535,110 @@ function Register() {
         return;
       }
 
+
+      if (
+        counselorDirectoryRows.loading
+      ) {
+
+        setError(
+          "Please wait while the Guidance Counselor assignment is loading."
+        );
+
+        return;
+      }
+
+
+      if (
+        counselorDirectoryRows.error
+      ) {
+
+        setError(
+          "Unable to load the Guidance Counselor directory. Please refresh the page or contact the Super Admin."
+        );
+
+        return;
+      }
+
+
+      const matchingStudentCounselors =
+        activeRegistrationCounselors.filter(
+          counselor =>
+            String(
+              counselor.department ||
+              ""
+            )
+              .trim()
+              .toLowerCase() ===
+            registrationDepartment
+              .toLowerCase()
+        );
+
+
+      if (
+        matchingStudentCounselors.length ===
+        0
+      ) {
+
+        setError(
+          `No active Guidance Counselor is assigned to ${registrationDepartment}. Please contact the Super Admin before registering.`
+        );
+
+        return;
+      }
+
+
+      if (
+        matchingStudentCounselors.length >
+        1
+      ) {
+
+        setError(
+          `More than one active Guidance Counselor is configured for ${registrationDepartment}. Please ask the Super Admin to keep only one active counselor for this college before registering.`
+        );
+
+        return;
+      }
+
+
+      const assignedStudentCounselor =
+        matchingStudentCounselors[0];
+
+
+      selectedCounselorId =
+        String(
+          assignedStudentCounselor.counselorId ||
+          assignedStudentCounselor.id ||
+          ""
+        ).trim();
+
+
+      selectedCounselorName =
+        String(
+          assignedStudentCounselor.name ||
+          ""
+        ).trim();
+
+
+      selectedCounselorDepartment =
+        String(
+          assignedStudentCounselor.department ||
+          ""
+        ).trim();
+
+
+      if (
+        !selectedCounselorId ||
+        !selectedCounselorName ||
+        !selectedCounselorDepartment
+      ) {
+
+        setError(
+          "The counselor assigned to the selected college has an incomplete counselor-directory record."
+        );
+
+        return;
+      }
+
     } else if (
       choosesPreferredCounselor
     ) {
@@ -1775,19 +1908,13 @@ function Register() {
             : "",
 
         assignedCounselorId:
-          choosesPreferredCounselor
-            ? selectedCounselorId
-            : "",
+          selectedCounselorId,
 
         assignedCounselorName:
-          choosesPreferredCounselor
-            ? selectedCounselorName
-            : "",
+          selectedCounselorName,
 
         assignedCounselorDepartment:
-          choosesPreferredCounselor
-            ? selectedCounselorDepartment
-            : "",
+          selectedCounselorDepartment,
 
         userNumber:
           form.userNumber,
@@ -2113,6 +2240,53 @@ function Register() {
                     }
 
                   </select>
+
+
+                  {
+                    form.department &&
+                    (
+
+                      <span
+                        className={
+                          `student-auto-counselor-note ${
+                            counselorDirectoryRows.error ||
+                            (
+                              !counselorDirectoryRows.loading &&
+                              studentDepartmentCounselors.length !==
+                                1
+                            )
+                              ? "warning"
+                              : ""
+                          }`
+                        }
+                      >
+                        {
+                          counselorDirectoryRows.loading
+                            ? "Finding the Guidance Counselor assigned to this college..."
+                            : counselorDirectoryRows.error
+                              ? "Unable to load the Guidance Counselor assignment."
+                              : studentAutoAssignedCounselor
+                                ? (
+                                    <>
+                                      Assigned Guidance Counselor:
+                                      {" "}
+                                      <strong>
+                                        {
+                                          studentAutoAssignedCounselor.name
+                                        }
+                                      </strong>
+                                    </>
+                                  )
+                                : studentDepartmentCounselors.length >
+                                    1
+                                  ? "Multiple active counselors are configured for this college. Please contact the Super Admin."
+                                  : "No active Guidance Counselor is configured for this college. Please contact the Super Admin."
+                        }
+                      </span>
+
+                    )
+                  }
+
                 </label>
 
               )}
@@ -5873,7 +6047,7 @@ function Dashboard() {
 
                       <strong>
                         {
-                          assessmentCaseStatusLabel(
+                          assessmentCaseStatusDisplayLabel(
                             latestReviewedMonitoring.status
                           )
                         }
@@ -6810,7 +6984,7 @@ function Assessment() {
         user.program || "",
 
       assessmentVersion:
-        ASSESSMENT_SCORING_VERSION,
+        "WHO5-PHQ9-GAD7-DASS21-SUBSCALES-2026-09",
 
       instrumentTitles: [
         WHO5_TITLE,
@@ -7098,8 +7272,8 @@ function Assessment() {
           Your assessment was submitted successfully.
           Individual WHO-5, PHQ-9, GAD-7, and DASS-21 scores
           are intentionally not displayed on this page.
-          The detailed screening results remain available
-          to authorized Guidance Counselors for review.
+          The detailed item-level screening answers are shown
+          only to the assigned Guidance Counselor for review.
 
         </div>
 
@@ -7231,7 +7405,7 @@ function Assessment() {
               You already have a psychological assessment that is still active.
               A new assessment cannot be started while the current assessment is
               waiting for review, approved, recommended for counseling/follow-up,
-              or otherwise not yet concluded.
+              or otherwise not yet terminated.
 
             </div>
 
@@ -7242,7 +7416,7 @@ function Assessment() {
 
             <div className="notice">
 
-              Your previous assessment has been concluded.
+              Your previous assessment has been terminated.
               MindTrack requires a
               {" "}
               <strong>
@@ -7297,6 +7471,24 @@ function Assessment() {
         subtitle="Complete the screening tools one section at a time. Only one assessment section is shown per page to keep the process clear and easy to follow."
 
       />
+
+
+      <div className="assessment-confidentiality-note assessment-page-shell">
+
+        <Shield size={22} aria-hidden="true" />
+
+        <div>
+          <strong>Confidentiality Assurance</strong>
+
+          <p>
+            Your psychological assessment answers will be kept confidential.
+            Your item-level answers are shown only to your assigned Guidance
+            Counselor for assessment review, mental health monitoring, and
+            counseling support.
+          </p>
+        </div>
+
+      </div>
 
 
       {!ASSESSMENT_COOLDOWN_ENABLED && (
@@ -8447,6 +8639,23 @@ function assessmentCaseStatusLabel(
 
   return status ||
     "For review";
+}
+
+
+function assessmentCaseStatusDisplayLabel(
+  value
+) {
+
+  const status =
+    assessmentCaseStatusLabel(
+      value
+    );
+
+
+  return status ===
+    "Concluded"
+      ? "Terminated"
+      : status;
 }
 
 
@@ -16715,13 +16924,7 @@ function UserProfilesContent({
       />
 
 
-      <div className="readonly-access-notice">
-        <strong>Profile access</strong>
-        <span>
-          User profile information is read-only. The assigned counselor may manage Counselor Notes. Approved transferred users remain accessible to the accepting counselor through transfer access.
-        </span>
-      </div>
-
+  
 
       <section className="panel profile-filter-panel">
 
@@ -17934,7 +18137,7 @@ function UserMonitoringContent({
 
                     <strong>
                       {
-                        assessmentCaseStatusLabel(
+                        assessmentCaseStatusDisplayLabel(
                           latest.status
                         )
                       }
@@ -18135,7 +18338,7 @@ function UserMonitoringContent({
 
                           <span>
                             {
-                              assessmentCaseStatusLabel(
+                              assessmentCaseStatusDisplayLabel(
                                 row.status
                               )
                             }
@@ -18440,7 +18643,7 @@ function History() {
 
                           <td>
                             {
-                              assessmentCaseStatusLabel(
+                              assessmentCaseStatusDisplayLabel(
                                 row.status
                               )
                             }
@@ -20813,7 +21016,7 @@ function Cases() {
 
                             <small>
                               {
-                                assessmentCaseStatusLabel(
+                                assessmentCaseStatusDisplayLabel(
                                   row.status
                                 )
                               }
@@ -21016,14 +21219,6 @@ function Cases() {
                                       .depression
                                       .rawScore
                                   }/21
-                                  {" · "}
-                                  {
-                                    selected.instrumentResults
-                                      .dass21
-                                      .depression
-                                      .severity ||
-                                    "Not available"
-                                  }
                                 </small>
 
                               </div>
@@ -21053,14 +21248,6 @@ function Cases() {
                                       .anxiety
                                       .rawScore
                                   }/21
-                                  {" · "}
-                                  {
-                                    selected.instrumentResults
-                                      .dass21
-                                      .anxiety
-                                      .severity ||
-                                    "Not available"
-                                  }
                                 </small>
 
                               </div>
@@ -21090,14 +21277,6 @@ function Cases() {
                                       .stress
                                       .rawScore
                                   }/21
-                                  {" · "}
-                                  {
-                                    selected.instrumentResults
-                                      .dass21
-                                      .stress
-                                      .severity ||
-                                    "Not available"
-                                  }
                                 </small>
 
                               </div>
@@ -21429,7 +21608,9 @@ function Cases() {
                           key={status}
                           value={status}
                         >
-                          {status}
+                          {assessmentCaseStatusDisplayLabel(
+                            status
+                          )}
                         </option>
 
                       )
@@ -21487,7 +21668,7 @@ function Cases() {
                       ? (
                         <>
                           <p>
-                            This assessment is concluded. MindTrack requires
+                            This assessment is terminated. MindTrack requires
                             the user to complete the full 14-day reassessment
                             period before a new psychological assessment can be
                             submitted.
@@ -21511,7 +21692,7 @@ function Cases() {
                         >
                           The 14-day cooldown is temporarily disabled for
                           monitoring-feature testing. After this assessment is
-                          concluded, the user may immediately submit another
+                          terminated, the user may immediately submit another
                           assessment. Restore the cooldown before the final
                           production deployment.
                         </p>
@@ -27299,6 +27480,13 @@ function Schedule() {
 
                 <button
                   type="button"
+                  className={
+                    `schedule-filter-pill ${
+                      selected
+                        ? "active"
+                        : ""
+                    }`
+                  }
                   key={
                     option
                   }
@@ -28080,6 +28268,22 @@ function Accounts() {
   );
 
 
+  const [
+    selectedCollegeFilter,
+    setSelectedCollegeFilter
+  ] = useState(
+    "All colleges / offices"
+  );
+
+
+  const [
+    selectedProgramFilter,
+    setSelectedProgramFilter
+  ] = useState(
+    "All programs"
+  );
+
+
   function accountRoleFilterLabel(
     role
   ) {
@@ -28150,16 +28354,94 @@ function Accounts() {
   }
 
 
+  const accountCollegeOptions =
+    Array.from(
+      new Set(
+        users
+          .map(
+            account =>
+              String(
+                account.department ||
+                ""
+              ).trim()
+          )
+          .filter(Boolean)
+      )
+    ).sort(
+      (a, b) =>
+        a.localeCompare(b)
+    );
+
+
+  const accountProgramOptions =
+    Array.from(
+      new Set(
+        users
+          .filter(
+            account =>
+              selectedCollegeFilter ===
+                "All colleges / offices" ||
+              String(
+                account.department ||
+                ""
+              ).trim() ===
+                selectedCollegeFilter
+          )
+          .map(
+            account =>
+              String(
+                account.program ||
+                ""
+              ).trim()
+          )
+          .filter(Boolean)
+      )
+    ).sort(
+      (a, b) =>
+        a.localeCompare(b)
+    );
+
+
   const visibleAccounts =
     users
       .filter(
-        account =>
-          selectedRoleFilter ===
-            "All Roles" ||
-          accountRoleFilterLabel(
-            account.role
-          ) ===
-            selectedRoleFilter
+        account => {
+
+          const matchesRole =
+            selectedRoleFilter ===
+              "All Roles" ||
+            accountRoleFilterLabel(
+              account.role
+            ) ===
+              selectedRoleFilter;
+
+
+          const matchesCollege =
+            selectedCollegeFilter ===
+              "All colleges / offices" ||
+            String(
+              account.department ||
+              ""
+            ).trim() ===
+              selectedCollegeFilter;
+
+
+          const matchesProgram =
+            selectedProgramFilter ===
+              "All programs" ||
+            String(
+              account.program ||
+              ""
+            ).trim() ===
+              selectedProgramFilter;
+
+
+          return (
+            matchesRole &&
+            matchesCollege &&
+            matchesProgram
+          );
+        }
       )
       .sort(
         (a, b) =>
@@ -28235,7 +28517,7 @@ function Accounts() {
             </h2>
 
             <p>
-              Filter the account list by user role.
+              Filter the account list by role, college / office, and program.
             </p>
 
           </div>
@@ -28248,7 +28530,7 @@ function Accounts() {
         </div>
 
 
-        <div className="account-role-filter-row">
+        <div className="account-role-filter-row account-management-filter-grid">
 
           <label>
             Role
@@ -28267,6 +28549,70 @@ function Accounts() {
               <option>Teaching</option>
               <option>Non-teaching</option>
               <option>Counselor</option>
+            </select>
+          </label>
+
+
+          <label>
+            College / Office
+
+            <select
+              value={selectedCollegeFilter}
+              onChange={
+                event => {
+                  setSelectedCollegeFilter(
+                    event.target.value
+                  );
+                  setSelectedProgramFilter(
+                    "All programs"
+                  );
+                }
+              }
+            >
+              <option>
+                All colleges / offices
+              </option>
+
+              {accountCollegeOptions.map(
+                college => (
+                  <option
+                    key={college}
+                    value={college}
+                  >
+                    {college}
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+
+          <label>
+            Program
+
+            <select
+              value={selectedProgramFilter}
+              onChange={
+                event =>
+                  setSelectedProgramFilter(
+                    event.target.value
+                  )
+              }
+            >
+              <option>
+                All programs
+              </option>
+
+              {accountProgramOptions.map(
+                program => (
+                  <option
+                    key={program}
+                    value={program}
+                  >
+                    {program}
+                  </option>
+                )
+              )}
             </select>
           </label>
 
@@ -28300,6 +28646,10 @@ function Accounts() {
 
                 <th>
                   Department
+                </th>
+
+                <th>
+                  Program
                 </th>
 
               </tr>
@@ -28340,7 +28690,15 @@ function Accounts() {
 
                     <td>
                       {
-                        account.department
+                        account.department ||
+                        "—"
+                      }
+                    </td>
+
+                    <td>
+                      {
+                        account.program ||
+                        "—"
                       }
                     </td>
 
@@ -30513,7 +30871,7 @@ function AssessmentAccountTable({
 
                 <td>
                   {
-                    assessmentCaseStatusLabel(
+                    assessmentCaseStatusDisplayLabel(
                       row.status
                     )
                   }

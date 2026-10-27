@@ -736,14 +736,24 @@ textarea {
 ===================================================== */
 
 .priority {
-  display: inline-block;
-  padding: 5px 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  min-height: 40px;
+  padding: 5px 12px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  vertical-align: middle;
+  white-space: normal;
 }
 
 .priority.big {
+  min-width: 0;
+  min-height: 0;
   font-size: 18px;
   padding: 9px 18px;
   margin: 8px;
@@ -767,6 +777,56 @@ textarea {
 .priority.critical {
   background: #971a1a;
   color: #ffffff;
+}
+
+
+/* =====================================================
+   STANDARDIZED ASSESSMENT SEVERITY BADGES
+   Matches the current MindTrack severity labels.
+===================================================== */
+
+.priority.minimal-none,
+.priority.minimal {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.priority.mild {
+  background: #ecfccb;
+  color: #4d7c0f;
+  border: 1px solid #bef264;
+}
+
+.priority.moderate {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.priority.moderately-severe {
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+}
+
+.priority.severe {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.priority.extremely-severe {
+  background: #991b1b;
+  color: #ffffff;
+  border: 1px solid #7f1d1d;
+}
+
+.priority.no-assessment,
+.priority.no-severity {
+  background: #e2e8f0;
+  color: #475569;
+  border: 1px solid #cbd5e1;
 }
 
 
@@ -6150,6 +6210,34 @@ th {
   border-left-color: #64748b;
 }
 
+
+/* Standardized severity outline colors for User Profile assessment history. */
+.assessment-profile-history-card.assessment-priority-minimal-none,
+.assessment-profile-history-card.assessment-priority-minimal {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-profile-history-card.assessment-priority-mild {
+  border-color: #bef264;
+  border-left-color: #65a30d;
+}
+
+.assessment-profile-history-card.assessment-priority-moderately-severe {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-profile-history-card.assessment-priority-severe {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-profile-history-card.assessment-priority-extremely-severe {
+  border-color: #ef4444;
+  border-left-color: #991b1b;
+}
+
 .profile-history-card-top {
   align-items: center;
   padding-bottom: 10px;
@@ -7329,6 +7417,52 @@ th {
   border-left-color: #64748b;
 }
 
+
+/* Standardized severity outline colors system-wide. */
+.assessment-history-item.assessment-priority-minimal-none,
+.assessment-history-item.assessment-priority-minimal,
+.monitoring-history-item.assessment-priority-minimal-none,
+.monitoring-history-item.assessment-priority-minimal,
+.monitoring-summary-panel.assessment-priority-minimal-none,
+.monitoring-summary-panel.assessment-priority-minimal,
+.home-monitoring-summary-panel.assessment-priority-minimal-none,
+.home-monitoring-summary-panel.assessment-priority-minimal {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-history-item.assessment-priority-mild,
+.monitoring-history-item.assessment-priority-mild,
+.monitoring-summary-panel.assessment-priority-mild,
+.home-monitoring-summary-panel.assessment-priority-mild {
+  border-color: #bef264;
+  border-left-color: #65a30d;
+}
+
+.assessment-history-item.assessment-priority-moderately-severe,
+.monitoring-history-item.assessment-priority-moderately-severe,
+.monitoring-summary-panel.assessment-priority-moderately-severe,
+.home-monitoring-summary-panel.assessment-priority-moderately-severe {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-history-item.assessment-priority-severe,
+.monitoring-history-item.assessment-priority-severe,
+.monitoring-summary-panel.assessment-priority-severe,
+.home-monitoring-summary-panel.assessment-priority-severe {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-history-item.assessment-priority-extremely-severe,
+.monitoring-history-item.assessment-priority-extremely-severe,
+.monitoring-summary-panel.assessment-priority-extremely-severe,
+.home-monitoring-summary-panel.assessment-priority-extremely-severe {
+  border-color: #ef4444;
+  border-left-color: #991b1b;
+}
+
 .monitoring-history-item[class*="assessment-priority-"]:hover,
 .assessment-history-item[class*="assessment-priority-"]:hover {
   transform: translateY(-1px);
@@ -7346,11 +7480,373 @@ th {
 
 
 /* =====================================================
-   MINDTRACK FULL-COLOR SUMMARY CARDS
-   Entire cards use soft, readable colors that match the
-   existing MindTrack navy/blue system palette.
+   REFERRAL LIST + FULL-SCREEN REFERRAL REVIEW
 ===================================================== */
 
+.referral-list-table-wrap {
+  margin-top: 18px;
+}
+
+.referral-list-table td,
+.referral-list-table th {
+  vertical-align: middle;
+}
+
+.referral-list-table td:first-child {
+  min-width: 180px;
+}
+
+.referral-list-table td:nth-child(3) {
+  min-width: 220px;
+}
+
+.referral-list-table td:nth-child(4) {
+  min-width: 150px;
+}
+
+.referral-review-modal {
+  width: min(1320px, calc(100vw - 36px));
+}
+
+.referral-review-modal-body {
+  grid-template-columns:
+    minmax(320px, 0.82fr)
+    minmax(0, 1.18fr);
+}
+
+.referral-review-summary-card,
+.referral-review-management-card {
+  min-width: 0;
+}
+
+.referral-review-summary-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.referral-review-helper-text {
+  display: block;
+  margin: 6px 0;
+}
+
+.referral-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+
+/* =====================================================
+   FULL-SCREEN COUNSELING SESSION HISTORY
+===================================================== */
+
+.counseling-session-history-modal {
+  width: min(1240px, calc(100vw - 36px));
+}
+
+.counseling-session-history-modal-body {
+  grid-template-columns:
+    minmax(300px, 0.72fr)
+    minmax(0, 1.28fr);
+}
+
+.counseling-session-fullscreen-grid {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.counseling-session-fullscreen-grid .profile-session-note-field {
+  min-height: 190px;
+}
+
+@media (max-width: 900px) {
+  .referral-review-modal-body,
+  .counseling-session-history-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .referral-review-summary-grid,
+  .counseling-session-fullscreen-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   FINAL REQUESTED UI FIXES - OCT 27, 2026
+===================================================== */
+
+/* Psychological Assessment confidentiality assurance */
+.assessment-confidentiality-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 15px 17px;
+  border: 1px solid #bfdbfe;
+  border-left: 5px solid #173f8f;
+  border-radius: 14px;
+  background: #f0f7ff;
+  color: #334155;
+  box-sizing: border-box;
+}
+
+.assessment-confidentiality-note > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #173f8f;
+}
+
+.assessment-confidentiality-note strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #173f8f;
+  font-size: 14px;
+}
+
+.assessment-confidentiality-note p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Keep Counselor Review aligned with the full-width assessment cards. */
+.assessment-case-update-card {
+  width: 100%;
+  min-width: 0;
+  grid-column: 1 / -1;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.assessment-case-update-card label {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.assessment-case-update-card select,
+.assessment-case-update-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Account Management: Role + College / Office + Program */
+.account-management-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+
+.account-management-filter-grid label,
+.account-management-filter-grid select {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Referral review modal: consistent card and button spacing. */
+.referral-review-modal-body {
+  gap: 20px;
+  align-items: start;
+}
+
+.superadmin-referral-summary-card {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.referral-review-summary-card,
+.referral-review-management-card {
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.referral-review-summary-grid {
+  gap: 14px;
+}
+
+.referral-review-summary-grid .review-request-detail-item {
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.referral-review-summary-grid .review-request-detail-item.full {
+  min-height: auto;
+}
+
+.referral-review-management-card > label {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 16px;
+}
+
+.referral-review-management-card > label textarea,
+.referral-review-management-card > label select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.referral-private-notes {
+  margin: 18px 0 0;
+}
+
+.referral-private-notes > .secondary-button {
+  margin-top: 4px;
+}
+
+.referral-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e5eaf1;
+}
+
+.referral-review-actions .primary-button,
+.referral-review-actions .secondary-button {
+  min-width: 150px;
+}
+
+@media (max-width: 900px) {
+  .account-management-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .superadmin-referral-summary-card {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .assessment-confidentiality-note {
+    padding: 13px 14px;
+  }
+
+  .referral-review-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .referral-review-actions .primary-button,
+  .referral-review-actions .secondary-button {
+    width: 100%;
+  }
+}
+
+/* Reports: remove screen-only height/overflow clipping so every analytics
+   section can continue onto additional printed pages. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  body,
+  #root,
+  .app-shell,
+  .workspace,
+  .content,
+  .analytics-page {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+  }
+
+  .app-shell {
+    display: block !important;
+  }
+
+  .workspace {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    scrollbar-gutter: auto !important;
+  }
+
+  .content {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .analytics-page {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .sidebar,
+  .topbar,
+  .analytics-print-actions,
+  .no-print {
+    display: none !important;
+  }
+
+  .analytics-print-header {
+    display: block !important;
+  }
+
+  .analytics-section-heading {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+    margin-top: 16px !important;
+  }
+
+  .analytics-chart-panel,
+  .analytics-scope-card,
+  .stat-card,
+  .feedback-analytics-panel {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+
+  .analytics-chart-panel {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .analytics-chart-list,
+  .analytics-chart-category,
+  .analytics-chart-series,
+  .analytics-chart-row {
+    overflow: visible !important;
+  }
+
+  .analytics-bar-fill,
+  .analytics-legend i,
+  .priority,
+  .status,
+  .stat-card > div {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ======================================================
+   RESTORED FULL-COLOR SUMMARY CARDS - 2026-10-27
+   ====================================================== */
+
+/* Base animation/behavior for dashboard/report summary cards. */
 .stat-card,
 .schedule-summary-card {
   position: relative;
@@ -7368,8 +7864,7 @@ th {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
-/* NORMAL / OPERATIONAL CARDS */
-
+/* General totals */
 .stat-card-primary,
 .schedule-summary-primary {
   background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
@@ -7401,26 +7896,25 @@ th {
   color: #0369a1;
 }
 
-/* PRIORITY CARDS */
-
-.stat-card-critical {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border: 1px solid #fca5a5;
+/* Standardized monitoring severity cards. */
+.stat-card-low {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border: 1px solid #86efac;
 }
 
-.stat-card-critical > div {
+.stat-card-low > div {
   background: rgba(255, 255, 255, 0.62);
-  color: #b91c1c;
+  color: #15803d;
 }
 
-.stat-card-high {
-  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
-  border: 1px solid #fdba74;
+.stat-card-mild {
+  background: linear-gradient(135deg, #ecfccb 0%, #d9f99d 100%);
+  border: 1px solid #bef264;
 }
 
-.stat-card-high > div {
+.stat-card-mild > div {
   background: rgba(255, 255, 255, 0.62);
-  color: #c2410c;
+  color: #4d7c0f;
 }
 
 .stat-card-moderate,
@@ -7432,208 +7926,6 @@ th {
 .stat-card-moderate > div {
   background: rgba(255, 255, 255, 0.62);
   color: #a16207;
-}
-
-.stat-card-low,
-.schedule-summary-low {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  border: 1px solid #86efac;
-}
-
-.stat-card-low > div {
-  background: rgba(255, 255, 255, 0.62);
-  color: #15803d;
-}
-
-/* SCHEDULE-SPECIFIC CARDS */
-
-.schedule-summary-terminated {
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  border: 1px solid #94a3b8;
-}
-
-.schedule-summary-transfer {
-  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-  border: 1px solid #d8b4fe;
-}
-
-.schedule-summary-card {
-  border-radius: 14px;
-  padding: 14px 16px;
-  min-width: 0;
-}
-
-.schedule-summary-card > div {
-  font-size: 0.82rem;
-  color: #475569;
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-
-.schedule-summary-card > strong {
-  font-size: 1.35rem;
-  color: #172033;
-}
-
-/* Keep all text readable on the colored backgrounds. */
-.stat-card span,
-.stat-card strong {
-  color: #172033;
-}
-
-.stat-card strong {
-  font-weight: 800;
-}
-
-
-/* =====================================================
-   SUPER ADMIN REFERRAL INFORMATION - EQUAL CARD SIZES
-===================================================== */
-
-.superadmin-referral-summary-card {
-  grid-column: 1 / -1;
-  width: 100%;
-}
-
-.superadmin-referral-summary-card .referral-review-summary-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: minmax(96px, auto);
-  align-items: stretch;
-}
-
-.superadmin-referral-summary-card .review-request-detail-item {
-  min-width: 0;
-  min-height: 96px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.superadmin-referral-summary-card .review-request-detail-item.full {
-  grid-column: auto;
-}
-
-.superadmin-referral-summary-card .review-request-detail-item strong {
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 980px) {
-  .superadmin-referral-summary-card .referral-review-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .superadmin-referral-summary-card .referral-review-summary-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-
-/* =====================================================
-   STANDARDIZED ASSESSMENT SEVERITY LABELS
-   Labels follow the uploaded MindTrack scoring guide.
-===================================================== */
-
-.priority.minimal-none {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.priority.mild {
-  background: #ecfccb;
-  color: #3f6212;
-}
-
-.priority.moderate {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.priority.moderately-severe {
-  background: #ffedd5;
-  color: #9a3412;
-}
-
-.priority.severe {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.priority.extremely-severe {
-  background: #991b1b;
-  color: #ffffff;
-}
-
-
-/* Assessment-history outlines use the same severity language. */
-
-.assessment-profile-history-card.assessment-priority-minimal-none,
-.assessment-history-item.assessment-priority-minimal-none,
-.monitoring-history-item.assessment-priority-minimal-none,
-.monitoring-summary-panel.assessment-priority-minimal-none,
-.home-monitoring-summary-panel.assessment-priority-minimal-none {
-  border-color: #86efac;
-  border-left-color: #16a34a;
-}
-
-.assessment-profile-history-card.assessment-priority-mild,
-.assessment-history-item.assessment-priority-mild,
-.monitoring-history-item.assessment-priority-mild,
-.monitoring-summary-panel.assessment-priority-mild,
-.home-monitoring-summary-panel.assessment-priority-mild {
-  border-color: #bef264;
-  border-left-color: #65a30d;
-}
-
-.assessment-profile-history-card.assessment-priority-moderate,
-.assessment-history-item.assessment-priority-moderate,
-.monitoring-history-item.assessment-priority-moderate,
-.monitoring-summary-panel.assessment-priority-moderate,
-.home-monitoring-summary-panel.assessment-priority-moderate {
-  border-color: #fde68a;
-  border-left-color: #d97706;
-}
-
-.assessment-profile-history-card.assessment-priority-moderately-severe,
-.assessment-history-item.assessment-priority-moderately-severe,
-.monitoring-history-item.assessment-priority-moderately-severe,
-.monitoring-summary-panel.assessment-priority-moderately-severe,
-.home-monitoring-summary-panel.assessment-priority-moderately-severe {
-  border-color: #fdba74;
-  border-left-color: #ea580c;
-}
-
-.assessment-profile-history-card.assessment-priority-severe,
-.assessment-history-item.assessment-priority-severe,
-.monitoring-history-item.assessment-priority-severe,
-.monitoring-summary-panel.assessment-priority-severe,
-.home-monitoring-summary-panel.assessment-priority-severe {
-  border-color: #fca5a5;
-  border-left-color: #dc2626;
-}
-
-.assessment-profile-history-card.assessment-priority-extremely-severe,
-.assessment-history-item.assessment-priority-extremely-severe,
-.monitoring-history-item.assessment-priority-extremely-severe,
-.monitoring-summary-panel.assessment-priority-extremely-severe,
-.home-monitoring-summary-panel.assessment-priority-extremely-severe {
-  border-color: #991b1b;
-  border-left-color: #7f1d1d;
-}
-
-
-/* Full-color dashboard/report cards for standardized severities. */
-
-.stat-card-mild {
-  background: linear-gradient(135deg, #ecfccb 0%, #d9f99d 100%);
-  border: 1px solid #bef264;
-}
-
-.stat-card-mild > div {
-  background: rgba(255, 255, 255, 0.62);
-  color: #4d7c0f;
 }
 
 .stat-card-moderately-severe {
@@ -7662,6 +7954,142 @@ th {
 }
 
 .stat-card-extreme > div {
-  background: rgba(255, 255, 255, 0.64);
-  color: #7f1d1d;
+  background: rgba(255, 255, 255, 0.66);
+  color: #991b1b;
+}
+
+/* Backward-compatible old tone names if any older component still uses them. */
+.stat-card-critical {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  border: 1px solid #ef4444;
+}
+
+.stat-card-critical > div {
+  background: rgba(255, 255, 255, 0.66);
+  color: #991b1b;
+}
+
+.stat-card-high {
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+  border: 1px solid #fdba74;
+}
+
+.stat-card-high > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #c2410c;
+}
+
+/* Schedule summary colors retained. */
+.schedule-summary-low {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border: 1px solid #86efac;
+}
+
+.schedule-summary-terminated {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
+}
+
+.schedule-summary-transfer {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  border: 1px solid #d8b4fe;
+}
+
+/* Keep text readable on all colored backgrounds. */
+.stat-card span,
+.stat-card strong {
+  color: #172033;
+}
+
+.stat-card strong {
+  font-weight: 800;
+}
+
+/* Print should stay clean and economical even though screen cards are colored. */
+@media print {
+  .stat-card,
+  .schedule-summary-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .stat-card > div {
+    background: #f1f5f9 !important;
+    color: #172033 !important;
+  }
+}
+
+
+
+/* =====================================================
+   STUDENT AUTO COUNSELOR ASSIGNMENT
+   ===================================================== */
+
+.student-auto-counselor-note {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.student-auto-counselor-note strong {
+  color: #173f8f;
+  font-weight: 800;
+}
+
+.student-auto-counselor-note.warning {
+  border-color: #f5c56b;
+  background: #fff8e8;
+  color: #7a4b00;
+}
+
+
+/* =====================================================
+   COUNSELOR SCHEDULE OVAL SUMMARY / FILTER PILLS
+   ===================================================== */
+
+.schedule-summary-card {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  border-radius: 999px;
+}
+
+.schedule-summary-card > div {
+  margin-bottom: 0 !important;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.schedule-summary-card > strong {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.schedule-filter-pill {
+  min-height: 40px;
+  border-radius: 999px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .schedule-summary-card {
+    min-height: 50px;
+    padding: 9px 14px;
+  }
 }

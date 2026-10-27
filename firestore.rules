@@ -77,10 +77,20 @@ service cloud.firestore {
 
     function isAssignedCounselor(userId) {
       return isCounselor()
-        && counselingProfileExists(userId)
-        && get(
-          /databases/$(database)/documents/counselingProfiles/$(userId)
-        ).data.assignedCounselorId == request.auth.uid;
+        && (
+          (
+            counselingProfileExists(userId)
+            && get(
+              /databases/$(database)/documents/counselingProfiles/$(userId)
+            ).data.assignedCounselorId == request.auth.uid
+          )
+          ||
+          (
+            !counselingProfileExists(userId)
+            && "assignedCounselorId" in targetUser(userId)
+            && targetUser(userId).assignedCounselorId == request.auth.uid
+          )
+        );
     }
 
     function wasPreviousCounselor(userId) {
@@ -103,15 +113,19 @@ service cloud.firestore {
     }
 
     function isValidPriority(priority) {
-      // Standardized severity labels used by the current
-      // psychological-assessment scoring engine. Historical
-      // records are migrated with the Admin SDK script.
+      // Current standardized severity labels from the MindTrack
+      // scoring standard. Legacy labels are retained temporarily
+      // so existing records remain compatible while the Admin SDK
+      // migration updates historical assessments.
       return priority == "Minimal / none"
         || priority == "Mild"
         || priority == "Moderate"
         || priority == "Moderately severe"
         || priority == "Severe"
-        || priority == "Extremely Severe";
+        || priority == "Extremely Severe"
+        || priority == "Low"
+        || priority == "High"
+        || priority == "Critical";
     }
 
     function isValidFeedbackCategory(category) {
@@ -636,12 +650,52 @@ service cloud.firestore {
     // COUNSELING PROFILES / CASE OWNERSHIP
     // =====================================================
     match /counselingProfiles/{userId} {
-      allow read: if isSuperAdmin()
+
+      // Direct profile opens must also work before counselingProfiles/{userId}
+      // exists. This is needed for newly registered students who already have
+      // a college-based assigned counselor in users/{userId}.
+      allow get: if isSuperAdmin()
         || (
           isCounselor() && (
-            // IMPORTANT: use resource.data directly so Firestore can
-            // authorize collection queries such as:
-            // where("assignedCounselorId", "==", request.auth.uid)
+            targetUser(userId).department == profile().department
+            || (
+              "assignedCounselorId" in targetUser(userId)
+              && targetUser(userId).assignedCounselorId == request.auth.uid
+            )
+            || (
+              "assignedCounselorId" in resource.data
+              && resource.data.assignedCounselorId == request.auth.uid
+            )
+            || (
+              "previousCounselorIds" in resource.data
+              && request.auth.uid in resource.data.previousCounselorIds
+            )
+            || (
+              "profileTransferStatus" in resource.data
+              && resource.data.profileTransferStatus == "Pending approval"
+              && "profileTransferRequestId" in resource.data
+              && resource.data.profileTransferRequestId is string
+              && exists(
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+              )
+              && get(
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+              ).data.status == "Pending approval"
+              && get(
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+              ).data.targetCounselorId == request.auth.uid
+              && get(
+                /databases/$(database)/documents/transferRequests/$(resource.data.profileTransferRequestId)
+              ).data.ownerId == userId
+            )
+          )
+        );
+
+      // Collection queries still use resource.data fields so Firestore can
+      // prove the query is limited to records the counselor may read.
+      allow list: if isSuperAdmin()
+        || (
+          isCounselor() && (
             (
               "assignedCounselorId" in resource.data
               && resource.data.assignedCounselorId == request.auth.uid

@@ -1146,15 +1146,20 @@ export default function UserProfileFullScreen({
       profile.department;
 
 
+  // counselingProfiles is authoritative once a case/transfer record exists.
+  // Before that, newly registered students may already have an automatic
+  // college-based counselor assignment stored on their public user profile.
   const assignedCounselorId =
     counselingProfile
       ?.assignedCounselorId ||
+    profile.assignedCounselorId ||
     "";
 
 
   const assignedCounselorDepartment =
     counselingProfile
       ?.assignedCounselorDepartment ||
+    profile.assignedCounselorDepartment ||
     "";
 
 
@@ -1199,7 +1204,8 @@ export default function UserProfileFullScreen({
   const assignedCounselorLabel =
     counselingProfile
       ?.assignedCounselorName
-
+      ||
+    profile.assignedCounselorName
       || (
         assignedCounselorId
           ? "Assigned counselor"
