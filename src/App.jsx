@@ -17604,12 +17604,11 @@ function UserNotificationsContent({
           "counselor"
         ) {
 
-          return [
-            "transfer_request",
-            "transfer_status"
-          ].includes(
-            row.notificationType
-          );
+          // Notifications are already queried by ownerId, so every row
+          // returned here is specifically addressed to this counselor.
+          // Keeping all counselor-owned notification types visible makes
+          // the module compatible with new counselor notifications later.
+          return true;
         }
 
 
@@ -17837,7 +17836,7 @@ function UserNotificationsContent({
 
         subtitle={
           user.role === "counselor"
-            ? "Transfer requests and transfer status updates for Guidance Counselors."
+            ? "Updates, counselor transfer requests, and other MindTrack notifications addressed to your Guidance Counselor account."
             : "Counselor updates about your psychological assessment cases, counseling requests, and counselor transfers."
         }
 
@@ -19732,12 +19731,6 @@ function Cases() {
   ] = useState(false);
 
 
-  const [
-    deletingAssessmentId,
-    setDeletingAssessmentId
-  ] = useState("");
-
-
   const assessmentStatuses = [
     "For review",
     "Counseling is recommended",
@@ -19883,289 +19876,6 @@ function Cases() {
 
     [selected]
   );
-
-
-  async function deleteSelectedAssessmentRecord() {
-
-    if (
-      !isSuperAdmin ||
-      !selected?.id ||
-      !selected?.ownerId
-    ) {
-
-      return;
-    }
-
-
-    if (
-      !superAdminDeleteConfirmed(
-        "psychological assessment",
-        selected.ownerName
-      )
-    ) {
-
-      return;
-    }
-
-
-    try {
-
-      setDeletingAssessmentId(
-        selected.id
-      );
-
-
-      const ownerAssessmentsSnapshot =
-        await getDocs(
-          query(
-            collection(
-              db,
-              "assessments"
-            ),
-            where(
-              "ownerId",
-              "==",
-              selected.ownerId
-            )
-          )
-        );
-
-
-      const remainingAssessments =
-        ownerAssessmentsSnapshot.docs
-          .filter(
-            item =>
-              item.id !==
-              selected.id
-          )
-          .map(
-            item => ({
-              id:
-                item.id,
-
-              ...item.data()
-            })
-          )
-          .sort(
-            newestRecordFirst
-          );
-
-
-      const activeAssessment =
-        remainingAssessments.find(
-          row =>
-            row.status !==
-            "Concluded"
-        ) ||
-        null;
-
-
-      const nextAssessment =
-        activeAssessment ||
-        remainingAssessments[0] ||
-        null;
-
-
-      const notificationSnapshot =
-        await getDocs(
-          query(
-            collection(
-              db,
-              "notifications"
-            ),
-            where(
-              "sourceId",
-              "==",
-              selected.id
-            )
-          )
-        );
-
-
-      const currentLockSnapshot =
-        await getDoc(
-          doc(
-            db,
-            "assessmentLocks",
-            selected.ownerId
-          )
-        );
-
-
-      const lockRef =
-        doc(
-          db,
-          "assessmentLocks",
-          selected.ownerId
-        );
-
-
-      const batch =
-        writeBatch(
-          db
-        );
-
-
-      batch.delete(
-        doc(
-          db,
-          "assessments",
-          selected.id
-        )
-      );
-
-
-      batch.delete(
-        doc(
-          db,
-          "assessmentUserViews",
-          selected.id
-        )
-      );
-
-
-      notificationSnapshot.docs.forEach(
-        item =>
-          batch.delete(
-            item.ref
-          )
-      );
-
-
-      if (
-        nextAssessment
-      ) {
-
-        const currentLock =
-          currentLockSnapshot.exists()
-            ? currentLockSnapshot.data()
-            : {};
-
-
-        const nextStatus =
-          nextAssessment.status ||
-          "For review";
-
-
-        const nextConcludedAt =
-          nextStatus ===
-            "Concluded"
-
-            ? (
-                (
-                  currentLock.latestAssessmentId ===
-                    nextAssessment.id &&
-                  currentLock.concludedAt
-                )
-                  ? currentLock.concludedAt
-                  : (
-                      nextAssessment.concludedAt ||
-                      nextAssessment.updatedAt ||
-                      nextAssessment.createdAt ||
-                      serverTimestamp()
-                    )
-              )
-
-            : null;
-
-
-        batch.set(
-          lockRef,
-          {
-            ownerId:
-              selected.ownerId,
-
-            department:
-              nextAssessment.department ||
-              selected.department ||
-              "",
-
-            latestAssessmentId:
-              nextAssessment.id,
-
-            status:
-              nextStatus,
-
-            concludedAt:
-              nextConcludedAt,
-
-            earlyReassessmentAllowed:
-              false,
-
-            updatedAt:
-              serverTimestamp()
-          },
-          {
-            merge:
-              false
-          }
-        );
-
-      } else {
-
-        batch.set(
-          lockRef,
-          {
-            ownerId:
-              selected.ownerId,
-
-            department:
-              selected.department ||
-              "",
-
-            latestAssessmentId:
-              "",
-
-            status:
-              "Eligible",
-
-            concludedAt:
-              null,
-
-            earlyReassessmentAllowed:
-              false,
-
-            updatedAt:
-              serverTimestamp()
-          },
-          {
-            merge:
-              false
-          }
-        );
-      }
-
-
-      await batch.commit();
-
-
-      closeAssessmentReview();
-
-
-      alert(
-        "Assessment cleanup completed. The assessment, related notifications, and assessment lock were repaired."
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Unable to permanently clean up the assessment:",
-        error
-      );
-
-
-      alert(
-        error?.message ||
-        "Unable to delete the assessment safely."
-      );
-
-    } finally {
-
-      setDeletingAssessmentId(
-        ""
-      );
-    }
-  }
 
 
   async function saveAssessmentUpdate() {
@@ -20987,7 +20697,7 @@ function Cases() {
               ? "All Psychological Assessment Cases"
               : "Psychological Assessment Cases"
           }
-          subtitle="One account is shown per user. Open Review to see the user's complete assessment history and manage individual assessment records."
+          subtitle="One account is shown per user. Open Review to see the user's complete assessment history and review individual assessment records."
         />
 
         <section className="panel">
@@ -21335,31 +21045,6 @@ function Cases() {
 
 
               <div className="review-request-modal-header-actions">
-
-                {isSuperAdmin && (
-
-                  <button
-                    type="button"
-                    className="danger-button review-request-header-delete-button"
-                    onClick={
-                      deleteSelectedAssessmentRecord
-                    }
-                    disabled={
-                      deletingAssessmentId ===
-                      selected.id
-                    }
-                    title="Delete this psychological assessment record"
-                  >
-                    {
-                      deletingAssessmentId ===
-                        selected.id
-                        ? "Deleting..."
-                        : "Delete assessment"
-                    }
-                  </button>
-
-                )}
-
 
                 <button
 
@@ -22142,49 +21827,6 @@ function Cases() {
                 )}
 
 
-                {isSuperAdmin && (
-
-                  <div className="superadmin-cleanup-zone">
-
-                    <div>
-
-                      <strong>
-                        Super Admin test-data cleanup
-                      </strong>
-
-                      <p>
-                        Permanently delete only an erroneous or test assessment.
-                        MindTrack will also repair the user's assessment lock.
-                      </p>
-
-                    </div>
-
-
-                    <button
-                      type="button"
-                      className="danger-button superadmin-cleanup-delete-button"
-                      title="Delete assessment"
-                      disabled={
-                        deletingAssessmentId ===
-                        selected.id
-                      }
-                      onClick={
-                        deleteSelectedAssessmentRecord
-                      }
-                    >
-                      {
-                        deletingAssessmentId ===
-                          selected.id
-                          ? "Deleting assessment..."
-                          : "Delete assessment"
-                      }
-                    </button>
-
-                  </div>
-
-                )}
-
-
                 <div className="review-request-modal-actions">
 
                   <button
@@ -22839,12 +22481,6 @@ function CounselingRequestsManagement() {
     saving,
     setSaving
   ] = useState(false);
-
-
-  const [
-    deletingCounselingId,
-    setDeletingCounselingId
-  ] = useState("");
 
 
   const [
@@ -23634,516 +23270,6 @@ function CounselingRequestsManagement() {
     } finally {
 
       setDeletingTransferId(
-        ""
-      );
-    }
-  }
-
-
-  async function deleteSelectedCounselingRequest() {
-
-    if (
-      !isSuperAdmin ||
-      !selected?.id ||
-      !selected?.ownerId
-    ) {
-
-      return;
-    }
-
-
-    const linkedTransfers =
-      transferRequestsForConsultation(
-        selected.id
-      );
-
-
-    const approvedTransfer =
-      linkedTransfers.find(
-        row =>
-          row.status ===
-          "Approved"
-      );
-
-
-    if (
-      approvedTransfer
-    ) {
-
-      alert(
-        "This counseling request has an approved counselor transfer. Permanent deletion is blocked because removing it would break counselor assignment/history. Keep the approved record for documentation, or clean the whole test account with an Admin SDK cleanup script."
-      );
-
-      return;
-    }
-
-
-    if (
-      !superAdminDeleteConfirmed(
-        "counseling request",
-        selected.ownerName
-      )
-    ) {
-
-      return;
-    }
-
-
-    try {
-
-      setDeletingCounselingId(
-        selected.id
-      );
-
-
-      const counselingProfileRef =
-        doc(
-          db,
-          "counselingProfiles",
-          selected.ownerId
-        );
-
-
-      const [
-        ownerConsultationsSnapshot,
-        slotSnapshot,
-        consultationNotificationsSnapshot,
-        counselingProfileSnapshot
-      ] =
-        await Promise.all([
-          getDocs(
-            query(
-              collection(
-                db,
-                "consultations"
-              ),
-              where(
-                "ownerId",
-                "==",
-                selected.ownerId
-              )
-            )
-          ),
-
-          getDocs(
-            query(
-              collection(
-                db,
-                "counselingScheduleSlots"
-              ),
-              where(
-                "consultationId",
-                "==",
-                selected.id
-              )
-            )
-          ),
-
-          getDocs(
-            query(
-              collection(
-                db,
-                "notifications"
-              ),
-              where(
-                "sourceId",
-                "==",
-                selected.id
-              )
-            )
-          ),
-
-          getDoc(
-            counselingProfileRef
-          )
-        ]);
-
-
-      const remainingConsultations =
-        ownerConsultationsSnapshot.docs
-          .filter(
-            item =>
-              item.id !==
-              selected.id
-          )
-          .map(
-            item => ({
-              id:
-                item.id,
-
-              ...item.data()
-            })
-          )
-          .sort(
-            newestRecordFirst
-          );
-
-
-      const remainingSessions =
-        [...remainingConsultations]
-          .filter(
-            row =>
-              counselingRequestCreatesSession(
-                row.status
-              )
-          )
-          .sort(
-            (
-              first,
-              second
-            ) => {
-
-              const firstSchedule =
-                counselingScheduledAtDate(
-                  first
-                )
-                  ?.getTime() ||
-                recordTimestampMillis(
-                  first.createdAt ||
-                  first.updatedAt
-                ) ||
-                0;
-
-
-              const secondSchedule =
-                counselingScheduledAtDate(
-                  second
-                )
-                  ?.getTime() ||
-                recordTimestampMillis(
-                  second.createdAt ||
-                  second.updatedAt
-                ) ||
-                0;
-
-
-              if (
-                firstSchedule !==
-                secondSchedule
-              ) {
-
-                return (
-                  firstSchedule -
-                  secondSchedule
-                );
-              }
-
-
-              return String(
-                first.id
-              ).localeCompare(
-                String(
-                  second.id
-                )
-              );
-            }
-          );
-
-
-      const activeConsultation =
-        remainingConsultations.find(
-          row =>
-            counselingRequestIsActive(
-              row.status
-            )
-        ) ||
-        null;
-
-
-      const nextConsultation =
-        activeConsultation ||
-        remainingConsultations[0] ||
-        null;
-
-
-      const relatedReferences = [
-        ...slotSnapshot.docs.map(
-          item =>
-            item.ref
-        ),
-        ...consultationNotificationsSnapshot.docs.map(
-          item =>
-            item.ref
-        )
-      ];
-
-
-      for (
-        const transfer of
-        linkedTransfers
-      ) {
-
-        const [
-          sourceNotificationsSnapshot,
-          linkedNotificationsSnapshot,
-          accessSnapshot
-        ] =
-          await Promise.all([
-            getDocs(
-              query(
-                collection(
-                  db,
-                  "notifications"
-                ),
-                where(
-                  "sourceId",
-                  "==",
-                  transfer.id
-                )
-              )
-            ),
-
-            getDocs(
-              query(
-                collection(
-                  db,
-                  "notifications"
-                ),
-                where(
-                  "transferRequestId",
-                  "==",
-                  transfer.id
-                )
-              )
-            ),
-
-            getDocs(
-              query(
-                collection(
-                  db,
-                  "transferAccess"
-                ),
-                where(
-                  "transferRequestId",
-                  "==",
-                  transfer.id
-                )
-              )
-            )
-          ]);
-
-
-        relatedReferences.push(
-          doc(
-            db,
-            "transferRequests",
-            transfer.id
-          ),
-
-          ...sourceNotificationsSnapshot.docs.map(
-            item =>
-              item.ref
-          ),
-
-          ...linkedNotificationsSnapshot.docs.map(
-            item =>
-              item.ref
-          ),
-
-          ...accessSnapshot.docs.map(
-            item =>
-              item.ref
-          )
-        );
-      }
-
-
-      const batch =
-        writeBatch(
-          db
-        );
-
-
-      batch.delete(
-        doc(
-          db,
-          "consultations",
-          selected.id
-        )
-      );
-
-
-      batch.delete(
-        doc(
-          db,
-          "counselingSessionNotes",
-          selected.id
-        )
-      );
-
-
-      uniqueDocumentReferences(
-        relatedReferences
-      ).forEach(
-        reference =>
-          batch.delete(
-            reference
-          )
-      );
-
-
-      const lockRef =
-        doc(
-          db,
-          "counselingRequestLocks",
-          selected.ownerId
-        );
-
-
-      if (
-        nextConsultation
-      ) {
-
-        batch.set(
-          lockRef,
-          {
-            ownerId:
-              selected.ownerId,
-
-            department:
-              nextConsultation.department ||
-              selected.department ||
-              "",
-
-            latestConsultationId:
-              nextConsultation.id,
-
-            status:
-              nextConsultation.status ===
-                "Canceled"
-                ? "Cancelled"
-                : (
-                    nextConsultation.status ||
-                    "Pending approval"
-                  ),
-
-            updatedAt:
-              serverTimestamp()
-          },
-          {
-            merge:
-              false
-          }
-        );
-
-      } else {
-
-        batch.set(
-          lockRef,
-          {
-            ownerId:
-              selected.ownerId,
-
-            department:
-              selected.department ||
-              "",
-
-            latestConsultationId:
-              "",
-
-            status:
-              "Eligible",
-
-            updatedAt:
-              serverTimestamp()
-          },
-          {
-            merge:
-              false
-          }
-        );
-      }
-
-
-      remainingSessions.forEach(
-        (
-          row,
-          index
-        ) => {
-
-          const sessionNumber =
-            index + 1;
-
-
-          if (
-            Number(
-              row.sessionNumber ||
-              0
-            ) !==
-              sessionNumber
-          ) {
-
-            batch.update(
-              doc(
-                db,
-                "consultations",
-                row.id
-              ),
-              {
-                sessionNumber,
-
-                updatedAt:
-                  serverTimestamp()
-              }
-            );
-          }
-        }
-      );
-
-
-      if (
-        counselingProfileSnapshot.exists()
-      ) {
-
-        batch.update(
-          counselingProfileRef,
-          {
-            sessionCount:
-              remainingSessions.length,
-
-            lastSessionNumber:
-              remainingSessions.length,
-
-            updatedById:
-              user.id,
-
-            updatedByName:
-              user.name ||
-              "Super Admin",
-
-            updatedAt:
-              serverTimestamp()
-          }
-        );
-      }
-
-
-      await batch.commit();
-
-
-      closeRequestReview();
-
-
-      alert(
-        "Counseling-request cleanup completed. The request, private session note, slot, pending transfer data, notifications, counseling lock, and session numbering were repaired."
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Unable to permanently clean up counseling request:",
-        error
-      );
-
-
-      alert(
-        error?.message ||
-        "Unable to delete the counseling request safely."
-      );
-
-    } finally {
-
-      setDeletingCounselingId(
         ""
       );
     }
@@ -26006,42 +25132,6 @@ function CounselingRequestsManagement() {
 
               <div className="review-request-modal-header-actions">
 
-                {isSuperAdmin && (
-
-                  <button
-                    type="button"
-                    className="danger-button review-request-header-delete-button"
-                    onClick={
-                      deleteSelectedCounselingRequest
-                    }
-                    disabled={
-                      deletingCounselingId ===
-                        selected.id ||
-                      Boolean(
-                        approvedTransferForConsultation(
-                          selected.id
-                        )
-                      )
-                    }
-                    title={
-                      approvedTransferForConsultation(
-                        selected.id
-                      )
-                        ? "This request has approved transfer history and is protected from deletion."
-                        : "Delete this counseling request"
-                    }
-                  >
-                    {
-                      deletingCounselingId ===
-                        selected.id
-                        ? "Deleting..."
-                        : "Delete counseling request"
-                    }
-                  </button>
-
-                )}
-
-
                 <button
 
                   type="button"
@@ -26608,20 +25698,27 @@ function CounselingRequestsManagement() {
               </section>
 
 
-              {isSuperAdmin && (
+              {isSuperAdmin &&
+                (
+                  transferRequestForConsultation(
+                    selected.id
+                  ) ||
+                  approvedTransferForConsultation(
+                    selected.id
+                  )
+                ) && (
 
                 <div className="superadmin-cleanup-zone superadmin-cleanup-zone-full">
 
                   <div>
 
                     <strong>
-                      Super Admin test-data cleanup
+                      Pending transfer cleanup
                     </strong>
 
                     <p>
-                      Use only for test or erroneous records. Approved counselor
-                      transfers are protected so counselor assignment history is
-                      not accidentally broken.
+                      Use this only to remove a pending test or erroneous transfer.
+                      Approved counselor transfer history remains protected.
                     </p>
 
                   </div>
@@ -26674,32 +25771,6 @@ function CounselingRequestsManagement() {
                       </span>
 
                     )}
-
-
-                    <button
-                      type="button"
-                      className="danger-button superadmin-cleanup-delete-button"
-                      title="Delete counseling request"
-                      disabled={
-                        deletingCounselingId ===
-                        selected.id ||
-                        Boolean(
-                          approvedTransferForConsultation(
-                            selected.id
-                          )
-                        )
-                      }
-                      onClick={
-                        deleteSelectedCounselingRequest
-                      }
-                    >
-                      {
-                        deletingCounselingId ===
-                          selected.id
-                          ? "Deleting counseling request..."
-                          : "Delete counseling request"
-                      }
-                    </button>
 
                   </div>
 

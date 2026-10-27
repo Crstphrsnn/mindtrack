@@ -21,16 +21,6 @@ import {
 } from "../services/dataService";
 import psuLogo from "../assets/psu-logo.jpg";
 
-function accountRoleLabel(role) {
-  if (role === "student") return "Student";
-  if (role === "teaching" || role === "faculty") return "Teaching";
-  if (role === "non_teaching" || role === "personnel") return "Non-teaching";
-  if (role === "counselor") return "Guidance Counselor";
-  if (role === "super_admin") return "Super Admin";
-  return role || "User";
-}
-
-
 const menu = {
   student: [
     ["/dashboard", "Home", Home],
@@ -67,8 +57,7 @@ const menu = {
     ["/profile", "Profile", User],
   ],
 
-  // Legacy role values remain supported so existing accounts continue
-  // working without a risky Firestore migration.
+  // Legacy role aliases retained for older accounts.
   faculty: [
     ["/dashboard", "Home", Home],
     ["/assessment", "Assessment", ClipboardList],
@@ -97,9 +86,9 @@ const menu = {
     ["/dashboard", "Dashboard", Home],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
-    ["/referrals", "Referrals", Users],
     ["/user-profiles", "User Profiles", Users],
     ["/schedule", "Schedule", Calendar],
+    ["/notifications", "Notifications", Bell],
     ["/reports", "Reports", BarChart3],
   ],
 
@@ -109,7 +98,6 @@ const menu = {
     ["/user-profiles", "User Profiles", Users],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
-    ["/referrals", "Referrals", Users],
     ["/reports", "Reports", BarChart3],
   ],
 };
@@ -119,8 +107,9 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
 
   const links =
-    menu[user?.role] ||
-    menu.student;
+    user?.role
+      ? menu[user.role] || []
+      : [];
 
 
   const [
@@ -129,31 +118,27 @@ export default function Layout({ children }) {
   ] = useState(0);
 
 
-  const notificationAccess =
-    Boolean(
-      user?.id &&
-      (
+  useEffect(
+    () => {
+
+      const role =
+        user?.role;
+
+
+      const notificationRoleSupported =
         [
           "student",
           "teaching",
           "non_teaching",
           "faculty",
-          "personnel"
-        ].includes(
-          user?.role
-        )
-        ||
-        user?.role ===
+          "personnel",
           "counselor"
-      )
-    );
+        ].includes(role);
 
-
-  useEffect(
-    () => {
 
       if (
-        !notificationAccess
+        !user?.id ||
+        !notificationRoleSupported
       ) {
 
         setUnreadNotifications(0);
@@ -166,7 +151,7 @@ export default function Layout({ children }) {
         "notifications",
         rows => {
 
-          const visibleUnread =
+          const unread =
             rows.filter(
               row => {
 
@@ -175,37 +160,34 @@ export default function Layout({ children }) {
                 }
 
 
+                // Counselor notifications are already scoped by ownerId,
+                // so every unread row addressed to this counselor belongs
+                // in the counselor notification badge. This also keeps the
+                // sidebar compatible with future counselor notification types.
                 if (
-                  user?.role ===
+                  role ===
                   "counselor"
                 ) {
-
-                  return [
-                    "assessment_submitted",
-                    "counseling_request_submitted",
-                    "referral_submitted",
-                    "transfer_request",
-                    "transfer_status"
-                  ].includes(
-                    row.notificationType
-                  );
+                  return true;
                 }
 
 
-                return [
-                  "counselor_update",
-                  "counselor_transfer_update"
-                ].includes(
-                  row.notificationType
-                ) &&
-                row.senderRole ===
-                  "counselor";
+                return (
+                  row.senderRole ===
+                    "counselor" &&
+                  [
+                    "counselor_update",
+                    "counselor_transfer_update"
+                  ].includes(
+                    row.notificationType
+                  )
+                );
               }
-            );
+            ).length;
 
 
           setUnreadNotifications(
-            visibleUnread.length
+            unread
           );
         },
         {
@@ -215,9 +197,7 @@ export default function Layout({ children }) {
       );
 
     },
-
     [
-      notificationAccess,
       user?.id,
       user?.role
     ]
@@ -274,11 +254,9 @@ export default function Layout({ children }) {
             <strong>MindTrack</strong>
 
             <small>
-              {
-                accountRoleLabel(
-                  user?.role
-                )
-              }
+              {user?.role
+                ? user.role.replace("_", " ")
+                : "user"}
             </small>
           </div>
 
@@ -348,59 +326,81 @@ export default function Layout({ children }) {
 
           </div>
 
-          <div className="top-user-area">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px"
+            }}
+          >
 
-            {notificationAccess && (
+            {
+              [
+                "student",
+                "teaching",
+                "non_teaching",
+                "faculty",
+                "personnel",
+                "counselor"
+              ].includes(user?.role) && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/notifications")}
+                  aria-label={
+                    unreadNotifications > 0
+                      ? `Notifications, ${unreadNotifications} unread`
+                      : "Notifications"
+                  }
+                  title="Notifications"
+                  style={{
+                    position: "relative",
+                    width: "42px",
+                    height: "42px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1px solid rgba(255, 255, 255, 0.35)",
+                    borderRadius: "12px",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    color: "#ffffff",
+                    cursor: "pointer"
+                  }}
+                >
+                  <Bell size={20} />
 
-              <button
-
-                type="button"
-
-                className="topbar-notification-button"
-
-                onClick={
-                  () =>
-                    navigate(
-                      "/notifications"
-                    )
-                }
-
-                aria-label={
-                  unreadNotifications > 0
-                    ? `${unreadNotifications} unread notifications`
-                    : "Open notifications"
-                }
-
-                title="Notifications"
-
-              >
-
-                <Bell
-                  size={20}
-                />
-
-
-                {unreadNotifications > 0 && (
-
-                  <span className="topbar-notification-badge">
-
-                    {
-                      unreadNotifications > 99
-                        ? "99+"
-                        : unreadNotifications
-                    }
-
-                  </span>
-
-                )}
-
-              </button>
-
-            )}
-
+                  {unreadNotifications > 0 && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "-6px",
+                        right: "-6px",
+                        minWidth: "19px",
+                        height: "19px",
+                        padding: "0 5px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "999px",
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        fontSize: "10px",
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        border: "2px solid #173f8f"
+                      }}
+                    >
+                      {
+                        unreadNotifications > 99
+                          ? "99+"
+                          : unreadNotifications
+                      }
+                    </span>
+                  )}
+                </button>
+              )
+            }
 
             <div className="top-user">
-
               <strong>
                 {user?.name || "User"}
               </strong>
@@ -408,7 +408,6 @@ export default function Layout({ children }) {
               <small>
                 {user?.department || ""}
               </small>
-
             </div>
 
           </div>
