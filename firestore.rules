@@ -240,13 +240,24 @@ service cloud.firestore {
       );
 
       // General user: update only their own eligibility state as part of a
-      // transaction that creates/uses their own assessment.
+      // transaction that creates/uses their own assessment. Older test locks
+      // may not yet contain ownerId/department, so the owner may repair those
+      // two routing fields only with values from their authenticated profile.
       allow update: if hasVerifiedInstitutionalEmail()
         && request.auth.uid == userId
-        && resource.data.ownerId == request.auth.uid
-        && request.resource.data.ownerId == resource.data.ownerId
-        && request.resource.data.department == resource.data.department
+        && (
+          !("ownerId" in resource.data)
+          || resource.data.ownerId == request.auth.uid
+        )
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.department == profile().department
+        && (
+          !("department" in resource.data)
+          || resource.data.department == request.resource.data.department
+        )
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "ownerId",
+          "department",
           "latestAssessmentId",
           "status",
           "concludedAt",
@@ -269,6 +280,40 @@ service cloud.firestore {
         );
 
       allow delete: if isSuperAdmin();
+    }
+
+
+    // =====================================================
+    // ASSESSMENT DRAFTS
+    // Private, unfinished assessment answers. These are readable/writable
+    // only by the signed-in owner and are deleted when submission succeeds.
+    // Counselors do not receive access until the answers are submitted into
+    // the normal assessments collection.
+    // =====================================================
+    match /assessmentDrafts/{userId} {
+      allow read: if hasVerifiedInstitutionalEmail()
+        && request.auth.uid == userId;
+
+      allow create, update: if hasVerifiedInstitutionalEmail()
+        && request.auth.uid == userId
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.answers is map
+        && request.resource.data.phq9Difficulty is string
+        && request.resource.data.notes is string
+        && request.resource.data.assessmentPageIndex is int
+        && request.resource.data.assessmentPageIndex >= 0
+        && request.resource.data.assessmentPageIndex <= 4
+        && request.resource.data.keys().hasOnly([
+          "ownerId",
+          "answers",
+          "phq9Difficulty",
+          "notes",
+          "assessmentPageIndex",
+          "updatedAt"
+        ]);
+
+      allow delete: if hasVerifiedInstitutionalEmail()
+        && request.auth.uid == userId;
     }
 
 

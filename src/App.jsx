@@ -6308,6 +6308,18 @@ function Assessment() {
     useState(null);
 
 
+  const [assessmentDraftLoading, setAssessmentDraftLoading] =
+    useState(true);
+
+
+  const [assessmentDraftStatus, setAssessmentDraftStatus] =
+    useState("");
+
+
+  const assessmentDraftHydratedRef =
+    useRef(false);
+
+
   const [
     assessmentPageIndex,
     setAssessmentPageIndex
@@ -6324,6 +6336,175 @@ function Assessment() {
   const assessmentLock =
     assessmentLocks[0] ||
     null;
+
+
+  useEffect(() => {
+
+    let cancelled = false;
+
+    assessmentDraftHydratedRef.current =
+      false;
+
+
+    async function loadAssessmentDraft() {
+
+      setAssessmentDraftLoading(true);
+
+      try {
+
+        const draftSnapshot =
+          await getDoc(
+            doc(
+              db,
+              "assessmentDrafts",
+              user.id
+            )
+          );
+
+
+        if (
+          cancelled ||
+          !draftSnapshot.exists()
+        ) {
+
+          if (!cancelled) {
+            setAssessmentDraftStatus(
+              "Your answers will be saved automatically while you complete the assessment."
+            );
+          }
+
+          return;
+        }
+
+
+        const draft =
+          draftSnapshot.data();
+
+
+        const restoredAnswers = {};
+
+        const storedAnswers =
+          draft?.answers &&
+          typeof draft.answers === "object"
+            ? draft.answers
+            : {};
+
+
+        scoredQuestionIds.forEach(
+          questionId => {
+
+            if (
+              Object.prototype.hasOwnProperty.call(
+                storedAnswers,
+                questionId
+              )
+            ) {
+
+              const numericValue =
+                Number(
+                  storedAnswers[questionId]
+                );
+
+
+              if (
+                Number.isFinite(
+                  numericValue
+                )
+              ) {
+
+                restoredAnswers[questionId] =
+                  numericValue;
+              }
+            }
+          }
+        );
+
+
+        if (cancelled) {
+          return;
+        }
+
+
+        setAnswers(
+          restoredAnswers
+        );
+
+
+        setPhq9Difficulty(
+          typeof draft?.phq9Difficulty ===
+            "string"
+            ? draft.phq9Difficulty
+            : ""
+        );
+
+
+        setNotes(
+          typeof draft?.notes ===
+            "string"
+            ? draft.notes
+            : ""
+        );
+
+
+        const restoredPageIndex =
+          Number(
+            draft?.assessmentPageIndex
+          );
+
+
+        setAssessmentPageIndex(
+          Number.isInteger(
+            restoredPageIndex
+          )
+            ? Math.min(
+                4,
+                Math.max(
+                  0,
+                  restoredPageIndex
+                )
+              )
+            : 0
+        );
+
+
+        setAssessmentDraftStatus(
+          "Draft restored. Your previously answered items are still available."
+        );
+
+      } catch (draftError) {
+
+        console.error(
+          "Unable to load assessment draft:",
+          draftError
+        );
+
+
+        if (!cancelled) {
+          setAssessmentDraftStatus(
+            "Draft autosave is temporarily unavailable. You can still complete and submit the assessment."
+          );
+        }
+
+      } finally {
+
+        if (!cancelled) {
+          assessmentDraftHydratedRef.current =
+            true;
+
+          setAssessmentDraftLoading(false);
+        }
+      }
+    }
+
+
+    loadAssessmentDraft();
+
+
+    return () => {
+      cancelled = true;
+    };
+
+  }, [user.id]);
 
 
   const activeAssessment =
@@ -6425,6 +6606,7 @@ function Assessment() {
 
 
   const assessmentEligibilityLoading =
+    assessmentDraftLoading ||
     rowsAreLoading(
       assessmentLocks
     );
@@ -6465,6 +6647,112 @@ function Assessment() {
           }
         )
       : "";
+
+
+  useEffect(() => {
+
+    if (
+      !assessmentDraftHydratedRef.current ||
+      assessmentDraftLoading ||
+      assessmentBlocked ||
+      saved
+    ) {
+      return undefined;
+    }
+
+
+    const hasDraftContent =
+      Object.keys(answers).length > 0 ||
+      Boolean(phq9Difficulty) ||
+      Boolean(notes.trim());
+
+
+    if (!hasDraftContent) {
+      return undefined;
+    }
+
+
+    let cancelled = false;
+
+    setAssessmentDraftStatus(
+      "Saving draft..."
+    );
+
+
+    const saveTimer =
+      window.setTimeout(
+        async () => {
+
+          try {
+
+            await setDoc(
+              doc(
+                db,
+                "assessmentDrafts",
+                user.id
+              ),
+              {
+                ownerId:
+                  user.id,
+
+                answers,
+
+                phq9Difficulty:
+                  phq9Difficulty ||
+                  "",
+
+                notes,
+
+                assessmentPageIndex,
+
+                updatedAt:
+                  serverTimestamp()
+              }
+            );
+
+
+            if (!cancelled) {
+              setAssessmentDraftStatus(
+                "Draft saved automatically. You can refresh or return later on this account."
+              );
+            }
+
+          } catch (draftError) {
+
+            console.error(
+              "Unable to save assessment draft:",
+              draftError
+            );
+
+
+            if (!cancelled) {
+              setAssessmentDraftStatus(
+                "Draft could not be saved. Please keep this page open until you submit, or refresh after the Firebase rules are updated."
+              );
+            }
+          }
+        },
+        650
+      );
+
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(
+        saveTimer
+      );
+    };
+
+  }, [
+    answers,
+    phq9Difficulty,
+    notes,
+    assessmentPageIndex,
+    assessmentDraftLoading,
+    assessmentBlocked,
+    saved,
+    user.id
+  ]);
 
 
   const answeredQuestionCount =
@@ -6903,7 +7191,7 @@ function Assessment() {
 
       alert(
         activeAssessment
-          ? "You already have an active psychological assessment. A new assessment can only be taken after the current assessment is concluded."
+          ? "You already have an active psychological assessment. A new assessment can only be taken after the current assessment is terminated."
           : cooldownBlocked
             ? `A new psychological assessment will be available after the 14-day reassessment period${nextAssessmentDateLabel ? ` (${nextAssessmentDateLabel})` : "."}`
             : "Your assessment eligibility record is not ready. Please contact the Guidance Office or Super Admin."
@@ -7028,6 +7316,14 @@ function Assessment() {
         );
 
 
+      const draftRef =
+        doc(
+          db,
+          "assessmentDrafts",
+          user.id
+        );
+
+
       const userViewRef =
         doc(
           db,
@@ -7044,6 +7340,12 @@ function Assessment() {
           const lockSnapshot =
             await transaction.get(
               lockRef
+            );
+
+
+          const draftSnapshot =
+            await transaction.get(
+              draftRef
             );
 
 
@@ -7078,7 +7380,7 @@ function Assessment() {
           ) {
 
             throw new Error(
-              "You already have an active psychological assessment. Wait until the current assessment is concluded."
+              "You already have an active psychological assessment. Wait until the current assessment is terminated."
             );
           }
 
@@ -7190,6 +7492,13 @@ function Assessment() {
           transaction.update(
             lockRef,
             {
+              ownerId:
+                user.id,
+
+              department:
+                user.department ||
+                "",
+
               latestAssessmentId:
                 assessmentRef.id,
 
@@ -7206,7 +7515,19 @@ function Assessment() {
                 serverTimestamp()
             }
           );
+
+
+          if (draftSnapshot.exists()) {
+            transaction.delete(
+              draftRef
+            );
+          }
         }
+      );
+
+
+      setAssessmentDraftStatus(
+        ""
       );
 
 
@@ -7229,9 +7550,26 @@ function Assessment() {
       );
 
 
+      const assessmentPermissionDenied =
+        assessmentError?.code ===
+          "permission-denied" ||
+        assessmentError?.code ===
+          "firestore/permission-denied" ||
+        String(
+          assessmentError?.message ||
+          ""
+        ).includes(
+          "Missing or insufficient permissions"
+        );
+
+
       alert(
-        assessmentError?.message ||
-        "Unable to submit the psychological assessment."
+        assessmentPermissionDenied
+          ? "Firebase blocked the assessment submission. Deploy the latest firestore.rules included with this fix, refresh MindTrack, and submit again. Your draft answers remain saved."
+          : (
+              assessmentError?.message ||
+              "Unable to submit the psychological assessment."
+            )
       );
     }
 
@@ -7358,12 +7696,15 @@ function Assessment() {
   if (assessmentBlocked) {
 
     const blockedStatus =
-      activeAssessment?.status ||
-      (
-        cooldownBlocked
-          ? "Reassessment cooldown"
-          : "Eligibility unavailable"
-      );
+      activeAssessment
+        ? assessmentCaseStatusDisplayLabel(
+            assessmentLock?.status
+          )
+        : (
+            cooldownBlocked
+              ? "Reassessment cooldown"
+              : "Eligibility unavailable"
+          );
 
 
     return (
@@ -7506,10 +7847,26 @@ function Assessment() {
           {" "}
           the 14-day reassessment cooldown is temporarily disabled.
           A new assessment can be taken immediately after the current
-          assessment is concluded.
+          assessment is terminated.
         </div>
 
       )}
+
+
+      <div
+        className="notice assessment-page-shell"
+        style={{
+          marginBottom:
+            "14px"
+        }}
+      >
+        <strong>
+          Assessment draft autosave:
+        </strong>
+        {" "}
+        {assessmentDraftStatus ||
+          "Your answers are saved automatically while you complete the assessment."}
+      </div>
 
 
       <div
