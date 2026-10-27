@@ -5549,7 +5549,7 @@ function Dashboard() {
               ? "Super Admin Dashboard"
               : "Counselor Dashboard"
           }
-          subtitle="Live case monitoring and counseling operations"
+         
         />
 
         <div className="error-box">
