@@ -6340,7 +6340,7 @@ function Dashboard() {
 //
 // Keep the one-active-assessment rule enabled even while this is false.
 const ASSESSMENT_COOLDOWN_ENABLED =
-  false;
+  true;
 
 
 const ASSESSMENT_COOLDOWN_DAYS =
