@@ -700,19 +700,22 @@ const PROGRAMS_BY_COLLEGE = {
   ],
 
   "College of Tourism and Hospitality Management": [
-    "Bachelor of Science in Hospitality Management"
+    "Bachelor of Science in Hospitality Management",
+    "Bachelor of Science in Tourism Management"
   ],
 
   "College of Teacher Education": [
-    "Bachelor of Secondary Education",
-    "Bachelor of Technical-Vocational Teacher Education",
-    "Bachelor of Technology and Livelihood Education"
+    "Bachelor of Secondary Education - Major in English",
+    "Bachelor of Secondary Education - Major in Filipino",
+    "Bachelor of Secondary Education - Major in Social Studies",
+    "Bachelor of Secondary Education - Major in Science",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Garments, Fashion and Design",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Food Service Management",
+    "Bachelor of Technology and Livelihood Education - Major in Home Economics",
   ],
 
   "College of Industrial Technology": [
     "Bachelor of Industrial Technology - Major in Automotive Technology",
-    "Bachelor of Industrial Technology - Major in Ceramics Technology",
-    "Bachelor of Industrial Technology - Major in Civil Technology",
     "Bachelor of Industrial Technology - Major in Drafting Technology",
     "Bachelor of Industrial Technology - Major in Electrical Technology",
     "Bachelor of Industrial Technology - Major in Electronics Technology",
@@ -2884,7 +2887,7 @@ function Register() {
 
 
               <label className="full-width-field">
-                Street Name / House No. / Purok
+                House No. / Street Name / Purok
                 <span
                   className="required-asterisk"
                   aria-hidden="true"
