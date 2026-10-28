@@ -86,6 +86,7 @@ const menu = {
     ["/dashboard", "Dashboard", Home],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
+    ["/referrals", "Referrals", Users],
     ["/user-profiles", "User Profiles", Users],
     ["/schedule", "Schedule", Calendar],
     ["/notifications", "Notifications", Bell],
