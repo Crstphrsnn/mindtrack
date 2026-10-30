@@ -6,11 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "seed:firebase": "node scripts/seed-firebase-admin.js --key ./serviceAccountKey.json"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "firebase": "^12.17.1",
+    "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -19,8 +18,6 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
-    "firebase-admin": "^14.5.0",
     "vite": "^8.0.12"
   }
-  
 }

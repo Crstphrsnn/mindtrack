@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -16,9 +16,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
-import {
-  subscribeCollection
-} from "../services/dataService";
+import { useRows } from "../hooks/useRows";
 import psuLogo from "../assets/psu-logo.jpg";
 
 const menu = {
@@ -35,9 +33,7 @@ const menu = {
 
   teaching: [
     ["/dashboard", "Home", Home],
-    ["/assessment", "Assessment", ClipboardList],
     ["/monitoring", "Monitoring", Activity],
-    ["/consultations", "Counseling", Calendar],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -47,9 +43,7 @@ const menu = {
 
   non_teaching: [
     ["/dashboard", "Home", Home],
-    ["/assessment", "Assessment", ClipboardList],
     ["/monitoring", "Monitoring", Activity],
-    ["/consultations", "Counseling", Calendar],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -60,9 +54,7 @@ const menu = {
   // Legacy role aliases retained for older accounts.
   faculty: [
     ["/dashboard", "Home", Home],
-    ["/assessment", "Assessment", ClipboardList],
     ["/monitoring", "Monitoring", Activity],
-    ["/consultations", "Counseling", Calendar],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -72,9 +64,7 @@ const menu = {
 
   personnel: [
     ["/dashboard", "Home", Home],
-    ["/assessment", "Assessment", ClipboardList],
     ["/monitoring", "Monitoring", Activity],
-    ["/consultations", "Counseling", Calendar],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -99,6 +89,7 @@ const menu = {
     ["/user-profiles", "User Profiles", Users],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
+    ["/referrals", "Referrals", Users],
     ["/reports", "Reports", BarChart3],
   ],
 };
@@ -113,97 +104,17 @@ export default function Layout({ children }) {
       : [];
 
 
-  const [
-    unreadNotifications,
-    setUnreadNotifications
-  ] = useState(0);
-
-
-  useEffect(
-    () => {
-
-      const role =
-        user?.role;
-
-
-      const notificationRoleSupported =
-        [
-          "student",
-          "teaching",
-          "non_teaching",
-          "faculty",
-          "personnel",
-          "counselor"
-        ].includes(role);
-
-
-      if (
-        !user?.id ||
-        !notificationRoleSupported
-      ) {
-
-        setUnreadNotifications(0);
-
-        return undefined;
-      }
-
-
-      return subscribeCollection(
-        "notifications",
-        rows => {
-
-          const unread =
-            rows.filter(
-              row => {
-
-                if (row.read) {
-                  return false;
-                }
-
-
-                // Counselor notifications are already scoped by ownerId,
-                // so every unread row addressed to this counselor belongs
-                // in the counselor notification badge. This also keeps the
-                // sidebar compatible with future counselor notification types.
-                if (
-                  role ===
-                  "counselor"
-                ) {
-                  return true;
-                }
-
-
-                return (
-                  row.senderRole ===
-                    "counselor" &&
-                  [
-                    "counselor_update",
-                    "counselor_transfer_update"
-                  ].includes(
-                    row.notificationType
-                  )
-                );
-              }
-            ).length;
-
-
-          setUnreadNotifications(
-            unread
-          );
-        },
-        {
-          ownerId:
-            user.id
-        }
-      );
-
-    },
-    [
-      user?.id,
-      user?.role
-    ]
-  );
-
+  // The Notifications page and the sidebar must use the same Supabase
+  // data source. RLS independently restricts rows to the signed-in owner.
+  const notificationRoleSupported = [
+    "student", "teaching", "non_teaching", "faculty", "personnel", "counselor"
+  ].includes(user?.role);
+  const notificationRows = useRows("notifications", {
+    ownerId: notificationRoleSupported ? user?.id : undefined
+  });
+  const unreadNotifications = notificationRows.error
+    ? 0
+    : notificationRows.filter(row => row.read !== true).length;
 
   async function handleLogout() {
 

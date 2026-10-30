@@ -1,3 +1,15 @@
+# Dependencies and generated output
 node_modules/
+dist/
+
+# Never commit secrets or local environment files
 .env
+.env.*
+!.env.example
 serviceAccountKey.json
+*service-account*.json
+*adminsdk*.json
+
+# Local build and OS artifacts
+*.log
+.DS_Store

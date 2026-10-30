@@ -11,15 +11,7 @@ import {
   X
 } from "lucide-react";
 
-import {
-  doc,
-  onSnapshot
-} from "firebase/firestore";
-
-import { db } from "../services/firebase";
-import {
-  subscribeCollection
-} from "../services/dataService";
+import { getMindTrackProfileBundle } from "../services/profileService";
 
 import {
   dass21Choices,
@@ -33,99 +25,60 @@ import {
 } from "../utils/assessment";
 
 
-function useProfileRows(
-  collectionName,
-  profile,
-  currentUser
-) {
-  const [rows, setRows] =
-    useState([]);
+function useMindTrackProfileBundle(profile) {
+  const [data, setData] = useState({
+    assessments: [], consultations: [], sessionNotes: [],
+    privateProfile: null, counselingProfile: null
+  });
+  const [loading, setLoading] = useState(Boolean(profile?.id));
+  const [error, setError] = useState("");
 
-  useEffect(
-    () => {
-      if (
-        !profile?.id ||
-        !currentUser
-      ) {
-        setRows([]);
-        return undefined;
+  useEffect(() => {
+    if (!profile?.id) {
+      setData({ assessments: [], consultations: [], sessionNotes: [],
+        privateProfile: null, counselingProfile: null });
+      setLoading(false);
+      setError("");
+      return undefined;
+    }
+    let active = true;
+    let requestVersion = 0;
+    async function load() {
+      const version = ++requestVersion;
+      setLoading(true);
+      try {
+        const next = await getMindTrackProfileBundle(profile);
+        if (!active || version !== requestVersion) return;
+        setData(next);
+        setError("");
+      } catch (loadError) {
+        if (!active || version !== requestVersion) return;
+        console.error("Unable to load Supabase user profile details:", loadError);
+        setData({ assessments: [], consultations: [], sessionNotes: [],
+          privateProfile: null, counselingProfile: null });
+        setError(loadError?.message || "Unable to load this user profile.");
+      } finally {
+        if (active && version === requestVersion) setLoading(false);
       }
-
-      const filters = {
-        ownerId:
-          profile.id
-      };
-
-      const profileDepartment =
-        String(
-          profile.department || ""
-        ).trim();
-
-      const counselorDepartment =
-        String(
-          currentUser.department || ""
-        ).trim();
-
-      const sameDepartment =
-        Boolean(
-          profileDepartment &&
-          counselorDepartment &&
-          profileDepartment ===
-            counselorDepartment
-        );
-
-      // Firestore rules are not filters.
-      // A counselor query must include the field restriction
-      // that proves why the counselor may read the result.
-      if (
-        currentUser.role ===
-          "counselor"
-      ) {
-        if (
-          collectionName ===
-            "consultations"
-        ) {
-          if (sameDepartment) {
-            filters.department =
-              counselorDepartment;
-          } else {
-            filters.assignedCounselorId =
-              currentUser.id;
-          }
-        }
-
-        if (
-          collectionName ===
-            "assessments" &&
-          sameDepartment
-        ) {
-          filters.department =
-            counselorDepartment;
-        }
+    }
+    function refresh() { if (active) void load(); }
+    void load();
+    if (typeof window !== "undefined") {
+      window.addEventListener("mindtrack:counseling-changed", refresh);
+      window.addEventListener("focus", refresh);
+    }
+    return () => {
+      active = false;
+      requestVersion += 1;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("mindtrack:counseling-changed", refresh);
+        window.removeEventListener("focus", refresh);
       }
+    };
+  }, [profile?.id, profile?.assignedCounselorId, profile?.transferActive]);
 
-      return subscribeCollection(
-        collectionName,
-        incomingRows => {
-          setRows(
-            incomingRows
-          );
-        },
-        filters
-      );
-    },
-
-    [
-      collectionName,
-      profile?.id,
-      profile?.department,
-      currentUser?.id,
-      currentUser?.role,
-      currentUser?.department
-    ]
-  );
-
-  return rows;
+  return { ...data, notesLoading: loading, profileError: error,
+    privateProfileError: "", sessionNotesError: "" };
 }
 
 function formatDate(dateKey) {
@@ -485,434 +438,21 @@ export default function UserProfileFullScreen({
   }
 }) {
 
-  const assessments =
-    useProfileRows(
-      "assessments",
-      profile,
-      currentUser
-    );
-
-
-  const consultations =
-    useProfileRows(
-      "consultations",
-      profile,
-      currentUser
-    );
-
-
-  const [
-    sessionNotes,
-    setSessionNotes
-  ] = useState([]);
-
-
-  const [
-    sessionNotesError,
-    setSessionNotesError
-  ] = useState("");
-
-
-  const [
-    selectedHistorySessionId,
-    setSelectedHistorySessionId
-  ] = useState("");
-
-
-  const [
-    selectedAssessmentHistoryId,
-    setSelectedAssessmentHistoryId
-  ] = useState("");
-
-
-  const [
-    counselingProfile,
-    setCounselingProfile
-  ] = useState(null);
-
-
-  const [
-    profileTransferTargetId,
-    setProfileTransferTargetId
-  ] = useState("");
-
-
-  useEffect(
-    () => {
-      setProfileTransferTargetId("");
-    },
-    [profile?.id]
-  );
-
-
-  useEffect(
-    () => {
-
-      if (
-        !profile?.id ||
-        !currentUser?.id
-      ) {
-
-        setSessionNotes([]);
-        setSessionNotesError("");
-
-        return undefined;
-      }
-
-
-      const consultationIds =
-        Array.from(
-          new Set(
-            consultations
-              .map(
-                row =>
-                  row.id
-              )
-              .filter(Boolean)
-          )
-        );
-
-
-      if (
-        consultationIds.length ===
-        0
-      ) {
-
-        setSessionNotes([]);
-        setSessionNotesError("");
-
-        return undefined;
-      }
-
-
-      let active =
-        true;
-
-
-      const notesById =
-        new Map();
-
-
-      setSessionNotesError("");
-
-
-      const unsubscribers =
-        consultationIds.map(
-          consultationId => {
-
-            const noteRef =
-              doc(
-                db,
-                "counselingSessionNotes",
-                consultationId
-              );
-
-
-            return onSnapshot(
-              noteRef,
-
-              snapshot => {
-
-                if (!active) {
-                  return;
-                }
-
-
-                if (
-                  snapshot.exists()
-                ) {
-
-                  notesById.set(
-                    consultationId,
-                    {
-                      id:
-                        snapshot.id,
-                      ...snapshot.data()
-                    }
-                  );
-
-                } else {
-
-                  notesById.delete(
-                    consultationId
-                  );
-                }
-
-
-                setSessionNotes(
-                  Array.from(
-                    notesById.values()
-                  )
-                );
-              },
-
-              error => {
-
-                if (!active) {
-                  return;
-                }
-
-
-                console.error(
-                  `Unable to load counseling session notes for ${consultationId}:`,
-                  error
-                );
-
-
-                notesById.delete(
-                  consultationId
-                );
-
-
-                setSessionNotes(
-                  Array.from(
-                    notesById.values()
-                  )
-                );
-
-
-                setSessionNotesError(
-                  error?.code ===
-                    "permission-denied"
-                    ? "Some counseling session notes could not be loaded because the current Firestore rules do not allow this counselor to read them."
-                    : (
-                        error?.message ||
-                        "Unable to load some counseling session notes."
-                      )
-                );
-              }
-            );
-          }
-        );
-
-
-      return () => {
-
-        active =
-          false;
-
-
-        unsubscribers.forEach(
-          unsubscribe => {
-
-            try {
-              unsubscribe();
-            } catch {
-              // Ignore listener cleanup errors.
-            }
-          }
-        );
-      };
-
-    },
-
-    [
-      profile?.id,
-      currentUser?.id,
-      consultations
-    ]
-  );
-
-
-  const [
-    privateProfile,
-    setPrivateProfile
-  ] = useState(null);
-
-
-  const [
-    privateProfileError,
-    setPrivateProfileError
-  ] = useState("");
-
-
-  const [
-    caseHistoryDraft,
-    setCaseHistoryDraft
-  ] = useState("");
-
-
-  const [
-    sessionSummaryDraft,
-    setSessionSummaryDraft
-  ] = useState("");
-
-
-  const [
-    observationDraft,
-    setObservationDraft
-  ] = useState("");
-
-
-  const [
-    recommendationsDraft,
-    setRecommendationsDraft
-  ] = useState("");
-
-
-  const [
-    notesLoading,
-    setNotesLoading
-  ] = useState(true);
-
-
-  useEffect(
-    () => {
-
-      if (!profile?.id) {
-        return undefined;
-      }
-
-
-      setNotesLoading(true);
-
-
-      const noteRef =
-        doc(
-          db,
-          "counselingProfiles",
-          profile.id
-        );
-
-
-      const unsubscribe =
-        onSnapshot(
-          noteRef,
-
-          snapshot => {
-
-            const data =
-              snapshot.exists()
-                ? {
-                    id:
-                      snapshot.id,
-                    ...snapshot.data()
-                  }
-                : null;
-
-
-            setCounselingProfile(
-              data
-            );
-
-
-            setNotesLoading(false);
-          },
-
-          error => {
-
-            console.error(
-              "Unable to load counseling profile:",
-              error
-            );
-
-
-            setCounselingProfile(
-              null
-            );
-
-
-            setNotesLoading(false);
-          }
-        );
-
-
-      return unsubscribe;
-
-    },
-
-    [
-      profile?.id
-    ]
-  );
-
-
-  useEffect(
-    () => {
-
-      if (
-        !profile?.id
-      ) {
-
-        setPrivateProfile(
-          null
-        );
-
-        return undefined;
-      }
-
-
-      setPrivateProfileError(
-        ""
-      );
-
-
-      const privateRef =
-        doc(
-          db,
-          "userPrivateProfiles",
-          profile.id
-        );
-
-
-      const unsubscribe =
-        onSnapshot(
-          privateRef,
-
-          snapshot => {
-
-            setPrivateProfile(
-              snapshot.exists()
-                ? snapshot.data()
-                : null
-            );
-          },
-
-          error => {
-
-            // Previous counselors keep documentation/history access,
-            // but private contact details remain restricted to the
-            // current assigned counselor and Super Admin.
-            if (
-              error?.code !==
-              "permission-denied"
-            ) {
-
-              console.error(
-                "Unable to load private user profile:",
-                error
-              );
-            }
-
-
-            setPrivateProfile(
-              null
-            );
-
-
-            setPrivateProfileError(
-              error?.code ===
-                "permission-denied"
-                ? "Private contact details are available only to the current assigned counselor and Super Admin."
-                : (
-                    error?.message ||
-                    "Unable to load private profile information."
-                  )
-            );
-          }
-        );
-
-
-      return unsubscribe;
-
-    },
-    [
-      profile?.id,
-      currentUser?.id,
-      currentUser?.role
-    ]
-  );
-
+  const {
+    assessments, consultations, sessionNotes, sessionNotesError,
+    counselingProfile, privateProfile, privateProfileError,
+    notesLoading, profileError
+  } = useMindTrackProfileBundle(profile);
+
+  const [selectedHistorySessionId, setSelectedHistorySessionId] = useState("");
+  const [selectedAssessmentHistoryId, setSelectedAssessmentHistoryId] = useState("");
+  const [profileTransferTargetId, setProfileTransferTargetId] = useState("");
+  const [caseHistoryDraft, setCaseHistoryDraft] = useState("");
+  const [sessionSummaryDraft, setSessionSummaryDraft] = useState("");
+  const [observationDraft, setObservationDraft] = useState("");
+  const [recommendationsDraft, setRecommendationsDraft] = useState("");
+
+  useEffect(() => { setProfileTransferTargetId(""); }, [profile?.id]);
 
   useEffect(
     () => {
@@ -1355,6 +895,7 @@ export default function UserProfileFullScreen({
       "function" &&
     !notesLoading &&
     !profileTransferPending &&
+    !Boolean(counselingProfile?.transferActive || profile.transferActive) &&
     !currentCounselorTransferredUserBefore &&
     (
       isCurrentAssignedCounselor ||
@@ -1907,6 +1448,10 @@ export default function UserProfileFullScreen({
 
 
         <div className="user-profile-modal-body">
+          {profileError && (
+            <div className="error-box" role="alert">{profileError}</div>
+          )}
+
 
           {isPreviousAssignedCounselor && (
             <div className="transfer-documentation-notice">
