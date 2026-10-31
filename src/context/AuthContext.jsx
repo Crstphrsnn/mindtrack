@@ -15,6 +15,18 @@ import React, {
 
 
 import { supabase } from "../services/supabase";
+import {
+  PH_MOBILE_FORMAT_ERROR,
+  normalizePhilippineMobile,
+  areSamePhilippineMobileNumbers
+} from "../utils/philippineMobile";
+import {
+  EMAIL_VERIFICATION_NOTICE,
+  EMAIL_VERIFICATION_REDIRECT_PATH,
+  isEmailVerificationCallbackUrl,
+  completeEmailVerification
+} from "../utils/emailVerificationFlow";
+
 
 
 
@@ -26,15 +38,28 @@ const AuthContext = createContext(null);
 
 const SESSION = "mindtrack_session";
 
-// Set only after the confirmation-link redirect has been processed.
-const EMAIL_VERIFICATION_NOTICE = "mindtrack_email_verification_notice";
+// Capture the original callback URL before Supabase removes token fragments.
+// The flag stays stable while Supabase exchanges the verification token.
+const INITIAL_AUTH_URL = typeof window !== "undefined" ? window.location.href : "";
+let emailConfirmationPromise = null;
 
 function isEmailVerificationReturn() {
   if (typeof window === "undefined") return false;
-  return (
-    window.location.pathname === "/login" &&
-    new URLSearchParams(window.location.search).get("mindtrack_verified") === "1"
-  );
+  return isEmailVerificationCallbackUrl(INITIAL_AUTH_URL) ||
+    isEmailVerificationCallbackUrl(window.location.href);
+}
+
+function finishEmailConfirmationOnce(callbackUrl) {
+  if (!emailConfirmationPromise) {
+    emailConfirmationPromise = completeEmailVerification(supabase.auth, callbackUrl)
+      .catch(error => {
+        // A failed sign-out must never be treated as a successful login.
+        // Allow a manual retry on the confirmation page.
+        emailConfirmationPromise = null;
+        throw error;
+      });
+  }
+  return emailConfirmationPromise;
 }
 
 // Keep password-recovery sessions out of MindTrack's normal profile login.
@@ -824,10 +849,15 @@ export function AuthProvider({
   useEffect(() => {
 
     let active = true;
+    // Capture this before any async work or URL cleanup. Otherwise a late
+    // SIGNED_IN event can restore the temporary verification session.
+    const verificationReturn = isEmailVerificationReturn();
+    const verificationCallbackUrl =
+      isEmailVerificationCallbackUrl(INITIAL_AUTH_URL)
+        ? INITIAL_AUTH_URL
+        : window.location.href;
 
-
-
-
+    if (verificationReturn) clearLocalUser();
 
     async function initializeAuth() {
 
@@ -852,6 +882,21 @@ export function AuthProvider({
 
 
       try {
+
+        // Email confirmation is not a MindTrack login. Supabase can create
+        // a temporary session when the link is opened; end it locally before
+        // showing the login page. Password recovery is handled separately.
+        if (verificationReturn) {
+          const notice = await finishEmailConfirmationOnce(verificationCallbackUrl);
+          if (active) {
+            clearLocalUser();
+            sessionStorage.setItem(EMAIL_VERIFICATION_NOTICE, notice);
+            // Full navigation guarantees that React and Supabase reinitialize
+            // without the one-time callback token or an authenticated user.
+            window.location.replace(`${window.location.origin}/login`);
+          }
+          return;
+        }
 
         const {
 
@@ -878,36 +923,6 @@ export function AuthProvider({
 
 
 
-
-        // Supabase may create a session when the email-confirmation
-        // link is opened. End that session so users log in manually.
-        if (isEmailVerificationReturn()) {
-          const verified = isEmailConfirmed(data?.session?.user);
-          if (data?.session) {
-            const { error: signOutError } = await supabase.auth.signOut();
-            if (signOutError) throw signOutError;
-          }
-          if (active) clearLocalUser();
-          // Persist the notice even if React StrictMode has already
-          // cleaned up this effect. Do not overwrite a verified result.
-          const previousNotice = sessionStorage.getItem(EMAIL_VERIFICATION_NOTICE);
-          if (verified || previousNotice !== "verified") {
-            sessionStorage.setItem(
-              EMAIL_VERIFICATION_NOTICE,
-              verified ? "verified" : "not_verified"
-            );
-          }
-          const cleanUrl = new URL(window.location.href);
-          cleanUrl.searchParams.delete("mindtrack_verified");
-          cleanUrl.searchParams.delete("code");
-          cleanUrl.hash = "";
-          window.history.replaceState(
-            window.history.state,
-            "",
-            `${cleanUrl.pathname}${cleanUrl.search}`
-          );
-          return;
-        }
 
         // A password-reset email creates a short-lived authenticated session.
         // Do not treat that session as a normal MindTrack login or redirect
@@ -1019,8 +1034,9 @@ export function AuthProvider({
 
 
 
-            // The initializer handles confirmation redirects.
-            if (isEmailVerificationReturn()) return;
+            // The initializer owns this callback for its entire lifetime.
+            // Never synchronize a Supabase SIGNED_IN event from verification.
+            if (verificationReturn) return;
 
             // Never load a MindTrack profile during password recovery.
             if (isPasswordRecoveryReturn()) {
@@ -1303,13 +1319,7 @@ export function AuthProvider({
 
 
 
-    const cleanPhoneNumber =
-
-      String(
-
-        phoneNumber || ""
-
-      ).trim();
+    const cleanPhoneNumber = normalizePhilippineMobile(phoneNumber);
 
 
 
@@ -1351,13 +1361,7 @@ export function AuthProvider({
 
 
 
-    const cleanContactPersonPhone =
-
-      String(
-
-        contactPersonPhone || ""
-
-      ).trim();
+    const cleanContactPersonPhone = normalizePhilippineMobile(contactPersonPhone);
 
 
 
@@ -1549,7 +1553,7 @@ export function AuthProvider({
 
       throw new Error(
 
-        "Phone number must contain exactly 11 digits."
+        PH_MOBILE_FORMAT_ERROR
 
       );
 
@@ -1615,7 +1619,7 @@ export function AuthProvider({
 
       throw new Error(
 
-        "Contact person phone number must contain exactly 11 digits."
+        PH_MOBILE_FORMAT_ERROR
 
       );
 
@@ -1626,6 +1630,10 @@ export function AuthProvider({
 
 
 
+
+    if (areSamePhilippineMobileNumbers(cleanPhoneNumber, cleanContactPersonPhone)) {
+      throw new Error("Your emergency contact number must be different from your personal phone number.");
+    }
 
     if (
 
@@ -1695,7 +1703,7 @@ export function AuthProvider({
 
             emailRedirectTo:
 
-              `${window.location.origin}/login?mindtrack_verified=1`,
+              `${window.location.origin}${EMAIL_VERIFICATION_REDIRECT_PATH}`,
 
 
 
@@ -2185,13 +2193,7 @@ export function AuthProvider({
 
 
 
-      phoneNumber:
-
-        String(
-
-          changes.phoneNumber || ""
-
-        ).trim(),
+      phoneNumber: normalizePhilippineMobile(changes.phoneNumber),
 
 
 
@@ -2227,15 +2229,7 @@ export function AuthProvider({
 
 
 
-      contactPersonPhone:
-
-        String(
-
-          changes.contactPersonPhone ||
-
-          ""
-
-        ).trim(),
+      contactPersonPhone: normalizePhilippineMobile(changes.contactPersonPhone),
 
     };
 
@@ -2257,7 +2251,7 @@ export function AuthProvider({
 
       throw new Error(
 
-        "Phone number must contain exactly 11 digits."
+        PH_MOBILE_FORMAT_ERROR
 
       );
 
@@ -2323,7 +2317,7 @@ export function AuthProvider({
 
       throw new Error(
 
-        "Contact person phone number must contain exactly 11 digits."
+        PH_MOBILE_FORMAT_ERROR
 
       );
 
@@ -2334,6 +2328,10 @@ export function AuthProvider({
 
 
 
+
+    if (areSamePhilippineMobileNumbers(safeChanges.phoneNumber, safeChanges.contactPersonPhone)) {
+      throw new Error("Your emergency contact number must be different from your personal phone number.");
+    }
 
     const {
 
@@ -2659,7 +2657,7 @@ export function AuthProvider({
 
           emailRedirectTo:
 
-            `${window.location.origin}/login?mindtrack_verified=1`,
+            `${window.location.origin}${EMAIL_VERIFICATION_REDIRECT_PATH}`,
 
 
 

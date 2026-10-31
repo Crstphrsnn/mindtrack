@@ -5,6 +5,13 @@ import { useAuth } from "../../context/AuthContext";
 import { COLLEGE_OPTIONS, collegePrograms } from "../../config/collegeRoster";
 import { fetchPsgcItems } from "../../services/registrationService";
 import useRegistrationCounselors from "../../hooks/useRegistrationCounselors";
+import {
+  PH_MOBILE_FORMAT_ERROR,
+  PH_MOBILE_INPUT_PATTERN,
+  sanitizePhilippineMobileInput,
+  normalizePhilippineMobile,
+  areSamePhilippineMobileNumbers
+} from "../../utils/philippineMobile";
 
 // ======================================================
 // REGISTER
@@ -277,18 +284,10 @@ export default function Register() {
     } = e.target;
 
 
-    const numericFields = [
-      "phoneNumber",
-      "contactPersonPhone"
-    ];
-
-
-    const nextValue =
-      numericFields.includes(name)
-        ? value
-            .replace(/\D/g, "")
-            .slice(0, 11)
-        : value;
+    const phoneFields = ["phoneNumber", "contactPersonPhone"];
+    const nextValue = phoneFields.includes(name)
+      ? sanitizePhilippineMobileInput(value)
+      : value;
 
 
     setForm(current => {
@@ -300,6 +299,9 @@ export default function Register() {
 
           role:
             nextValue,
+
+          // A student number must never carry over to an employee account.
+          userNumber: "",
 
           preferredCounselorId:
             "",
@@ -1047,10 +1049,8 @@ export default function Register() {
       return;
     }
 
-    if (form.phoneNumber.length !== 11) {
-      setError(
-        "Phone number must contain exactly 11 digits."
-      );
+    if (!normalizePhilippineMobile(form.phoneNumber)) {
+      setError(PH_MOBILE_FORMAT_ERROR);
       return;
     }
 
@@ -1068,12 +1068,13 @@ export default function Register() {
       return;
     }
 
-    if (
-      form.contactPersonPhone.length !== 11
-    ) {
-      setError(
-        "Contact person phone number must contain exactly 11 digits."
-      );
+    if (!normalizePhilippineMobile(form.contactPersonPhone)) {
+      setError(PH_MOBILE_FORMAT_ERROR);
+      return;
+    }
+
+    if (areSamePhilippineMobileNumbers(form.phoneNumber, form.contactPersonPhone)) {
+      setError("Your emergency contact number must be different from your personal phone number.");
       return;
     }
 
@@ -1753,31 +1754,19 @@ export default function Register() {
               )}
 
 
-              <label>
-
-                {form.role === "student"
-                  ? "Student Number"
-                  : form.role === "teaching" ||
-                      form.role === "non_teaching"
-                    ? "Employee Number"
-                    : "Student / Employee Number"}
-
-                <span
-                  className="required-asterisk"
-                  aria-hidden="true"
-                >
-                  *
-                </span>
-
-                <input
-                  type="text"
-                  name="userNumber"
-                  value={form.userNumber}
-                  onChange={change}
-                  required
-                />
-
-              </label>
+              {form.role && (
+                <label>
+                  {form.role === "student" ? "Student Number" : "Employee Number"}
+                  <span className="required-asterisk" aria-hidden="true">*</span>
+                  <input
+                    type="text"
+                    name="userNumber"
+                    value={form.userNumber}
+                    onChange={change}
+                    required
+                  />
+                </label>
+              )}
 
             </div>
 
@@ -1840,11 +1829,13 @@ export default function Register() {
                   name="phoneNumber"
                   value={form.phoneNumber}
                   onChange={change}
-                  inputMode="numeric"
-                  pattern="[0-9]{11}"
+                  inputMode="tel"
+                  pattern={PH_MOBILE_INPUT_PATTERN}
                   minLength={11}
-                  maxLength={11}
-                  placeholder="09XXXXXXXXX"
+                  maxLength={13}
+                  title="Use 09XXXXXXXXX or +639XXXXXXXXX."
+                  placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                  autoComplete="tel"
                   required
                 />
               </label>
@@ -2195,13 +2186,19 @@ export default function Register() {
                   name="contactPersonPhone"
                   value={form.contactPersonPhone}
                   onChange={change}
-                  inputMode="numeric"
-                  pattern="[0-9]{11}"
+                  inputMode="tel"
+                  pattern={PH_MOBILE_INPUT_PATTERN}
                   minLength={11}
-                  maxLength={11}
-                  placeholder="09XXXXXXXXX"
+                  maxLength={13}
+                  title="Use 09XXXXXXXXX or +639XXXXXXXXX."
+                  placeholder="09XXXXXXXXX or +639XXXXXXXXX"
                   required
                 />
+                {areSamePhilippineMobileNumbers(form.phoneNumber, form.contactPersonPhone) && (
+                  <span role="alert" style={{ color: "#b91c1c", fontSize: "0.82rem" }}>
+                    Your emergency contact number must be different from your personal phone number.
+                  </span>
+                )}
               </label>
 
             </div>

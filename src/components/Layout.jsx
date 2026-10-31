@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Activity,
+  ArrowLeftRight,
   BarChart3,
   Bell,
   Calendar,
@@ -76,6 +77,7 @@ const menu = {
     ["/dashboard", "Dashboard", Home],
     ["/cases", "Assessment Cases", ClipboardList],
     ["/counseling-requests", "Counseling Requests", Calendar],
+    ["/transfers", "Transfers", ArrowLeftRight],
     ["/referrals", "Referrals", Users],
     ["/user-profiles", "User Profiles", Users],
     ["/schedule", "Schedule", Calendar],

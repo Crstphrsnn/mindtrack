@@ -3,12 +3,20 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import EmailConfirmation from "./pages/auth/EmailConfirmation";
 import { COLLEGE_OPTIONS, collegePrograms } from "./config/collegeRoster";
 import { Protected, RoleProtected } from "./components/RouteGuards";
 import {
   submitAssessment
 } from "./services/assessmentService";
 import { useAssessmentDraft } from "./hooks/useAssessmentDraft";
+import {
+  PH_MOBILE_FORMAT_ERROR,
+  PH_MOBILE_INPUT_PATTERN,
+  sanitizePhilippineMobileInput,
+  normalizePhilippineMobile,
+  areSamePhilippineMobileNumbers
+} from "./utils/philippineMobile";
 
 import {
   deleteAssessmentCase,
@@ -49,6 +57,10 @@ import {
 
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
+import CounselorTransfers from "./pages/counselor/CounselorTransfers";
+import StudentVacantTime from "./components/StudentVacantTime";
+import { getStudentVacantSlots } from "./services/studentAvailabilityService";
+import { isStudentVacantAt } from "./utils/studentAvailability.mjs";
 import { useReportsAnalytics } from "./hooks/useReportsAnalytics";
 import { deleteUnprocessedCounselingRequest } from "./services/adminCleanupService";
 import Home from "./components/Home";
@@ -65,7 +77,6 @@ import {
 
 import {
   requestCounselorTransfer as submitOneTimeCounselorTransfer,
-  approveCounselorTransfer as approveOneTimeCounselorTransfer,
   cancelCounselorTransfer as cancelOneTimeCounselorTransfer
 } from "./services/transferService";
 
@@ -338,86 +349,6 @@ function Dashboard() {
     );
 
 
-  const pendingTransferRows =
-    useRows(
-      "transferRequests",
-      isCounselor
-        ? {
-            targetCounselorId:
-              user.id,
-
-            status:
-              "Pending approval"
-          }
-        : isSuperAdmin
-          ? {
-              status:
-                "Pending approval"
-            }
-          : {
-              disabled:
-                true
-            }
-    );
-
-
-  const outgoingTransferRows =
-    useRows(
-      "transferRequests",
-      isCounselor
-        ? {
-            requestedById:
-              user.id,
-
-            status:
-              "Pending approval"
-          }
-        : {
-            disabled:
-              true
-          }
-    );
-
-
-  const counselorAccounts =
-    useRows("counselorDirectory", isCounselor ? { active: true } : { disabled: true });
-
-  const transferableUsers =
-    useRows("transferableUsers", isCounselor ? {} : { disabled: true });
-
-  const [transferStudentId, setTransferStudentId] = useState("");
-  const [transferTargetId, setTransferTargetId] = useState("");
-  const [transferReason, setTransferReason] = useState("");
-  const [transferSubmitting, setTransferSubmitting] = useState(false);
-
-  async function submitDashboardTransfer(event) {
-    event.preventDefault();
-    const student = transferableUsers.find(item => item.id === transferStudentId);
-    if (!student || student.transferUsed || student.transferPending) {
-      alert("Choose a currently assigned student who has not transferred and has no pending request.");
-      return;
-    }
-    if (!transferTargetId || transferTargetId === user.id) {
-      alert("Choose a different active counselor.");
-      return;
-    }
-    if (!window.confirm(`Request a one-time transfer for ${student.name || "this student"}?`)) return;
-    setTransferSubmitting(true);
-    try {
-      await submitOneTimeCounselorTransfer(student.id, transferTargetId, transferReason);
-      setTransferStudentId("");
-      setTransferTargetId("");
-      setTransferReason("");
-      alert("Transfer request sent. Waiting for receiving counselor approval.");
-    } catch (error) {
-      console.error("Unable to request one-time transfer:", error);
-      alert(error?.message || "Unable to request transfer.");
-    } finally {
-      setTransferSubmitting(false);
-    }
-  }
-
-
   const userMonitoringRows =
     useRows(
       "assessmentUserViews",
@@ -457,185 +388,20 @@ function Dashboard() {
 
 
 
-  // Supabase transfer RPCs are authoritative; the rows refresh after transfer events.
-  // A second approval is rejected by the database.
-  const pendingTransferRequests =
-    pendingTransferRows.filter(
-      row =>
-        isCounselor &&
-        row.status ===
-          "Pending approval" &&
-        row.targetCounselorId ===
-          user.id &&
-        row.requestedById !==
-          user.id
-    );
-
-
-  const outgoingTransferRequests =
-    outgoingTransferRows.filter(
-      row =>
-        isCounselor &&
-        row.status ===
-          "Pending approval" &&
-        row.requestedById ===
-          user.id
-    );
-
-
-  const [
-    cancelingIncomingTransferId,
-    setCancelingIncomingTransferId
-  ] = useState("");
-
-
-  const [
-    approvingTransferId,
-    setApprovingTransferId
-  ] = useState("");
-
-
-  const [
-    unavailableTransferIds,
-    setUnavailableTransferIds
-  ] = useState(
-    () =>
-      new Set()
+  // Dashboard totals are independent of the dedicated Transfers page.
+  const dashboardLoading = rowsAreLoading(
+    assessments,
+    consultations,
+    referrals,
+    ...(isCounselor ? [assignedDashboardConsultations] : [])
   );
 
-
-  const dashboardLoading =
-    rowsAreLoading(
-      assessments,
-      consultations,
-      referrals,
-      ...(
-        isCounselor
-          ? [
-              assignedDashboardConsultations,
-              pendingTransferRows,
-              outgoingTransferRows,
-              counselorAccounts
-            ]
-          : []
-      )
-    );
-
-
-  const dashboardError =
-    firstRowsError(
-      assessments,
-      consultations,
-      referrals,
-      ...(
-        isCounselor
-          ? [
-              assignedDashboardConsultations,
-              pendingTransferRows,
-              outgoingTransferRows,
-              counselorAccounts
-            ]
-          : []
-      )
-    );
-
-
-  useEffect(
-    () => {
-
-      const pendingIds =
-        new Set(
-          pendingTransferRequests.map(
-            row =>
-              row.id
-          )
-        );
-
-
-      setUnavailableTransferIds(
-        current => {
-
-          const next =
-            new Set(
-              Array.from(
-                current
-              ).filter(
-                id =>
-                  pendingIds.has(
-                    id
-                  )
-              )
-            );
-
-
-          if (
-            next.size ===
-            current.size &&
-            Array.from(
-              next
-            ).every(
-              id =>
-                current.has(
-                  id
-                )
-            )
-          ) {
-
-            return current;
-          }
-
-
-          return next;
-        }
-      );
-    },
-    [
-      pendingTransferRequests
-    ]
+  const dashboardError = firstRowsError(
+    assessments,
+    consultations,
+    referrals,
+    ...(isCounselor ? [assignedDashboardConsultations] : [])
   );
-
-
-  async function approveTransfer(transfer) {
-    if (!isCounselor || !transfer?.id ||
-        transfer.status !== "Pending approval" ||
-        transfer.targetCounselorId !== user.id) {
-      alert("This transfer request is no longer available for your approval.");
-      return;
-    }
-    if (!window.confirm(`Approve the one-time counselor transfer for ${transfer.ownerName || "this student"}? You will become their assigned counselor.`)) return;
-    setApprovingTransferId(transfer.id);
-    try {
-      await approveOneTimeCounselorTransfer(transfer.id);
-      setUnavailableTransferIds(current => new Set([...current, transfer.id]));
-      alert("Transfer approved. You are now the student's assigned counselor. Another transfer is not allowed.");
-    } catch (error) {
-      console.error("Supabase counselor transfer approval failed:", error);
-      alert(error?.message || "Unable to approve this transfer.");
-    } finally {
-      setApprovingTransferId("");
-    }
-  }
-
-  async function cancelIncomingTransfer(transfer) {
-    if (!isCounselor || !transfer?.id ||
-        transfer.status !== "Pending approval" ||
-        transfer.targetCounselorId !== user.id) {
-      alert("Only the receiving counselor can decline this pending transfer.");
-      return;
-    }
-    const reason = window.prompt(`Why are you declining the transfer for ${transfer.ownerName || "this student"}?`);
-    if (reason === null) return;
-    setCancelingIncomingTransferId(transfer.id);
-    try {
-      await cancelOneTimeCounselorTransfer(transfer.id, reason);
-      alert("Transfer declined. The student remains with the original counselor.");
-    } catch (error) {
-      console.error("Supabase counselor transfer cancellation failed:", error);
-      alert(error?.message || "Unable to cancel this transfer.");
-    } finally {
-      setCancelingIncomingTransferId("");
-    }
-  }
 
   if (
     (
@@ -716,392 +482,58 @@ function Dashboard() {
     )
   ) {
 
-    const severe =
-      departmentCases.filter(
-        x =>
-          x.priority ===
-          "Severe"
-      ).length;
-
-
-    const extremelySevere =
-      departmentCases.filter(
-        x =>
-          x.priority ===
-          "Extremely Severe"
-      ).length;
-
-
-    // Count only real scheduled counseling sessions.
-    // Counselors see only sessions assigned to them; Super Admin sees all.
-    const appointmentRows =
-      isSuperAdmin
-        ? consultations
-        : assignedDashboardConsultations;
-
-
-    const scheduledAppointments =
-      appointmentRows.filter(
-        row =>
-          counselingRequestIsScheduled(
-            row?.status
-          )
-      ).length;
-
+    const severe = departmentCases.filter(row => row.priority === "Severe").length;
+    const extremelySevere = departmentCases.filter(row => row.priority === "Extremely Severe").length;
+    // Count assigned appointments only, including accepted cross-college transfers.
+    const appointmentRows = isSuperAdmin ? consultations : assignedDashboardConsultations;
+    const pendingAssessmentCount = departmentCases.filter(row =>
+      assessmentCaseStatusLabel(row.status) === "For review"
+    ).length;
+    const pendingRequestCount = appointmentRows.filter(row =>
+      ["Pending approval", "For review"].includes(normalizeCounselingRequestStatus(row.status))
+    ).length;
+    const todaySessionCount = appointmentRows.filter(row =>
+      row.date === todayDateKey() && counselingRequestIsScheduled(row.status)
+    ).length;
+    const openReferralCount = referrals.filter(row =>
+      !["Completed"].includes(String(row.status || "Received"))
+    ).length;
 
     return (
-
       <>
-
         <PageTitle
-
-          title={
-            user.role ===
-            "super_admin"
-
-              ? "Super Admin Dashboard"
-
-              : "Counselor Dashboard"
-          }
-
-          subtitle="Live case monitoring and counseling operations"
-
+          title={isSuperAdmin ? "Super Admin Dashboard" : "Counselor Dashboard"}
+          subtitle="Work that needs attention across assessment, counseling, and referrals."
         />
-
-
-        <div className="stat-grid">
-
-          <Stat
-            title="Total cases"
-            value={
-              departmentCases.length
-            }
-            icon={
-              <ClipboardList />
-            }
-            tone="primary"
-          />
-
-
-          <Stat
-            title="Severe"
-            value={severe}
-            icon={
-              <AlertTriangle />
-            }
-            tone="severe"
-          />
-
-
-          <Stat
-            title="Extremely Severe"
-            value={extremelySevere}
-            icon={
-              <Clock3 />
-            }
-            tone="extreme"
-          />
-
-
-          <Stat
-            title="Scheduled appointments"
-            value={
-              scheduledAppointments
-            }
-            icon={
-              <Calendar />
-            }
-            tone="info"
-          />
-
+        <div className="stat-grid counselor-dashboard-stat-grid">
+          <Stat title="Assessments for review" value={pendingAssessmentCount} icon={<ClipboardList />} tone="primary" />
+          <Stat title="Counseling requests pending" value={pendingRequestCount} icon={<MessageCircle />} tone="info" />
+          <Stat title="Today's scheduled sessions" value={todaySessionCount} icon={<Calendar />} tone="info" />
+          <Stat title="Open referrals" value={openReferralCount} icon={<UserPlus />} tone="primary" />
         </div>
 
-
-        {isCounselor && (
-          <section className="panel" style={{ maxWidth: "100%" }}>
-            <h2>One-Time Counselor Transfer</h2>
-            <p>Transfer a currently assigned student once. The receiving counselor must approve before the assignment changes.</p>
-            <form onSubmit={submitDashboardTransfer} style={{ display: "grid", gap: 12, maxWidth: 680 }}>
-              <label htmlFor="transfer-student-select">Assigned student</label>
-              <select id="transfer-student-select" value={transferStudentId}
-                onChange={event => setTransferStudentId(event.target.value)} required>
-                <option value="">Choose an eligible student</option>
-                {transferableUsers.filter(item => !item.transferUsed && !item.transferPending).map(item => (
-                  <option key={item.id} value={item.id}>{item.name || "Student"} — {item.department || "No department"}</option>
-                ))}
-              </select>
-              <label htmlFor="transfer-target-select">Receiving counselor</label>
-              <select id="transfer-target-select" value={transferTargetId}
-                onChange={event => setTransferTargetId(event.target.value)} required>
-                <option value="">Choose an active counselor</option>
-                {counselorAccounts.filter(item => item.active && (item.counselorId || item.id) !== user.id).map(item => (
-                  <option key={item.counselorId || item.id} value={item.counselorId || item.id}>{item.name} — {item.department || "No department"}</option>
-                ))}
-              </select>
-              <label htmlFor="transfer-reason">Reason for transfer</label>
-              <textarea id="transfer-reason" value={transferReason}
-                onChange={event => setTransferReason(event.target.value)}
-                minLength={3} maxLength={1000} required rows={3}
-                placeholder="Enter the reason (do not include confidential assessment scores)." />
-              <button type="submit" className="primary-button" disabled={transferSubmitting || transferableUsers.loading || counselorAccounts.loading}>
-                {transferSubmitting ? "Sending request..." : "Request one-time transfer"}
-              </button>
-              {transferableUsers.error && <p className="error-box">{transferableUsers.error}</p>}
-            </form>
-          </section>
-        )}
-
-        {isCounselor && (
-
-          <section className="panel transfer-dashboard-panel">
-
-            <div className="transfer-dashboard-heading">
-
-              <div>
-
-                <h2>
-                  Counselor Transfer Requests
-                </h2>
-
-                <p>
-                  These counseling cases were assigned to you by another counselor and are waiting for your acceptance.
-                </p>
-
-              </div>
-
-
-              <span className="transfer-count-badge">
-                {pendingTransferRequests.length}
-              </span>
-
-            </div>
-
-
-            {pendingTransferRequests.length === 0
-
-              ? (
-
-                <div className="transfer-empty-state">
-                  No users are currently waiting for counselor transfer approval.
-                </div>
-
-              )
-
-              : (
-
-                <div className="transfer-request-grid">
-
-                  {pendingTransferRequests.map(
-                    transfer => (
-
-                      <article
-                        className="transfer-request-card"
-                        key={transfer.id}
-                      >
-
-                        <div>
-
-                          <strong>
-                            {transfer.ownerName || "User"}
-                          </strong>
-
-                          <p>
-                            {transfer.ownerDepartment || "No college / office"}
-                          </p>
-
-                          <small>
-                            {transfer.sourceType === "profile" || !transfer.consultationId
-                              ? "Source: User Profile"
-                              : `Schedule: ${transfer.date || "No date"} · ${transfer.time || "No time"}`}
-                          </small>
-
-                          <small>
-                            Requested by: {transfer.requestedByName || "Counselor"}
-                          </small>
-
-                          {transfer.reason && (
-                            <small>
-                              Reason: {transfer.reason}
-                            </small>
-                          )}
-
-                        </div>
-
-
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "10px",
-                            flexWrap: "wrap"
-                          }}
-                        >
-                          <button
-                            type="button"
-                            className="primary-button"
-                            disabled={
-                              approvingTransferId ===
-                                transfer.id ||
-                              cancelingIncomingTransferId ===
-                                transfer.id ||
-                              transfer.status !==
-                                "Pending approval" ||
-                              unavailableTransferIds.has(
-                                transfer.id
-                              )
-                            }
-                            onClick={
-                              () =>
-                                approveTransfer(
-                                  transfer
-                                )
-                            }
-                          >
-                            {
-                              approvingTransferId ===
-                              transfer.id
-                                ? "Approving..."
-                                : (
-                                    transfer.status !==
-                                      "Pending approval" ||
-                                    unavailableTransferIds.has(
-                                      transfer.id
-                                    )
-                                  )
-                                  ? "Already handled"
-                                  : "Accept transfer"
-                            }
-                          </button>
-
-                          <button
-                            type="button"
-                            className="danger-button danger-button-outline"
-                            disabled={
-                              approvingTransferId ===
-                                transfer.id ||
-                              cancelingIncomingTransferId ===
-                                transfer.id ||
-                              transfer.status !==
-                                "Pending approval" ||
-                              unavailableTransferIds.has(
-                                transfer.id
-                              )
-                            }
-                            onClick={
-                              () =>
-                                cancelIncomingTransfer(
-                                  transfer
-                                )
-                            }
-                          >
-                            {
-                              cancelingIncomingTransferId ===
-                              transfer.id
-                                ? "Cancelling..."
-                                : "Cancel transfer"
-                            }
-                          </button>
-                        </div>
-
-                      </article>
-                    )
-                  )}
-
-                </div>
-
-              )
-            }
-
-
-            <div
-              className="transfer-dashboard-heading"
-              style={{
-                marginTop:
-                  "24px"
-              }}
-            >
-
-              <div>
-                <h3>
-                  Outgoing transfers awaiting selected counselor decision
-                </h3>
-                <p>
-                  Transfers you requested remain assigned to you until the selected counselor accepts or cancels them.
-                </p>
-              </div>
-
-              <span className="transfer-count-badge">
-                {outgoingTransferRequests.length}
-              </span>
-
-            </div>
-
-
-            {outgoingTransferRequests.length === 0
-              ? (
-                <div className="transfer-empty-state">
-                  You have no outgoing transfer requests waiting for a selected counselor decision.
-                </div>
-              )
-              : (
-                <div className="transfer-request-grid">
-                  {outgoingTransferRequests.map(
-                    transfer => (
-                      <article
-                        className="transfer-request-card"
-                        key={`outgoing-${transfer.id}`}
-                      >
-                        <div>
-                          <strong>
-                            {transfer.ownerName || "User"}
-                          </strong>
-                          <p>
-                            To: {transfer.targetCounselorName || "Selected counselor"}
-                          </p>
-                          <small>
-                            {transfer.ownerDepartment || "No college / office"}
-                          </small>
-                          {transfer.reason && (
-                            <small>
-                              Transfer reason: {transfer.reason}
-                            </small>
-                          )}
-                        </div>
-
-                        <span className="transfer-pending-label">
-                          Awaiting selected counselor decision
-                        </span>
-                      </article>
-                    )
-                  )}
-                </div>
-              )
-            }
-
-          </section>
-
-        )}
-
-
-        <section className="panel">
-
-          <h2>
-            Recent cases
-          </h2>
-
-
-          <CaseTable
-            rows={
-              departmentCases.slice(
-                0,
-                8
-              )
-            }
-          />
-
+        <section className="panel counselor-dashboard-priority-panel">
+          <h2>Case monitoring overview</h2>
+          <p>
+            {departmentCases.length} assessment records are visible to your role.
+            Of these, {severe} have Severe and {extremelySevere} have Extremely Severe
+            monitoring labels. These are record counts, not unique students or diagnoses.
+            Review the latest assessment and individual circumstances before taking action.
+          </p>
+          <div className="action-grid counselor-dashboard-actions">
+            <ActionLink href="/cases" title="Review assessment cases" text="Open pending reviews and monitoring details." icon={ClipboardList} />
+            <ActionLink href="/counseling-requests" title="Manage counseling requests" text="Review requests and proposed reschedules." icon={MessageCircle} />
+            <ActionLink href="/schedule" title="View counselor schedule" text="See today's sessions and upcoming appointments." icon={Calendar} />
+            <ActionLink href="/referrals" title="Review referrals" text="Follow up received referrals and record status changes." icon={UserPlus} />
+          </div>
         </section>
 
+        <section className="panel">
+          <h2>Recent assessment records</h2>
+          <p>Use Cases for complete case details. Only authorized records appear here.</p>
+          <CaseTable rows={departmentCases.slice(0, 8)} />
+        </section>
       </>
-
     );
 
   }
@@ -2245,6 +1677,16 @@ function Assessment() {
 
         </div>
 
+
+        <section className="notice assessment-submission-next-steps" aria-label="What happens after submission">
+          <strong>What happens next?</strong>
+          <ol>
+            <li>Your answers have been submitted for your assigned Guidance Counselor to review.</li>
+            <li>Monitoring may show "Awaiting counselor review" until that review is completed. Detailed scores remain counselor-only.</li>
+            <li>Once reviewed, open Monitoring to see your reviewed severity and any counselor recommendation. A severity trend needs at least two reviewed assessments.</li>
+          </ol>
+          <button type="button" className="secondary-button" onClick={() => navigate("/monitoring")}>Open Monitoring</button>
+        </section>
 
         <p className="assessment-monitoring-recommendation">
           {saved.recommendation}
@@ -7490,6 +6932,13 @@ function Referrals() {
           title="Assigned Referrals"
           subtitle="View referrals that were routed to you through your counselor assignment."
         />
+        <div className="notice referral-workflow-note">
+          <strong>How referrals work:</strong> Teaching or Non-teaching staff submit a referral.
+          MindTrack assigns it to the active counselor for the selected college.
+          Review the concern, contact the referred person as appropriate, and update
+          the status: Received → Contacted → Completed. Status changes notify the referrer.
+          Private notes stay counselor-only.
+        </div>
 
 
         <section className="panel">
@@ -8012,6 +7461,13 @@ function Referrals() {
         subtitle="Teaching and Non-teaching users may refer someone who may benefit from guidance support."
 
       />
+      <div className="notice referral-workflow-note">
+        <strong>How referrals work:</strong> Enter the person's details, college/office,
+        reason, urgency, and contact number. MindTrack routes the referral to the
+        active counselor for that college. You can monitor its status:
+        Received → Contacted → Completed. You will be notified of status changes.
+        This does not automatically book a counseling appointment.
+      </div>
 
 
       {referralSubmitMessage && (
@@ -9074,18 +8530,10 @@ function Profile() {
     } = e.target;
 
 
-    const numericFields = [
-      "phoneNumber",
-      "contactPersonPhone"
-    ];
-
-
-    const nextValue =
-      numericFields.includes(name)
-
-        ? value.replace(/\D/g, "")
-
-        : value;
+    const phoneFields = ["phoneNumber", "contactPersonPhone"];
+    const nextValue = phoneFields.includes(name)
+      ? sanitizePhilippineMobileInput(value)
+      : value;
 
 
     setForm(
@@ -9118,11 +8566,11 @@ function Profile() {
 
 
     if (
-      form.phoneNumber.length !== 11
+      !normalizePhilippineMobile(form.phoneNumber)
     ) {
 
       setError(
-        "Phone number must contain exactly 11 digits."
+        PH_MOBILE_FORMAT_ERROR
       );
 
       return;
@@ -9154,16 +8602,21 @@ function Profile() {
 
 
     if (
-      form.contactPersonPhone.length !== 11
+      !normalizePhilippineMobile(form.contactPersonPhone)
     ) {
 
       setError(
-        "Contact person phone number must contain exactly 11 digits."
+        PH_MOBILE_FORMAT_ERROR
       );
 
       return;
     }
 
+
+    if (areSamePhilippineMobileNumbers(form.phoneNumber, form.contactPersonPhone)) {
+      setError("Your emergency contact number must be different from your personal phone number.");
+      return;
+    }
 
     if (
       !form.address.trim()
@@ -9405,11 +8858,12 @@ function Profile() {
                     form.phoneNumber
                   }
                   onChange={change}
-                  inputMode="numeric"
-                  pattern="[0-9]{11}"
+                  inputMode="tel"
+                  pattern={PH_MOBILE_INPUT_PATTERN}
                   minLength={11}
-                  maxLength={11}
-                  placeholder="09XXXXXXXXX"
+                  maxLength={13}
+                  title="Use 09XXXXXXXXX or +639XXXXXXXXX."
+                  placeholder="09XXXXXXXXX or +639XXXXXXXXX"
                   required
                 />
               </label>
@@ -9488,11 +8942,12 @@ function Profile() {
                     form.contactPersonPhone
                   }
                   onChange={change}
-                  inputMode="numeric"
-                  pattern="[0-9]{11}"
+                  inputMode="tel"
+                  pattern={PH_MOBILE_INPUT_PATTERN}
                   minLength={11}
-                  maxLength={11}
-                  placeholder="09XXXXXXXXX"
+                  maxLength={13}
+                  title="Use 09XXXXXXXXX or +639XXXXXXXXX."
+                  placeholder="09XXXXXXXXX or +639XXXXXXXXX"
                   required
                 />
               </label>
@@ -9530,6 +8985,8 @@ function Profile() {
           </form>
 
         </section>
+
+        {user.role === "student" && <StudentVacantTime studentId={user.id} />}
 
       </div>
 
@@ -10873,9 +10330,10 @@ function UserMonitoringContent({
 
 
             <p>
-              Complete a psychological assessment first. After a Guidance
-              Counselor reviews it, this page will show your monitoring
-              severity and review status without displaying assessment scores.
+              There is no monitoring record because you have not submitted an assessment yet.
+              Complete a psychological assessment first. Your assigned Guidance Counselor
+              must review it before a reviewed monitoring severity appears. A trend requires
+              at least two counselor-reviewed assessments. Detailed scores stay private.
             </p>
 
 
@@ -10915,7 +10373,8 @@ function UserMonitoringContent({
               <p>
                 You have submitted an assessment, but MindTrack will not show
                 a reviewed monitoring state until a Guidance Counselor reviews
-                the case.
+                the case. This is why the monitoring summary and trend do not have
+                reviewed results yet. A trend also needs two reviewed assessments.
               </p>
 
 
@@ -10959,6 +10418,68 @@ function UserMonitoringContent({
                 </section>
 
               )}
+
+
+              <section
+                className={
+                  `panel monitoring-trend-panel ${trend.key}`
+                }
+              >
+
+                <div className="monitoring-trend-header">
+
+                  <div>
+
+                    <span className="monitoring-kicker">
+                      Monitoring Severity Trend
+                    </span>
+
+                    <h2>
+                      {
+                        trend.label
+                      }
+                    </h2>
+
+                  </div>
+
+
+                  <Activity
+                    size={28}
+                  />
+
+                </div>
+
+
+                <p>
+                  {
+                    trend.summary
+                  }
+                </p>
+
+
+                {previous && (
+
+                  <small>
+                    Compared with the previous counselor-reviewed assessment
+                    from
+                    {" "}
+                    {
+                      formatRecordDateTime(
+                        previous.createdAt
+                      )
+                    }.
+                  </small>
+
+                )}
+
+
+                <div className="notice monitoring-trend-note">
+                  This comparison uses only the counselor-reviewed MindTrack
+                  monitoring severity. Numerical assessment scores are not
+                  displayed to the user.
+                </div>
+
+              </section>
 
 
               <section
@@ -11097,68 +10618,6 @@ function UserMonitoringContent({
                   intentionally hidden on the user side. Authorized Guidance
                   Counselors and Super Admin can review the detailed screening
                   results when managing your assessment case.
-                </div>
-
-              </section>
-
-
-              <section
-                className={
-                  `panel monitoring-trend-panel ${trend.key}`
-                }
-              >
-
-                <div className="monitoring-trend-header">
-
-                  <div>
-
-                    <span className="monitoring-kicker">
-                      Monitoring Severity Trend
-                    </span>
-
-                    <h2>
-                      {
-                        trend.label
-                      }
-                    </h2>
-
-                  </div>
-
-
-                  <Activity
-                    size={28}
-                  />
-
-                </div>
-
-
-                <p>
-                  {
-                    trend.summary
-                  }
-                </p>
-
-
-                {previous && (
-
-                  <small>
-                    Compared with the previous counselor-reviewed assessment
-                    from
-                    {" "}
-                    {
-                      formatRecordDateTime(
-                        previous.createdAt
-                      )
-                    }.
-                  </small>
-
-                )}
-
-
-                <div className="notice monitoring-trend-note">
-                  This comparison uses only the counselor-reviewed MindTrack
-                  monitoring severity. Numerical assessment scores are not
-                  displayed to the user.
                 </div>
 
               </section>
@@ -14481,6 +13940,26 @@ function CounselingRequestsManagement() {
 
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
+  const [studentVacantSlots, setStudentVacantSlots] = useState([]);
+  const [studentVacantLoading, setStudentVacantLoading] = useState(false);
+  const [studentVacantError, setStudentVacantError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!selected?.ownerId || statusDraft !== "Rescheduled") {
+      setStudentVacantSlots([]);
+      setStudentVacantError("");
+      setStudentVacantLoading(false);
+      return () => { active = false; };
+    }
+    setStudentVacantLoading(true);
+    setStudentVacantError("");
+    getStudentVacantSlots(selected.ownerId)
+      .then(slots => { if (active) setStudentVacantSlots(slots); })
+      .catch(err => { if (active) setStudentVacantError(err?.message || "Unable to read student vacant time."); })
+      .finally(() => { if (active) setStudentVacantLoading(false); });
+    return () => { active = false; };
+  }, [selected?.ownerId, statusDraft]);
 
   useEffect(() => {
     setRescheduleDate(selected?.date || "");
@@ -15118,6 +14597,27 @@ function CounselingRequestsManagement() {
         alert("Choose a different date or time to reschedule.");
         return;
       }
+      if (studentVacantLoading || studentVacantError) {
+        alert("Student vacant time could not be checked. Try again before rescheduling.");
+        return;
+      }
+      if (studentVacantSlots.length > 0 && !isStudentVacantAt(studentVacantSlots, rescheduleDate, rescheduleTime)) {
+        alert("The chosen time is outside the student's saved vacant hours. Choose a matching time or ask the student to update their profile.");
+        return;
+      }
+      // Recheck at save time in case the student edited their weekly schedule
+      // after the counselor opened this request. This is still advisory:
+      // the final appointment must be confirmed directly with the student.
+      try {
+        const latestVacantSlots = await getStudentVacantSlots(selected.ownerId);
+        if (latestVacantSlots.length > 0 && !isStudentVacantAt(latestVacantSlots, rescheduleDate, rescheduleTime)) {
+          alert("The student updated their vacant hours. Choose a matching reschedule time.");
+          return;
+        }
+      } catch (err) {
+        alert(err?.message || "Could not verify the student's current vacant hours.");
+        return;
+      }
     }
     let privateNotesSavedThisAttempt = false;
     try {
@@ -15271,11 +14771,9 @@ function CounselingRequestsManagement() {
             </h2>
 
             <p>
-              {
-                isSuperAdmin
-                  ? "Filter requests by college and program."
-                  : "Filter requests by program and the user's latest assessment severity."
-              }
+              {isSuperAdmin
+                ? "Filter requests by college, program, and latest recorded assessment severity."
+                : "Filter by program and the student's latest recorded assessment severity. Severity helps prioritize reviews; it does not diagnose a condition or determine counseling eligibility."}
             </p>
 
           </div>
@@ -16027,6 +15525,16 @@ function CounselingRequestsManagement() {
                     </option>
 
                   </select>
+                  {statusDraft === "Counseling is optional" && (
+                    <p className="profile-note" role="note">
+                      Counseling is available if the student chooses to continue. This is a counselor review status, not a rejection of the student's request.
+                    </p>
+                  )}
+                  {statusDraft === "For referral" && (
+                    <p className="profile-note" role="note">
+                      Further support or another service is recommended. Record the destination and next steps in counselor remarks. Selecting this status does not automatically submit a referral record.
+                    </p>
+                  )}
 
                 </label>
 
@@ -16047,15 +15555,33 @@ function CounselingRequestsManagement() {
                       <select
                         value={rescheduleTime}
                         onChange={event => setRescheduleTime(event.target.value)}
-                        disabled={requestIsReadOnly(selected)}
+                        disabled={requestIsReadOnly(selected) || studentVacantLoading || Boolean(studentVacantError)}
                         required
                       >
                         <option value="">Choose new time</option>
                         {COUNSELING_TIME_SLOTS.map(time => (
-                          <option key={time} value={time}>{time}</option>
+                          <option
+                            key={time}
+                            value={time}
+                            disabled={studentVacantSlots.length > 0 &&
+                              !isStudentVacantAt(studentVacantSlots, rescheduleDate, time)}
+                          >
+                            {time}{studentVacantSlots.length > 0 &&
+                              !isStudentVacantAt(studentVacantSlots, rescheduleDate, time)
+                                ? " — outside student vacant hours" : ""}
+                          </option>
                         ))}
                       </select>
                     </label>
+                    <p className="notice student-reschedule-availability" role="status">
+                      {studentVacantLoading
+                        ? "Checking the student's saved vacant time..."
+                        : studentVacantError
+                          ? `Cannot check student vacant time: ${studentVacantError}`
+                          : studentVacantSlots.length === 0
+                            ? "The student has not saved weekly vacant hours. Confirm the proposed time directly with the student before saving."
+                            : `The student has ${studentVacantSlots.length} saved weekly vacant slots. Only matching hours can be selected. Confirm the exact date with the student before finalizing.`}
+                    </p>
                   </div>
                 )}
 
@@ -17778,7 +17304,7 @@ function Schedule() {
         </div>
 
 
-        {!isSuperAdmin && (
+        {!isSuperAdmin && scheduleFilter === "Transfers" && (
 
           <div
             className="notice"
@@ -17829,7 +17355,7 @@ function Schedule() {
               onClick={
                 () =>
                   navigate(
-                    "/dashboard"
+                    "/transfers"
                   )
               }
             >
@@ -21144,6 +20670,12 @@ export default function App() {
       />
 
 
+      {/* PUBLIC EMAIL CONFIRMATION: verification does not log the user in */}
+      <Route
+        path="/auth/confirm"
+        element={<EmailConfirmation />}
+      />
+
       {/* PUBLIC PASSWORD RECOVERY */}
       <Route
         path="/forgot-password"
@@ -21334,6 +20866,16 @@ export default function App() {
                     </RoleProtected>
                   }
 
+                />
+
+
+                <Route
+                  path="/transfers"
+                  element={
+                    <RoleProtected allowedRoles={["counselor"]}>
+                      <CounselorTransfers />
+                    </RoleProtected>
+                  }
                 />
 
 
