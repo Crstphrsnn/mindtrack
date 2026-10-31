@@ -28,7 +28,12 @@ export const PROGRAMS_BY_COLLEGE = {
 
   "College of Education": [
     "Bachelor of Secondary Education",
-    "Bachelor of Technical-Vocational Teacher Education",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Automotive Technology",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Drafting Technology",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Electrical Technology",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Electronics Technology",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Food Service Management",
+    "Bachelor of Technical-Vocational Teacher Education - Major in Garments, Fashion and Design",
     "Bachelor of Technology and Livelihood Education"
   ],
 
