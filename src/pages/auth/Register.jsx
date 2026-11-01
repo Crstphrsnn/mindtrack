@@ -1834,10 +1834,18 @@ export default function Register() {
                   minLength={11}
                   maxLength={13}
                   title="Use 09XXXXXXXXX or +639XXXXXXXXX."
-                  placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                  placeholder="Example: 09123456789"
                   autoComplete="tel"
+                  aria-describedby="personal-phone-hint"
                   required
                 />
+                <span
+                  id="personal-phone-hint"
+                  className="optional-text"
+                  style={{ display: "block", marginTop: "6px" }}
+                >
+                  Also accepted: +639XXXXXXXXX
+                </span>
               </label>
 
 
@@ -2084,7 +2092,7 @@ export default function Register() {
 
 
               <label className="full-width-field">
-                Street Name / House No. / Purok
+                House No. / Street / Purok
                 <span
                   className="required-asterisk"
                   aria-hidden="true"
@@ -2097,7 +2105,7 @@ export default function Register() {
                   name="streetName"
                   value={form.streetName}
                   onChange={change}
-                  placeholder="Example: 123 Rizal Street, Purok 2"
+                  placeholder="Example: Purok 2, Rizal St."
                   required
                 />
               </label>
@@ -2107,7 +2115,7 @@ export default function Register() {
 
             <div className="profile-note">
 
-              Address preview:
+              Complete address preview:
               {" "}
 
               <strong>
@@ -2191,9 +2199,17 @@ export default function Register() {
                   minLength={11}
                   maxLength={13}
                   title="Use 09XXXXXXXXX or +639XXXXXXXXX."
-                  placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                  placeholder="Example: 09123456789"
+                  aria-describedby="contact-phone-hint"
                   required
                 />
+                <span
+                  id="contact-phone-hint"
+                  className="optional-text"
+                  style={{ display: "block", marginTop: "6px" }}
+                >
+                  Also accepted: +639XXXXXXXXX
+                </span>
                 {areSamePhilippineMobileNumbers(form.phoneNumber, form.contactPersonPhone) && (
                   <span role="alert" style={{ color: "#b91c1c", fontSize: "0.82rem" }}>
                     Your emergency contact number must be different from your personal phone number.

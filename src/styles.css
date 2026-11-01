@@ -8096,7 +8096,8 @@ th {
 
 /* MindTrack student weekly vacant hours: independent of counseling bookings. */
 .student-vacant-panel { grid-column: 1 / -1; }
-.student-vacant-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 16px 0; }
+/* Keep closed weekday cards at summary height instead of stretching to the open day. */
+.student-vacant-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 16px 0; align-items: start; }
 .student-vacant-day { border: 1px solid #dbe2ec; border-radius: 12px; background: #f8fafc; min-width: 0; }
 .student-vacant-day summary { cursor: pointer; padding: 13px 14px; font-weight: 700; }
 .student-vacant-day summary small { color: #64748b; font-weight: 500; }

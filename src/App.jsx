@@ -942,6 +942,9 @@ function Dashboard() {
 
 function Assessment() {
 
+  // Required by the Open Monitoring button after assessment submission.
+  const navigate = useNavigate();
+
   const { user } =
     useAuth();
 

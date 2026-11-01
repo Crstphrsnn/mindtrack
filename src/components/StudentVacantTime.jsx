@@ -74,7 +74,7 @@ export default function StudentVacantTime({ studentId }) {
         <>
           <div className="student-vacant-days">
             {STUDENT_VACANT_DAYS.map(day => (
-              <details key={day.value} className="student-vacant-day">
+              <details key={day.value} name="student-vacant-weekdays" className="student-vacant-day">
                 <summary>{day.label} <small>({slots.filter(row => row.weekday === day.value).length} slots)</small></summary>
                 <div className="student-vacant-time-grid">
                   {STUDENT_VACANT_TIMES.map(time => (
