@@ -13685,8 +13685,8 @@ function CounselingRequestsManagement() {
 
 
   const [
-    priorityFilter,
-    setPriorityFilter
+    statusFilter,
+    setStatusFilter
   ] = useState("all");
 
 
@@ -13747,6 +13747,20 @@ function CounselingRequestsManagement() {
       );
 
 
+  // Build the options from real request statuses (including legacy values),
+  // not assessment severity. College filtering also scopes these options.
+  const requestStatusOptions =
+    Array.from(
+      new Set(
+        requestRowsForProgramOptions.map(
+          row =>
+            normalizeCounselingRequestStatus(row.status) ||
+            "Pending approval"
+        )
+      )
+    ).sort((a, b) => a.localeCompare(b));
+
+
   const filteredRequestRows =
     enrichedRows.filter(
       row => {
@@ -13763,11 +13777,6 @@ function CounselingRequestsManagement() {
           );
 
 
-        const priority =
-          row.priority ||
-          "No Assessment";
-
-
         const matchesCollege =
           !isSuperAdmin ||
           collegeFilter === "all" ||
@@ -13781,16 +13790,16 @@ function CounselingRequestsManagement() {
             programFilter;
 
 
-        const matchesPriority =
-          priorityFilter === "all" ||
-          priority ===
-            priorityFilter;
+        const matchesStatus =
+          statusFilter === "all" ||
+          (normalizeCounselingRequestStatus(row.status) ||
+            "Pending approval") === statusFilter;
 
 
         return (
           matchesCollege &&
           matchesProgram &&
-          matchesPriority
+          matchesStatus
         );
       }
     );
@@ -14775,8 +14784,8 @@ function CounselingRequestsManagement() {
 
             <p>
               {isSuperAdmin
-                ? "Filter requests by college, program, and latest recorded assessment severity."
-                : "Filter by program and the student's latest recorded assessment severity. Severity helps prioritize reviews; it does not diagnose a condition or determine counseling eligibility."}
+                ? "Filter requests by college, program, and request status."
+                : "Filter requests by program and request status. Assessment severity is reviewed separately in Assessment Cases."}
             </p>
 
           </div>
@@ -14891,46 +14900,19 @@ function CounselingRequestsManagement() {
 
           <label>
 
-            Severity
+            Request Status
 
             <select
-              value={priorityFilter}
-              onChange={
-                event =>
-                  setPriorityFilter(
-                    event.target.value
-                  )
-              }
+              value={statusFilter}
+              onChange={event => setStatusFilter(event.target.value)}
             >
+              <option value="all">All statuses</option>
 
-              <option value="all">
-                All severities
-              </option>
-
-              <option value="Minimal / none">
-                Minimal / none
-              </option>
-
-              <option value="Mild">
-                Mild
-              </option>
-
-              <option value="Moderate">
-                Moderate
-              </option>
-
-              <option value="Moderately severe">
-                Moderately severe
-              </option>
-
-              <option value="Severe">
-                Severe
-              </option>
-
-              <option value="Extremely Severe">
-                Extremely Severe
-              </option>
-
+              {requestStatusOptions.map(status => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
 
           </label>
@@ -14979,7 +14961,9 @@ function CounselingRequestsManagement() {
           ? (
 
             <Empty
-              text="No active counseling requests requiring review."
+              text={statusFilter === "all"
+                ? "No active counseling requests requiring review."
+                : "No requests with this status need action. See All Counseling Requests below."}
             />
 
           )

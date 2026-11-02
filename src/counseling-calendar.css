@@ -88,7 +88,9 @@
     background 0.12s ease;
 }
 
-.counseling-calendar-day:hover:not(:disabled) {
+/* Do not apply the pale hover background to the selected date.
+   The selected day has white text, which otherwise becomes hard to see. */
+.counseling-calendar-day:hover:not(:disabled):not(.selected) {
   transform: translateY(-1px);
   border-color: #6fa5e4;
   background: #f3f8ff;
@@ -105,11 +107,18 @@
   text-transform: uppercase;
 }
 
-.counseling-calendar-day.selected {
+.counseling-calendar-day.selected,
+.counseling-calendar-day.selected:hover:not(:disabled),
+.counseling-calendar-day.selected:focus-visible {
   border-color: #173f8f;
   background: #173f8f;
   color: #ffffff;
   box-shadow: 0 5px 14px rgba(23, 63, 143, 0.20);
+}
+
+.counseling-calendar-day:focus-visible {
+  outline: 3px solid #79a8ef;
+  outline-offset: 2px;
 }
 
 .counseling-calendar-day.holiday {

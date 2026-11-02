@@ -19,26 +19,26 @@ export default function Home() {
 
   const services = [
     {
-      title: "Psychological Assessment",
-      text: "Complete psychological assessments to check your well-being.",
+      title: "Psychological Assessment (Students)",
+      text: "Students complete mental health screening tools for guidance counselor review.",
       icon: ClipboardList,
       color: "blue"
     },
     {
-      title: "Counseling Requests",
-      text: "Request a counseling session with the Guidance and Counseling Office.",
+      title: "Counseling Requests (Students)",
+      text: "Students request counseling and track approvals or rescheduling.",
       icon: MessageCircle,
       color: "teal"
     },
     {
-      title: "Referral Support",
-      text: "Get connected to appropriate support services when needed.",
+      title: "Guidance Referrals (Teaching & Non-teaching)",
+      text: "Teaching and non-teaching personnel submit student referrals and track their status.",
       icon: Users,
       color: "gold"
     },
     {
-      title: "Case Monitoring",
-      text: "Track the status of your requests, cases, and follow-ups.",
+      title: "Monitoring & Case Follow-ups",
+      text: "Students view reviewed monitoring results; counselors follow assigned cases.",
       icon: Activity,
       color: "violet"
     }
@@ -73,14 +73,15 @@ export default function Home() {
               </div>
 
               <h1>
-                A private and accessible way to request psychosocial support.
+                Student well-being monitoring and guidance support.
               </h1>
 
               <p className="home-description">
-                MindTrack provides students, faculty, and personnel with a
-                private and accessible way to complete mental health assessments,
-                request counseling, and stay connected
-                with the PSU Lingayen Guidance and Counseling Office.
+                MindTrack is a web-based mental health monitoring and guidance
+                support system for PSU Lingayen. Students can complete psychological
+                screening assessments, view counselor-reviewed monitoring results,
+                and request counseling. Teaching and non-teaching personnel can
+                submit and track student referrals to the Guidance and Counseling Office.
               </p>
 
               <div className="home-actions">
@@ -120,8 +121,8 @@ export default function Home() {
             <h2>Services Offered</h2>
 
             <p className="home-services-intro">
-              Access the following mental health support services through
-              MindTrack.
+              MindTrack services depend on your account role. Students can access
+              assessments and counseling; teaching and non-teaching personnel use referrals.
             </p>
 
             <div className="home-service-list">

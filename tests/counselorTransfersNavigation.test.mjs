@@ -26,10 +26,12 @@ test("The counselor dashboard no longer renders transfer request panels", () => 
 });
 
 test("Dedicated Transfers page retains request, accept, decline, and pending views", () => {
-  assert.match(page, /Request one-time transfer/);
+  assert.match(page, /Request Student Transfer/);
   assert.match(page, /Accept transfer/);
-  assert.match(page, /Cancel transfer/);
-  assert.match(page, /Outgoing transfers awaiting selected counselor decision/);
+  assert.match(page, /Decline/);
+  assert.match(page, /id: "outgoing"/);
+  assert.match(page, /id: "incoming"/);
+  assert.match(page, /id: "history"/);
   assert.match(page, /submitOneTimeCounselorTransfer/);
   assert.match(page, /approveOneTimeCounselorTransfer/);
   assert.match(page, /cancelOneTimeCounselorTransfer/);
