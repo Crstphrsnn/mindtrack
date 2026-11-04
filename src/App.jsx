@@ -60,7 +60,7 @@ import StudentVacantTime from "./components/StudentVacantTime";
 import { getStudentVacantSlots } from "./services/studentAvailabilityService";
 import { isStudentVacantAt } from "./utils/studentAvailability.mjs";
 import { useReportsAnalytics } from "./hooks/useReportsAnalytics";
-import { deleteUnprocessedCounselingRequest } from "./services/adminCleanupService";
+
 import Home from "./components/Home";
 import UserProfileFullScreen from "./components/UserProfileFullScreen";
 import "./counseling-calendar.css";
@@ -75,8 +75,7 @@ import {
 } from "./services/referralService";
 
 import {
-  requestCounselorTransfer as submitOneTimeCounselorTransfer,
-  cancelCounselorTransfer as cancelOneTimeCounselorTransfer
+  requestCounselorTransfer as submitOneTimeCounselorTransfer
 } from "./services/transferService";
 
 import {
@@ -6587,7 +6586,7 @@ function Referrals() {
         />
 
 
-        <section className="panel">
+        <section className="panel superadmin-referrals-panel">
 
           <div className="user-list-heading">
 
@@ -6626,9 +6625,9 @@ function Referrals() {
 
             : (
 
-              <div className="table-wrap referral-list-table-wrap">
+              <div className="table-wrap referral-list-table-wrap superadmin-referral-table-wrap">
 
-                <table className="referral-list-table">
+                <table className="referral-list-table superadmin-referral-table">
 
                   <thead>
                     <tr>
@@ -13942,16 +13941,8 @@ function CounselingRequestsManagement() {
   ] = useState(false);
 
 
-  const [
-    deletingCounselingId,
-    setDeletingCounselingId
-  ] = useState("");
 
 
-  const [
-    deletingTransferId,
-    setDeletingTransferId
-  ] = useState("");
 
 
   // Keep modal navigation metadata in refs rather than state.
@@ -14316,33 +14307,6 @@ function CounselingRequestsManagement() {
   }
 
 
-  function transferRequestsForConsultation(
-    consultationId
-  ) {
-
-    return transferRequests.filter(
-      row =>
-        row.consultationId ===
-        consultationId
-    );
-  }
-
-
-  function approvedTransferForConsultation(
-    consultationId
-  ) {
-
-    return transferRequestsForConsultation(
-      consultationId
-    ).find(
-      row =>
-        row.status ===
-          "Approved"
-    ) ||
-    null;
-  }
-
-
   function canRequestTransfer(row) {
 
     if (
@@ -14369,63 +14333,6 @@ function CounselingRequestsManagement() {
       row.assignedCounselorId ===
       user.id
     );
-  }
-
-
-  async function deletePendingTransferRecord(transfer) {
-    if (!isSuperAdmin || !transfer?.id || transfer.status !== "Pending approval") return;
-    const reason = window.prompt("Reason for cancelling this pending transfer (the audit record will be retained):");
-    if (reason === null) return;
-    setDeletingTransferId(transfer.id);
-    try {
-      await cancelOneTimeCounselorTransfer(transfer.id, reason);
-      alert("Pending transfer cancelled. The transfer history is retained for auditing.");
-    } catch (error) {
-      console.error("Unable to cancel pending transfer:", error);
-      alert(error?.message || "Unable to cancel pending transfer.");
-    } finally {
-      setDeletingTransferId("");
-    }
-  }
-
-  async function deleteSelectedCounselingRequest() {
-    if (!isSuperAdmin || !selected?.id) return;
-
-    // Protect counseling histories, transfer audit trails and scheduled sessions.
-    // The Supabase RPC repeats all checks transactionally; UI checks are only UX.
-    if (transferRequestsForConsultation(selected.id).length > 0) {
-      alert("This counseling request has transfer history. Deletion is blocked to preserve the audit trail.");
-      return;
-    }
-
-    const allowedStatuses = ["Pending approval", "For review", "Canceled", "Cancelled"];
-    if (!allowedStatuses.includes(normalizeCounselingRequestStatus(selected.status))) {
-      alert("Only unprocessed or cancelled counseling requests can be deleted. Scheduled and completed cases must be retained.");
-      return;
-    }
-
-    if (!superAdminDeleteConfirmed("unprocessed counseling request", selected.ownerName)) return;
-
-    const reason = window.prompt(
-      "Administrative cleanup reason (10–500 characters). This action is audited and cannot be undone:"
-    );
-    if (reason === null) return;
-    if (reason.trim().length < 10 || reason.trim().length > 500) {
-      alert("Enter a cleanup reason between 10 and 500 characters.");
-      return;
-    }
-
-    setDeletingCounselingId(selected.id);
-    try {
-      await deleteUnprocessedCounselingRequest(selected.id, reason);
-      closeRequestReview();
-      alert("Unprocessed counseling request removed from Supabase. An administrative audit record was retained.");
-    } catch (error) {
-      console.error("Unable to safely delete Supabase counseling request:", error);
-      alert(error?.message || "Unable to delete the counseling request safely.");
-    } finally {
-      setDeletingCounselingId("");
-    }
   }
 
 
@@ -15030,7 +14937,7 @@ function CounselingRequestsManagement() {
 
           <section
 
-            className="review-request-modal"
+            className={isSuperAdmin ? "review-request-modal superadmin-counseling-review-modal" : "review-request-modal"}
 
             role="dialog"
 
@@ -15083,37 +14990,6 @@ function CounselingRequestsManagement() {
 
               <div className="review-request-modal-header-actions">
 
-                {isSuperAdmin && (
-
-                  <button
-                    type="button"
-                    className="danger-button review-request-header-delete-button"
-                    onClick={
-                      deleteSelectedCounselingRequest
-                    }
-                    disabled={
-                      deletingCounselingId ===
-                        selected.id ||
-                      transferRequestsForConsultation(selected.id).length > 0 ||
-                      !["Pending approval", "For review", "Canceled", "Cancelled"].includes(
-                        normalizeCounselingRequestStatus(selected.status)
-                      )
-                    }
-                    title={
-                      transferRequestsForConsultation(selected.id).length > 0
-                        ? "Transfer history must be retained."
-                        : "Only unprocessed/cancelled requests without sessions or notes may be deleted."
-                    }
-                  >
-                    {
-                      deletingCounselingId ===
-                        selected.id
-                        ? "Deleting..."
-                        : "Delete unprocessed request"
-                    }
-                  </button>
-
-                )}
 
 
                 <button
@@ -15707,104 +15583,6 @@ function CounselingRequestsManagement() {
                 }
 
               </section>
-              )}
-
-              {isSuperAdmin && (
-
-                <div className="superadmin-cleanup-zone superadmin-cleanup-zone-full">
-
-                  <div>
-
-                    <strong>
-                      Super Admin test-data cleanup
-                    </strong>
-
-                    <p>
-                      Use only for test or erroneous records. Approved counselor
-                      transfers are protected so counselor assignment history is
-                      not accidentally broken.
-                    </p>
-
-                  </div>
-
-
-                  <div className="superadmin-cleanup-actions">
-
-                    {transferRequestForConsultation(
-                      selected.id
-                    ) && (
-
-                      <button
-                        type="button"
-                        className="danger-button danger-button-outline superadmin-cleanup-delete-button"
-                        title="Delete pending transfer request"
-                        disabled={
-                          deletingTransferId ===
-                          transferRequestForConsultation(
-                            selected.id
-                          )?.id
-                        }
-                        onClick={
-                          () =>
-                            deletePendingTransferRecord(
-                              transferRequestForConsultation(
-                                selected.id
-                              )
-                            )
-                        }
-                      >
-                        {
-                          deletingTransferId ===
-                            transferRequestForConsultation(
-                              selected.id
-                            )?.id
-                            ? "Deleting transfer..."
-                            : "Delete"
-                        }
-                      </button>
-
-                    )}
-
-
-                    {approvedTransferForConsultation(
-                      selected.id
-                    ) && (
-
-                      <span className="cleanup-protected-label">
-                        Approved transfer history protected
-                      </span>
-
-                    )}
-
-
-                    <button
-                      type="button"
-                      className="danger-button superadmin-cleanup-delete-button"
-                      title="Delete counseling request"
-                      disabled={
-                        deletingCounselingId ===
-                        selected.id ||
-                        transferRequestsForConsultation(selected.id).length > 0 ||
-                        !["Pending approval", "For review", "Canceled", "Cancelled"].includes(
-                          normalizeCounselingRequestStatus(selected.status)
-                        )
-                      }
-                      onClick={
-                        deleteSelectedCounselingRequest
-                      }
-                    >
-                      {
-                        deletingCounselingId ===
-                          selected.id
-                          ? "Deleting counseling request..."
-                          : "Delete unprocessed request"
-                      }
-                    </button>
-
-                  </div>
-
-                </div>
-
               )}
 
 
