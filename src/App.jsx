@@ -9636,6 +9636,11 @@ function UserNotificationsContent({ user }) {
   const unreadRows = rows.filter((row) => !row.read);
   const readCount = rows.length - unreadRows.length;
 
+  // Older notifications may lack sourceType; recognize counselor transfer titles too.
+  const isTransferNotification = (row) =>
+    row.sourceType === "transfer" ||
+    (user.role === "counselor" && /\bcounselor transfer\b/i.test(String(row.title || "")));
+
   async function openNotification(
     row
   ) {
@@ -9701,23 +9706,18 @@ function UserNotificationsContent({ user }) {
     }
 
 
-    if (
-      row.sourceType ===
-        "transfer"
-    ) {
-
+    if (isTransferNotification(row)) {
+      // Counselors manage transfer requests in Transfers, not Dashboard.
+      // Students retain their existing Dashboard destination.
       navigate(
-        "/dashboard",
+        user.role === "counselor" ? "/transfers" : "/dashboard",
         {
           state: {
-            transferRequestId:
-              row.sourceId ||
-              row.transferRequestId ||
-              ""
+            transferRequestId: row.sourceId || row.transferRequestId || "",
+            fromNotification: true
           }
         }
       );
-
       return;
     }
 
@@ -9891,7 +9891,14 @@ function UserNotificationsContent({ user }) {
                         <span className="notification-unread-label">New</span>
                       )}
                     </div>
-                    <p>{row.message || "You have a new system update."}</p>
+                    <p>
+                      {user.role === "counselor" && isTransferNotification(row)
+                        ? String(row.message || "You have a new system update.").replace(
+                            /Open Dashboard to review.?/gi,
+                            "Open Transfers to review."
+                          )
+                        : (row.message || "You have a new system update.")}
+                    </p>
                     <div className="notification-meta-row">
                       <small>{formatRecordDateTime(row.createdAt)}</small>
                       <span className="notification-open-link">View update</span>
