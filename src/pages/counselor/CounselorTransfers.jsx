@@ -7,7 +7,6 @@ import {
   Clock3,
   History,
   Inbox,
-  Info,
   Send,
   ShieldCheck,
   UserRoundCheck
@@ -210,7 +209,7 @@ export default function CounselorTransfers() {
   return (
     <main className="mt-transfers">
       <header className="mt-transfers-heading">
-        <div className="mt-transfers-heading-icon" aria-hidden="true"><ArrowLeftRight size={26} /></div>
+      
         <div>
           <h1>Counselor Transfers</h1>
           <p>Request student transfers and review decisions in one place.</p>
@@ -336,16 +335,6 @@ export default function CounselorTransfers() {
           )}
         </section>
 
-        <aside className="mt-transfer-card mt-transfer-guide" aria-labelledby="mt-transfer-guide-title">
-          <div className="mt-transfer-guide-icon" aria-hidden="true"><Info size={22} /></div>
-          <h2 id="mt-transfer-guide-title">How transfers work</h2>
-          <ol>
-            <li><strong>Select a student</strong><span>Choose a student currently eligible for transfer.</span></li>
-            <li><strong>Send the request</strong><span>Select the receiving counselor and explain the reason.</span></li>
-            <li><strong>Wait for approval</strong><span>The student stays with the current counselor until approval.</span></li>
-          </ol>
-          <div className="mt-transfer-rule"><ShieldCheck size={18} aria-hidden="true" /> One approved transfer per student.</div>
-        </aside>
       </div>
 
       <section className="mt-transfer-card mt-transfer-requests" aria-labelledby="mt-transfer-requests-title">

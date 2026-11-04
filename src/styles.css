@@ -406,7 +406,7 @@ textarea {
 
 .workspace::-webkit-scrollbar-thumb {
   background: #94a3b8;
-  border-radius: 999px;
+  border-radius: 14px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -8063,7 +8063,7 @@ th {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 18px;
-  border-radius: 999px;
+  border-radius: 14px;
 }
 
 .schedule-summary-card > div {
