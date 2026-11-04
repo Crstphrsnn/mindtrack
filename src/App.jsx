@@ -7013,13 +7013,6 @@ function Referrals() {
           title="Assigned Referrals"
           subtitle="View referrals that were routed to you through your counselor assignment."
         />
-        <div className="notice referral-workflow-note">
-          <strong>How referrals work:</strong> Teaching or Non-teaching staff submit a referral.
-          MindTrack assigns it to the active counselor for the selected college.
-          Review the concern, contact the referred person as appropriate, and update
-          the status: Received → Contacted → Completed. Status changes notify the referrer.
-          Private notes stay counselor-only.
-        </div>
 
 
         <section className="panel">
@@ -18896,6 +18889,54 @@ function Reports() {
   const { user } = useAuth();
   const isSuperAdmin = user.role === "super_admin";
 
+  // MindTrack customizable report print controls (Counselor + Super Admin).
+  // Selection only affects the browser's print stylesheet; it does not fetch
+  // extra records, change the on-screen report, or bypass Supabase permissions.
+  const printGroups = [
+    { title: "Overview", options: [
+      { id: "overview", label: "Key statistics" }
+    ] },
+    { title: "Assessment analytics", options: [
+      { id: "assessmentCollege", label: "By college / office" },
+      { id: "assessmentProgram", label: "By program" },
+      { id: "assessmentUserType", label: "By user type" },
+      { id: "assessmentSex", label: "By sex" }
+    ] },
+    { title: "Counseling analytics", options: [
+      { id: "counselingCollege", label: "By college / office" },
+      { id: "counselingProgram", label: "By program" },
+      { id: "counselingUserType", label: "By user type" },
+      { id: "counselingSex", label: "By sex" }
+    ] },
+    { title: "Referral analytics", options: [
+      { id: "referralOverview", label: "Referral statistics" },
+      { id: "referralUrgency", label: "By urgency" },
+      { id: "referralMonth", label: "Monthly trend" }
+    ] },
+    ...(isSuperAdmin ? [{ title: "System feedback", options: [
+      { id: "feedback", label: "Aggregate ratings and feedback (no personal comments)" }
+    ] }] : [])
+  ];
+  const [selectedPrintSections, setSelectedPrintSections] = useState(() =>
+    Object.fromEntries([
+      "overview", "assessmentCollege", "assessmentProgram", "assessmentUserType",
+      "assessmentSex", "counselingCollege", "counselingProgram",
+      "counselingUserType", "counselingSex", "referralOverview",
+      "referralUrgency", "referralMonth", "feedback"
+    ].map(id => [id, true]))
+  );
+  const printOptions = printGroups.flatMap(group => group.options);
+  const selectedPrintCount = printOptions.filter(option => selectedPrintSections[option.id]).length;
+  const isPrintSectionSelected = id => selectedPrintSections[id] !== false;
+  const printGroupSelected = ids => ids.some(isPrintSectionSelected);
+  const togglePrintSection = (id, checked) =>
+    setSelectedPrintSections(previous => ({ ...previous, [id]: checked }));
+  const toggleAllPrintSections = checked =>
+    setSelectedPrintSections(previous => ({
+      ...previous,
+      ...Object.fromEntries(printOptions.map(option => [option.id, checked]))
+    }));
+
   // Phase 4C: report-only, aggregate Supabase RPC. No Firebase collections,
   // assessment answers, counseling messages, or student names are loaded.
   const { report, loading: reportsLoading, error: reportsError } = useReportsAnalytics();
@@ -18990,7 +19031,22 @@ function Reports() {
   const counselingByUserType = counselingBreakdown("userType");
   const referralByStatus = referralBreakdown("status");
   const referralByUrgency = referralBreakdown("urgency");
-  const referralByMonth = referralBreakdown("month");
+  // Display readable month names without changing referral counts or chart order.
+  const formatReferralMonthLabel = label => {
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(label ?? ""));
+    if (!match) return label;
+    const year = Number(match[1]);
+    if (year < 1000) return label;
+    return new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC"
+    }).format(new Date(Date.UTC(year, Number(match[2]) - 1, 1)));
+  };
+  const referralByMonth = referralBreakdown("month").map(row => ({
+    ...row,
+    label: formatReferralMonthLabel(row.label)
+  }));
 
   const priorityTotals = Object.fromEntries(priorityLevels.map(level => [
     level,
@@ -19049,7 +19105,8 @@ function Reports() {
     subtitle,
     rows,
     series,
-    emptyText
+    emptyText,
+    printSectionId
   }) {
 
     const maxValue =
@@ -19072,7 +19129,7 @@ function Reports() {
 
     return (
 
-      <section className="panel analytics-chart-panel">
+      <section className="panel analytics-chart-panel analytics-print-section" data-print-selected={isPrintSectionSelected(printSectionId) ? "true" : "false"}>
 
         <div className="analytics-chart-heading">
 
@@ -19433,6 +19490,92 @@ function Reports() {
             }
           }
 
+          /* Custom print selection: only the selected aggregate report sections print. */
+          .analytics-print-settings {
+            margin-bottom: 20px;
+            padding: 18px;
+          }
+          .analytics-print-settings-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+          .analytics-print-settings-head h2 {
+            margin: 0 0 5px;
+            color: #173f8f;
+            font-size: 18px;
+          }
+          .analytics-print-settings-head p {
+            margin: 0;
+            color: #64748b;
+            font-size: 13px;
+          }
+          .analytics-print-settings-details {
+            margin-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+          }
+          .analytics-print-settings-details summary {
+            color: #173f8f;
+            font-weight: 700;
+            cursor: pointer;
+          }
+          .analytics-print-settings-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 14px 0;
+          }
+          .analytics-print-settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 12px;
+          }
+          .analytics-print-settings-group {
+            min-width: 0;
+            margin: 0;
+            padding: 12px;
+            border: 1px solid #dbe5f2;
+            border-radius: 12px;
+          }
+          .analytics-print-settings-group legend {
+            padding: 0 4px;
+            color: #173f8f;
+            font-size: 13px;
+            font-weight: 800;
+          }
+          .analytics-print-settings-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            margin: 8px 0;
+            color: #334155;
+            font-size: 13px;
+            line-height: 1.4;
+            cursor: pointer;
+          }
+          .analytics-print-settings-option input {
+            flex: 0 0 auto;
+            width: 16px;
+            height: 16px;
+            margin-top: 2px;
+            accent-color: #173f8f;
+          }
+          .analytics-print-privacy-note {
+            margin: 12px 0 0;
+            color: #64748b;
+            font-size: 12px;
+          }
+          @media print {
+            .analytics-print-settings,
+            .analytics-print-section[data-print-selected="false"],
+            .feedback-recent-section {
+              display: none !important;
+            }
+          }
+
           @media print {
             .sidebar,
             .topbar,
@@ -19567,7 +19710,55 @@ function Reports() {
       </div>
 
 
-      <div className="stat-grid">
+      <section className="panel analytics-print-settings" aria-label="Customize printed report">
+        <div className="analytics-print-settings-head">
+          <div>
+            <h2>Customize print</h2>
+            <p>Choose which report sections to include. Your on-screen report stays complete.</p>
+          </div>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={selectedPrintCount === 0}
+            onClick={() => window.print()}
+          >
+            Print selected sections
+          </button>
+        </div>
+        <details className="analytics-print-settings-details">
+          <summary>Choose sections ({selectedPrintCount} of {printOptions.length} selected)</summary>
+          <div className="analytics-print-settings-actions">
+            <button type="button" className="secondary-button" onClick={() => toggleAllPrintSections(true)}>
+              Select all
+            </button>
+            <button type="button" className="secondary-button" onClick={() => toggleAllPrintSections(false)}>
+              Clear selection
+            </button>
+          </div>
+          <div className="analytics-print-settings-grid">
+            {printGroups.map(group => (
+              <fieldset className="analytics-print-settings-group" key={group.title}>
+                <legend>{group.title}</legend>
+                {group.options.map(option => (
+                  <label className="analytics-print-settings-option" key={option.id}>
+                    <input
+                      type="checkbox"
+                      checked={isPrintSectionSelected(option.id)}
+                      onChange={event => togglePrintSection(option.id, event.target.checked)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </fieldset>
+            ))}
+          </div>
+          <p className="analytics-print-privacy-note">
+            Printing includes aggregate analytics only. Do not distribute reports outside authorized PSU personnel.
+          </p>
+        </details>
+      </section>
+
+      <div className="stat-grid analytics-print-section" data-print-selected={isPrintSectionSelected("overview") ? "true" : "false"}>
 
         <Stat
           title="Assessment cases"
@@ -19690,7 +19881,7 @@ function Reports() {
       </div>
 
 
-      <div className="analytics-section-heading">
+      <div className="analytics-section-heading analytics-print-section" data-print-selected={printGroupSelected(["assessmentCollege","assessmentProgram","assessmentUserType","assessmentSex"]) ? "true" : "false"}>
 
         <h2>
           Assessment Case Analytics
@@ -19704,6 +19895,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="assessmentCollege"
         title="Assessment severities by college / office"
         subtitle="Minimal / none, Mild, Moderate, Moderately severe, Severe, and Extremely Severe assessment cases for each college or office."
         rows={priorityByCollege}
@@ -19713,6 +19905,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="assessmentProgram"
         title="Assessment severities by program"
         subtitle="Severity distribution for each academic program. Accounts without a program are grouped as No program / N/A."
         rows={priorityByProgram}
@@ -19722,6 +19915,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="assessmentUserType"
         title="Assessment severities by user type"
         subtitle="Severity distribution for Student, Teaching, and Non-teaching users."
         rows={priorityByUserType}
@@ -19731,6 +19925,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="assessmentSex"
         title="Assessment severities by sex"
         subtitle="Severity distribution using the Male/Female value stored in the user's public account profile."
         rows={priorityBySex}
@@ -19739,7 +19934,7 @@ function Reports() {
       />
 
 
-      <div className="analytics-section-heading">
+      <div className="analytics-section-heading analytics-print-section" data-print-selected={printGroupSelected(["counselingCollege","counselingProgram","counselingUserType","counselingSex"]) ? "true" : "false"}>
 
         <h2>
           Counseling Analytics
@@ -19753,6 +19948,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="counselingCollege"
         title="Counseling by college / office"
         subtitle="Total counseling requests and scheduled counseling records for each college or office."
         rows={counselingByCollege}
@@ -19762,6 +19958,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="counselingProgram"
         title="Counseling by program"
         subtitle="Counseling requests and scheduled counseling records grouped by academic program."
         rows={counselingByProgram}
@@ -19771,6 +19968,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="counselingUserType"
         title="Counseling by user type"
         subtitle="Counseling requests and scheduled counseling records for Student, Teaching, and Non-teaching users."
         rows={counselingByUserType}
@@ -19780,6 +19978,7 @@ function Reports() {
 
 
       <AnalyticsBarChart
+        printSectionId="counselingSex"
         title="Counseling by sex"
         subtitle="Counseling requests and scheduled counseling records grouped by Male/Female account profile value."
         rows={counselingBySex}
@@ -19788,12 +19987,12 @@ function Reports() {
       />
 
 
-      <div className="analytics-section-heading">
+      <div className="analytics-section-heading analytics-print-section" data-print-selected={printGroupSelected(["referralUrgency","referralMonth","referralOverview"]) ? "true" : "false"}>
         <h2>Referral Analytics</h2>
         <p>Referral counts are grouped by current status, urgency, and month (Philippine time). Counselor reports include referrals assigned to them or involving currently assigned students.</p>
       </div>
 
-      <div className="stat-grid">
+      <div className="stat-grid analytics-print-section" data-print-selected={isPrintSectionSelected("referralOverview") ? "true" : "false"}>
         <Stat title="Total referrals" tone="primary"
           value={report.referralTotal} icon={<Users />} />
         <Stat title="Received" tone="info"
@@ -19803,16 +20002,8 @@ function Reports() {
         <Stat title="Completed" tone="low"
           value={referralStatusCount("Completed")} icon={<CheckCircle2 />} />
       </div>
-
       <AnalyticsBarChart
-        title="Referrals by status"
-        subtitle="Current referral status. Unrecognized legacy statuses are grouped as Other."
-        rows={referralByStatus}
-        series={[{ key: "count", label: "Referrals", color: "#173f8f" }]}
-        emptyText="No referral records are available."
-      />
-
-      <AnalyticsBarChart
+        printSectionId="referralUrgency"
         title="Referrals by urgency"
         subtitle="Referral urgency as recorded at submission."
         rows={referralByUrgency}
@@ -19821,6 +20012,7 @@ function Reports() {
       />
 
       <AnalyticsBarChart
+        printSectionId="referralMonth"
         title="Monthly referral trend"
         subtitle="Number of referrals submitted per calendar month (Asia/Manila)."
         rows={referralByMonth}
@@ -19828,26 +20020,12 @@ function Reports() {
         emptyText="No monthly referral data is available."
       />
 
-      <section className="panel analytics-print-actions">
-
-        <button
-
-          className="secondary-button"
-
-          onClick={
-            () =>
-              window.print()
-          }
-
-        >
-          Print analytics
-        </button>
-
-      </section>
 
 
       {isSuperAdmin && (
-        <FeedbackAnalytics />
+        <div className="analytics-print-section" data-print-selected={isPrintSectionSelected("feedback") ? "true" : "false"}>
+          <FeedbackAnalytics />
+        </div>
       )}
 
     </div>
