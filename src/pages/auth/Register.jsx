@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { saveRegistrationDraft, peekRegistrationDraft, clearRegistrationDraft } from "../../utils/registrationDraft";
 import { PRIVACY_NOTICE_VERSION } from "../../utils/privacyConsent";
 import psuLogo from "../../assets/psu-logo.jpg";
 import "../../registration-ux.css";
@@ -68,8 +69,9 @@ export default function Register() {
   } = useAuth();
 
   const navigate = useNavigate();
+  const restoredDraft = peekRegistrationDraft();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => restoredDraft?.form ?? {
     firstName: "",
     middleName: "",
     lastName: "",
@@ -104,18 +106,18 @@ export default function Register() {
   });
 
   const [regions, setRegions] =
-    useState([]);
+    useState(() => restoredDraft?.regions ?? []);
 
   const [provinces, setProvinces] =
-    useState([]);
+    useState(() => restoredDraft?.provinces ?? []);
 
   const [
     municipalities,
     setMunicipalities
-  ] = useState([]);
+  ] = useState(() => restoredDraft?.municipalities ?? []);
 
   const [barangays, setBarangays] =
-    useState([]);
+    useState(() => restoredDraft?.barangays ?? []);
 
   const [
     addressLoading,
@@ -132,7 +134,11 @@ export default function Register() {
 
   const [loading, setLoading] =
     useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(() => Boolean(restoredDraft?.privacyAccepted));
+
+  // The draft lives in memory only while the user reads the Privacy Notice.
+  // Never write passwords or registration personal data to localStorage/sessionStorage.
+  useEffect(() => { clearRegistrationDraft(); }, []);
 
 
   const counselorDirectoryRows =
@@ -1216,6 +1222,7 @@ export default function Register() {
         "Registration submitted! Check your PSU institutional email (including Spam) and click the verification link. You must verify your email before logging in."
       );
 
+      clearRegistrationDraft();
       navigate("/login");
 
     } catch (err) {
@@ -1311,37 +1318,21 @@ export default function Register() {
   return (
     <main className="auth-page mindtrack-registration">
       <div className="mt-reg-shell">
-        <aside className="mt-reg-guide" aria-label="Registration guide">
-          <div className="mt-reg-brand">
-            <img src={psuLogo} alt="Pangasinan State University logo" className="mt-reg-logo" />
-            <div>
-              <strong>MindTrack</strong>
-              <span>PSU Guidance Services</span>
-            </div>
-          </div>
-          <p className="mt-reg-guide-eyebrow">NEW ACCOUNT</p>
-          <h2>Get started in five easy sections.</h2>
-          <p className="mt-reg-guide-copy">
-            Fill in your details, choose your account type, and review how your information is used.
-          </p>
-          <nav aria-label="Jump to registration section" className="mt-reg-nav">
-            <a href="#mt-reg-account"><span>01</span><span>Account details<small>Name, PSU email, and account type</small></span></a>
-            <a href="#mt-reg-personal"><span>02</span><span>Personal details<small>Contact information and address</small></span></a>
-            <a href="#mt-reg-emergency"><span>03</span><span>Emergency contact<small>Someone we can reach if needed</small></span></a>
-            <a href="#mt-reg-security"><span>04</span><span>Password<small>Secure your account</small></span></a>
-            <a href="#mt-reg-privacy"><span>05</span><span>Privacy and consent<small>Review before submitting</small></span></a>
-          </nav>
-          <div className="mt-reg-guide-tip">
-            <strong>What happens after registering?</strong>
-            <p>We will send a verification link to your PSU email. Verify your email, then sign in to MindTrack.</p>
-          </div>
-        </aside>
-
         <div className="auth-card register-card mt-reg-form-panel">
           <header className="mt-reg-form-header">
-            <span className="mt-reg-eyebrow">CREATE YOUR ACCOUNT</span>
-            <h1>Welcome to MindTrack</h1>
-            <p>Use your official PSU email and complete the sections below. Fields marked <span className="required-asterisk">*</span> are required.</p>
+            <div className="mt-reg-header-brand">
+              <img src={psuLogo} alt="Pangasinan State University logo" />
+              <span>
+                <strong>MindTrack</strong>
+                <small>PSU Lingayen Guidance Services</small>
+              </span>
+            </div>
+            <h1>Create your account</h1>
+            <p>Complete the form using your official PSU email address. Fields marked <span className="required-asterisk">*</span> are required.</p>
+            <p className="mt-reg-verification-note">
+              <strong>Email verification required</strong>
+              <span>Check your PSU email and verify your account before signing in.</span>
+            </p>
           </header>
 
           <form
@@ -1353,7 +1344,6 @@ export default function Register() {
 
           <section className="registration-section mt-reg-section" id="mt-reg-account">
             <div className="mt-reg-section-head">
-              <span className="mt-reg-section-number" aria-hidden="true">01</span>
               <div>
                 <h2>Account details</h2>
                 <p>Start with your name, official PSU email, and account type.</p>
@@ -1797,7 +1787,6 @@ export default function Register() {
 
           <section className="registration-section mt-reg-section" id="mt-reg-personal">
             <div className="mt-reg-section-head">
-              <span className="mt-reg-section-number" aria-hidden="true">02</span>
               <div>
                 <h2>Personal details</h2>
                 <p>Add your contact information and complete your home address.</p>
@@ -2165,7 +2154,6 @@ export default function Register() {
 
           <section className="registration-section mt-reg-section" id="mt-reg-emergency">
             <div className="mt-reg-section-head">
-              <span className="mt-reg-section-number" aria-hidden="true">03</span>
               <div>
                 <h2>Emergency contact</h2>
                 <p>Provide someone we can contact when necessary.</p>
@@ -2232,7 +2220,6 @@ export default function Register() {
 
           <section className="registration-section mt-reg-section" id="mt-reg-security">
             <div className="mt-reg-section-head">
-              <span className="mt-reg-section-number" aria-hidden="true">04</span>
               <div>
                 <h2>Create a password</h2>
                 <p>Choose a password to protect your account.</p>
@@ -2291,7 +2278,6 @@ export default function Register() {
 
           <section className="registration-section registration-privacy-consent mt-reg-section" id="mt-reg-privacy">
             <div className="mt-reg-section-head">
-              <span className="mt-reg-section-number" aria-hidden="true">05</span>
               <div>
                 <h2>Privacy and consent</h2>
                 <p>Understand how MindTrack uses your information before creating an account.</p>
@@ -2300,13 +2286,15 @@ export default function Register() {
             <p>
               MindTrack processes account details, contact information, and referral or counseling
               information only for authorized university guidance services. Read the full
-              <Link to="/privacy-notice" target="_blank" rel="noopener noreferrer"> Privacy Notice</Link>
+              <Link to="/privacy-notice" onClick={() => saveRegistrationDraft({
+                form, privacyAccepted, regions, provinces, municipalities, barangays
+              })}> Privacy Notice</Link>
               {" "}before creating your account.
             </p>
             <label className="registration-privacy-check">
               <input type="checkbox" checked={privacyAccepted} required
                 onChange={event => setPrivacyAccepted(event.target.checked)} />
-              <span>I have read and understood the MindTrack Privacy Notice (version {PRIVACY_NOTICE_VERSION})
+              <span>I have read and understood the MindTrack Privacy Notice 
                 and consent to the processing of my registration information for account creation,
                 identity verification, and services applicable to my account.</span>
             </label>
@@ -2348,7 +2336,7 @@ export default function Register() {
             className="register-link"
             onClick={
               () =>
-                navigate("/login")
+                { clearRegistrationDraft(); navigate("/login"); }
             }
           >
             Login
