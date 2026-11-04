@@ -9905,7 +9905,7 @@ function UserNotificationsContent({ user }) {
                     <p>{row.message || "You have a new system update."}</p>
                     <div className="notification-meta-row">
                       <small>{formatRecordDateTime(row.createdAt)}</small>
-                      <span className="notification-open-link">View update →</span>
+                      <span className="notification-open-link">View update</span>
                     </div>
                   </div>
                 </button>
