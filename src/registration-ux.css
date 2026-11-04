@@ -1,0 +1,500 @@
+/* MindTrack public registration and privacy pages.
+   Scoped selectors prevent changes to dashboards, login, and counseling flows. */
+
+.mindtrack-registration,
+.mindtrack-privacy {
+  background: #f1f6fc;
+  color: #15233c;
+  padding: clamp(16px, 3.5vw, 48px);
+}
+
+.mindtrack-registration { display: block; }
+.mindtrack-registration .mt-reg-shell {
+  width: min(1160px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(270px, 330px) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+.mindtrack-registration .mt-reg-guide {
+  position: sticky;
+  top: 24px;
+  min-width: 0;
+  border-radius: 24px;
+  padding: 30px 26px;
+  color: #fff;
+  background: linear-gradient(160deg, #133c82 0%, #0d2b60 75%, #092450 100%);
+  box-shadow: 0 18px 42px rgba(19, 60, 130, .15);
+  overflow: hidden;
+}
+.mindtrack-registration .mt-reg-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.mindtrack-registration .mt-reg-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #fff;
+  padding: 4px;
+  flex-shrink: 0;
+}
+.mindtrack-registration .mt-reg-brand strong,
+.mindtrack-registration .mt-reg-brand span { display: block; }
+.mindtrack-registration .mt-reg-brand strong { font-size: 20px; letter-spacing: -.025em; }
+.mindtrack-registration .mt-reg-brand span { font-size: 12px; color: #d0e2fa; margin-top: 3px; }
+.mindtrack-registration .mt-reg-guide-eyebrow {
+  margin: 0 0 8px;
+  color: #a9d4ff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.mindtrack-registration .mt-reg-guide h2 {
+  font-size: clamp(22px, 2.3vw, 28px);
+  line-height: 1.22;
+  margin: 0 0 12px;
+  color: #fff;
+  letter-spacing: -.025em;
+}
+.mindtrack-registration .mt-reg-guide-copy {
+  color: #d8e7fb;
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0 0 26px;
+}
+.mindtrack-registration .mt-reg-nav { display: grid; gap: 7px; }
+.mindtrack-registration .mt-reg-nav a {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.mindtrack-registration .mt-reg-nav a:hover,
+.mindtrack-registration .mt-reg-nav a:focus-visible {
+  background: rgba(255,255,255,.12);
+  border-color: rgba(255,255,255,.28);
+  outline: none;
+}
+.mindtrack-registration .mt-reg-nav a > span:first-child {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #123e85;
+  background: #e6f1ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.mindtrack-registration .mt-reg-nav small {
+  display: block;
+  color: #c5daf5;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+.mindtrack-registration .mt-reg-guide-tip {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.mindtrack-registration .mt-reg-guide-tip strong { font-size: 13px; }
+.mindtrack-registration .mt-reg-guide-tip p {
+  margin: 7px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e4edfb;
+}
+
+.mindtrack-registration .mt-reg-form-panel {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  text-align: left;
+  border: 1px solid #e0e9f4;
+  border-radius: 24px;
+  padding: clamp(24px, 3.4vw, 42px);
+  box-shadow: 0 16px 44px rgba(27, 57, 99, .07);
+}
+.mindtrack-registration .mt-reg-form-header { padding-bottom: 22px; border-bottom: 1px solid #e5ebf3; }
+.mindtrack-registration .mt-reg-eyebrow {
+  display: inline-block;
+  color: #1551a5;
+  background: #eaf3ff;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .075em;
+}
+.mindtrack-registration .mt-reg-form-header h1 {
+  font-size: clamp(26px, 3vw, 34px);
+  letter-spacing: -.04em;
+  line-height: 1.16;
+  color: #102c59;
+  margin: 16px 0 10px;
+}
+.mindtrack-registration .mt-reg-form-header p {
+  margin: 0;
+  color: #53627a;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.mindtrack-registration .mt-reg-form-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 17px;
+}
+.mindtrack-registration .mt-reg-form-meta span {
+  border-radius: 8px;
+  background: #f0f5fb;
+  color: #365474;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mindtrack-registration .mt-reg-form-panel form { margin-top: 8px; }
+.mindtrack-registration .mt-reg-section {
+  padding: 24px 0 27px;
+  border-bottom: 1px solid #e5ebf3;
+  border-top: 0;
+  scroll-margin-top: 24px;
+}
+.mindtrack-registration .mt-reg-section + .mt-reg-section {
+  border-top: 0;
+  padding-top: 26px;
+}
+.mindtrack-registration .mt-reg-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.mindtrack-registration .mt-reg-section-number {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  background: #e9f2ff;
+  color: #184d99;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.mindtrack-registration .mt-reg-section-head h2 {
+  margin: 0 0 4px;
+  color: #12366e;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.mindtrack-registration .mt-reg-section-head p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: #60718a;
+}
+.mindtrack-registration .registration-grid {
+  gap: 0 18px;
+}
+.mindtrack-registration .registration-grid label {
+  margin: 16px 0 0;
+  color: #26364e;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.mindtrack-registration .registration-grid input,
+.mindtrack-registration .registration-grid select {
+  display: block;
+  min-height: 46px;
+  margin-top: 7px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border-color: #cbd7e6;
+  font-size: 14px;
+  color: #14243e;
+  background: #fff;
+}
+.mindtrack-registration .registration-grid input::placeholder { color: #7d899b; }
+.mindtrack-registration .registration-grid input:focus-visible,
+.mindtrack-registration .registration-grid select:focus-visible,
+.mindtrack-registration .registration-privacy-check input:focus-visible {
+  outline: 2px solid #225cc4;
+  outline-offset: 2px;
+}
+.mindtrack-registration .registration-grid select:disabled {
+  background: #f3f6fa;
+  color: #65758a;
+  cursor: not-allowed;
+}
+.mindtrack-registration .mt-reg-field-help {
+  display: block;
+  color: #5e7088;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+  margin: 7px 0 0;
+}
+.mindtrack-registration .registration-subheading {
+  color: #193f7e;
+  font-size: 16px;
+  margin: 23px 0 4px;
+}
+.mindtrack-registration .registration-section-note {
+  font-size: 13px;
+  background: #f1f6fd;
+  color: #4c6380;
+  margin-top: 12px;
+}
+.mindtrack-registration .profile-note {
+  background: #f0f7ff;
+  color: #244875;
+  border: 1px solid #dceaf9;
+  overflow-wrap: anywhere;
+}
+.mindtrack-registration .student-auto-counselor-note { font-size: 12px; line-height: 1.55; }
+.mindtrack-registration .registration-privacy-consent > p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #4a5d76;
+  margin: 15px 0 0;
+}
+.mindtrack-registration .registration-privacy-check {
+  margin: 18px 0 0;
+  padding: 16px;
+  border: 1px solid #cbdcf3;
+  background: #f3f8ff;
+  border-radius: 12px;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.65;
+  color: #233a59;
+}
+.mindtrack-registration .registration-privacy-check input {
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  padding: 0;
+  margin-top: 2px;
+  accent-color: #174e9e;
+}
+.mindtrack-registration .registration-privacy-hint { margin-top: 12px; }
+.mindtrack-registration .mt-reg-form-panel .primary-button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 18px;
+  font-size: 15px;
+  border-radius: 11px;
+}
+.mindtrack-registration .mt-reg-form-panel .auth-switch { margin-top: 24px; }
+
+/* Privacy notice: easier scanning while retaining the existing policy text. */
+.mindtrack-privacy .mt-privacy-card {
+  width: min(960px, 100%);
+  max-width: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e0e9f4;
+  box-shadow: 0 16px 48px rgba(27, 57, 99, .08);
+  text-align: left;
+}
+.mindtrack-privacy .mt-privacy-header { padding: clamp(24px, 4vw, 44px); padding-bottom: 26px; }
+.mindtrack-privacy .mt-privacy-back {
+  display: inline-block;
+  margin-bottom: 28px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #174e9e;
+}
+.mindtrack-privacy .mt-privacy-back:hover { text-decoration: underline; }
+.mindtrack-privacy .mt-privacy-brand { display: flex; align-items: center; gap: 16px; }
+.mindtrack-privacy .mt-privacy-logo {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.mindtrack-privacy .mt-privacy-brand span {
+  color: #24569b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+.mindtrack-privacy .mt-privacy-brand h1 {
+  color: #122f60;
+  margin: 5px 0 0;
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -.035em;
+}
+.mindtrack-privacy .mt-privacy-intro {
+  margin: 18px 0 14px;
+  color: #4e6079;
+  line-height: 1.65;
+  font-size: 15px;
+}
+.mindtrack-privacy .mt-privacy-status { display: flex; gap: 8px; flex-wrap: wrap; }
+.mindtrack-privacy .mt-privacy-status span {
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: #eef4fb;
+  color: #49617f;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mindtrack-privacy .mt-privacy-status span:last-child { background: #fff5e6; color: #83520c; }
+.mindtrack-privacy .mt-privacy-at-a-glance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 clamp(24px, 4vw, 44px) 30px;
+}
+.mindtrack-privacy .mt-privacy-at-a-glance > div {
+  min-width: 0;
+  border: 1px solid #dbe8f8;
+  border-radius: 13px;
+  background: #f4f8fe;
+  padding: 17px;
+}
+.mindtrack-privacy .mt-privacy-summary-number {
+  display: block;
+  color: #1c58ad;
+  font-weight: 800;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.mindtrack-privacy .mt-privacy-at-a-glance strong { display: block; color: #163e79; font-size: 14px; }
+.mindtrack-privacy .mt-privacy-at-a-glance p { margin: 6px 0 0; color: #52637a; font-size: 12px; line-height: 1.6; }
+.mindtrack-privacy .mt-privacy-toc {
+  margin: 0 clamp(24px, 4vw, 44px) 20px;
+  padding: 16px 18px;
+  background: #f7f9fc;
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+}
+.mindtrack-privacy .mt-privacy-toc strong { color: #17375e; font-size: 13px; }
+.mindtrack-privacy .mt-privacy-toc > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 11px; }
+.mindtrack-privacy .mt-privacy-toc a {
+  display: inline-block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #d8e4f4;
+  color: #164d99;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mindtrack-privacy .mt-privacy-toc a:hover,
+.mindtrack-privacy .mt-privacy-toc a:focus-visible { background: #e8f2ff; }
+.mindtrack-privacy .mt-privacy-sections { padding: 0 clamp(24px, 4vw, 44px) 20px; }
+.mindtrack-privacy .mt-privacy-sections section {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  margin: 0;
+  padding: 24px 0;
+  border-bottom: 1px solid #e6ebf3;
+  scroll-margin-top: 24px;
+}
+.mindtrack-privacy .mt-privacy-sections section:last-child { border-bottom: 0; }
+.mindtrack-privacy .mt-privacy-index {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  border-radius: 10px;
+  background: #e9f2ff;
+  color: #174b93;
+  font-size: 12px;
+  font-weight: 800;
+}
+.mindtrack-privacy .mt-privacy-sections section h2 {
+  font-size: 17px;
+  color: #153b79;
+  margin: 0 0 9px;
+}
+.mindtrack-privacy .mt-privacy-sections section p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #43536b;
+}
+.mindtrack-privacy .mt-privacy-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #edf4fd;
+  padding: 26px clamp(24px, 4vw, 44px);
+}
+.mindtrack-privacy .mt-privacy-footer strong { color: #173a72; font-size: 15px; }
+.mindtrack-privacy .mt-privacy-footer p { margin: 6px 0 0; color: #52637a; font-size: 13px; line-height: 1.5; }
+.mindtrack-privacy .mt-privacy-continue {
+  flex-shrink: 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #173f8f;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.mindtrack-privacy .mt-privacy-continue:hover { background: #2455aa; }
+
+@media (max-width: 820px) {
+  .mindtrack-registration .mt-reg-shell { grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 690px; }
+  .mindtrack-registration .mt-reg-guide { position: static; padding: 22px 24px; border-radius: 18px; }
+  .mindtrack-registration .mt-reg-brand { margin-bottom: 12px; }
+  .mindtrack-registration .mt-reg-guide-eyebrow,
+  .mindtrack-registration .mt-reg-nav,
+  .mindtrack-registration .mt-reg-guide-tip { display: none; }
+  .mindtrack-registration .mt-reg-guide h2 { font-size: 20px; margin-bottom: 6px; }
+  .mindtrack-registration .mt-reg-guide-copy { font-size: 13px; margin: 0; }
+  .mindtrack-registration .mt-reg-form-panel { padding: 24px; border-radius: 18px; }
+}
+@media (max-width: 600px) {
+  .mindtrack-registration, .mindtrack-privacy { padding: 12px; }
+  .mindtrack-registration .mt-reg-guide { padding: 20px; }
+  .mindtrack-registration .mt-reg-form-panel { padding: 22px 18px; }
+  .mindtrack-registration .registration-grid { grid-template-columns: minmax(0, 1fr); }
+  .mindtrack-registration .mt-reg-section-head h2 { font-size: 18px; }
+  .mindtrack-registration .mt-reg-form-meta span { font-size: 11px; }
+  .mindtrack-privacy .mt-privacy-card { border-radius: 18px; }
+  .mindtrack-privacy .mt-privacy-header { padding: 24px 20px 20px; }
+  .mindtrack-privacy .mt-privacy-brand { gap: 12px; }
+  .mindtrack-privacy .mt-privacy-logo { width: 52px; height: 52px; }
+  .mindtrack-privacy .mt-privacy-brand span { font-size: 10px; }
+  .mindtrack-privacy .mt-privacy-at-a-glance { grid-template-columns: minmax(0, 1fr); padding: 0 20px 22px; }
+  .mindtrack-privacy .mt-privacy-at-a-glance > div { padding: 13px 15px; }
+  .mindtrack-privacy .mt-privacy-summary-number { margin-bottom: 5px; }
+  .mindtrack-privacy .mt-privacy-toc { margin: 0 20px 12px; }
+  .mindtrack-privacy .mt-privacy-sections { padding: 0 20px 12px; }
+  .mindtrack-privacy .mt-privacy-sections section { grid-template-columns: 30px minmax(0, 1fr); gap: 10px; }
+  .mindtrack-privacy .mt-privacy-index { height: 30px; }
+  .mindtrack-privacy .mt-privacy-footer { flex-direction: column; align-items: stretch; padding: 22px 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mindtrack-registration *, .mindtrack-privacy * { scroll-behavior: auto !important; }
+}
