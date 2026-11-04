@@ -8408,3 +8408,95 @@ th {
   .referral-updates-panel .referral-update-count span { font-size: .75rem; }
 }
 /* End scoped PSU Referral Slip UI alignment. */
+
+
+/* =====================================================
+   MINDTRACK SUPER ADMIN ASSESSMENT REVIEW SPACING
+   Scoped to the Super Admin psychological assessment modal.
+   Other assessment/counseling screens remain unchanged.
+===================================================== */
+.assessment-history-admin-modal .review-request-modal-header {
+  min-height: 0;
+  padding: 18px 24px;
+  gap: 16px;
+}
+
+.assessment-history-admin-modal .review-request-modal-subtitle {
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.assessment-history-admin-modal .assessment-history-review-body {
+  padding: 16px 18px 20px;
+  gap: 16px;
+  align-content: start;
+}
+
+/* Avoid a blank grid row when Super Admin has no counselor-only answer card. */
+.assessment-history-admin-modal .assessment-user-history-card {
+  grid-row: auto;
+}
+
+.assessment-history-admin-modal .review-request-modal-card {
+  padding: 18px 20px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card {
+  padding: 20px 22px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card h3 {
+  margin: 0 0 6px;
+}
+
+.assessment-history-admin-modal .assessment-review-record-note {
+  margin: 0 0 18px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card label {
+  display: block;
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card select,
+.assessment-history-admin-modal .assessment-case-update-card textarea {
+  display: block;
+  margin-top: 7px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card select {
+  min-height: 44px;
+  padding: 10px 13px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card textarea {
+  height: 138px;
+  min-height: 138px;
+  padding: 12px 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card .review-request-modal-actions {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #e5eaf1;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .assessment-history-admin-modal .review-request-modal-header {
+    padding: 16px;
+  }
+
+  .assessment-history-admin-modal .assessment-history-review-body {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .assessment-history-admin-modal .assessment-case-update-card {
+    padding: 16px;
+  }
+}

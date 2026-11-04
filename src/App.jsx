@@ -19,10 +19,7 @@ import {
   areSamePhilippineMobileNumbers
 } from "./utils/philippineMobile";
 
-import {
-  deleteAssessmentCase,
-  updateAssessmentCase
-} from "./services/assessmentCaseService";
+import { updateAssessmentCase } from "./services/assessmentCaseService";
 
 import {
   useRows,
@@ -11511,10 +11508,6 @@ function Cases() {
   ] = useState(false);
 
 
-  const [
-    deletingAssessmentId,
-    setDeletingAssessmentId
-  ] = useState("");
 
 
   const assessmentStatuses = [
@@ -11664,67 +11657,6 @@ function Cases() {
   );
 
 
-  async function deleteSelectedAssessmentRecord() {
-
-    if (
-      !isSuperAdmin ||
-      !selected?.id
-    ) {
-
-      return;
-    }
-
-
-    if (
-      !superAdminDeleteConfirmed(
-        "psychological assessment",
-        selected.ownerName
-      )
-    ) {
-
-      return;
-    }
-
-
-    try {
-
-      setDeletingAssessmentId(
-        selected.id
-      );
-
-
-      await deleteAssessmentCase(
-        selected.id
-      );
-
-
-      closeAssessmentReview();
-
-
-      alert(
-        "Assessment cleanup completed. The Supabase assessment was deleted and the user's assessment lock was repaired."
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Unable to permanently clean up the assessment:",
-        error
-      );
-
-
-      alert(
-        error?.message ||
-        "Unable to delete the assessment safely."
-      );
-
-    } finally {
-
-      setDeletingAssessmentId(
-        ""
-      );
-    }
-  }
 
 
   async function saveAssessmentUpdate() {
@@ -12499,7 +12431,7 @@ function Cases() {
 
           <section
 
-            className="review-request-modal assessment-history-review-modal"
+            className={`review-request-modal assessment-history-review-modal${isSuperAdmin ? " assessment-history-admin-modal" : ""}`}
 
             role="dialog"
 
@@ -12571,29 +12503,6 @@ function Cases() {
 
               <div className="review-request-modal-header-actions">
 
-                {isSuperAdmin && (
-
-                  <button
-                    type="button"
-                    className="danger-button review-request-header-delete-button"
-                    onClick={
-                      deleteSelectedAssessmentRecord
-                    }
-                    disabled={
-                      deletingAssessmentId ===
-                      selected.id
-                    }
-                    title="Delete this psychological assessment record"
-                  >
-                    {
-                      deletingAssessmentId ===
-                        selected.id
-                        ? "Deleting..."
-                        : "Delete assessment"
-                    }
-                  </button>
-
-                )}
 
 
                 <button
@@ -13304,7 +13213,7 @@ function Cases() {
 
                   <textarea
 
-                    rows="9"
+                    rows={isSuperAdmin ? 5 : 9}
 
                     value={
                       remarksDraft
@@ -13344,47 +13253,6 @@ function Cases() {
                 )}
 
 
-                {isSuperAdmin && (
-
-                  <div className="superadmin-cleanup-zone">
-
-                    <div>
-
-                      <strong>
-                        Super Admin test-data cleanup
-                      </strong>
-
-                      <p>
-                        Permanently delete only an erroneous or test assessment.
-                        MindTrack will also repair the user's assessment lock.
-                      </p>
-
-                    </div>
-
-
-                    <button
-                      type="button"
-                      className="danger-button superadmin-cleanup-delete-button"
-                      title="Delete assessment"
-                      disabled={
-                        deletingAssessmentId ===
-                        selected.id
-                      }
-                      onClick={
-                        deleteSelectedAssessmentRecord
-                      }
-                    >
-                      {
-                        deletingAssessmentId ===
-                          selected.id
-                          ? "Deleting assessment..."
-                          : "Delete assessment"
-                      }
-                    </button>
-
-                  </div>
-
-                )}
 
 
                 <div className="review-request-modal-actions">
