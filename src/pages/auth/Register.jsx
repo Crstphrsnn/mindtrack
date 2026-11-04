@@ -2310,9 +2310,7 @@ export default function Register() {
                 and consent to the processing of my registration information for account creation,
                 identity verification, and services applicable to my account.</span>
             </label>
-            <p className="registration-privacy-hint">
-              Mental-health assessment and counseling participation may require separate, specific consent.
-            </p>
+           
           </section>
 
           {error && (
