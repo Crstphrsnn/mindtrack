@@ -34,7 +34,6 @@ const menu = {
 
   teaching: [
     ["/dashboard", "Home", Home],
-    ["/monitoring", "Monitoring", Activity],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -44,7 +43,6 @@ const menu = {
 
   non_teaching: [
     ["/dashboard", "Home", Home],
-    ["/monitoring", "Monitoring", Activity],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -55,7 +53,6 @@ const menu = {
   // Legacy role aliases retained for older accounts.
   faculty: [
     ["/dashboard", "Home", Home],
-    ["/monitoring", "Monitoring", Activity],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],
@@ -65,7 +62,6 @@ const menu = {
 
   personnel: [
     ["/dashboard", "Home", Home],
-    ["/monitoring", "Monitoring", Activity],
     ["/notifications", "Notifications", Bell],
     ["/referrals", "Referrals", Users],
     ["/history", "History", FileText],

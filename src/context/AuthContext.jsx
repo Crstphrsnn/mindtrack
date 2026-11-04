@@ -15,6 +15,7 @@ import React, {
 
 
 import { supabase } from "../services/supabase";
+import { PRIVACY_NOTICE_VERSION } from "../utils/privacyConsent";
 import {
   PH_MOBILE_FORMAT_ERROR,
   normalizePhilippineMobile,
@@ -1194,6 +1195,7 @@ export function AuthProvider({
     contactPersonName = "",
 
     contactPersonPhone = "",
+    privacyConsent,
 
   }) {
 
@@ -1665,6 +1667,10 @@ export function AuthProvider({
 
 
 
+    if (privacyConsent?.accepted !== true || privacyConsent?.version !== PRIVACY_NOTICE_VERSION) {
+      throw new Error("You must read and acknowledge the current MindTrack Privacy Notice.");
+    }
+
     // ----------------------------------------------------------
 
     // CREATE SUPABASE AUTH USER
@@ -1711,6 +1717,8 @@ export function AuthProvider({
 
 
 
+              privacyConsentAccepted: true,
+              privacyConsentVersion: privacyConsent.version,
               name:
 
                 cleanName,
@@ -2709,7 +2717,7 @@ export function AuthProvider({
 
       !newPassword ||
 
-      newPassword.length < 6
+      newPassword.length < 8
 
     ) {
 
@@ -2717,7 +2725,7 @@ export function AuthProvider({
 
       throw new Error(
 
-        "Password must contain at least 6 characters."
+        "Password must contain at least 8 characters."
 
       );
 

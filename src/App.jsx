@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import PrivacyNotice from "./pages/auth/PrivacyNotice";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import EmailConfirmation from "./pages/auth/EmailConfirmation";
@@ -70,6 +71,7 @@ import "./staff-feature-access.css";
 
 import {
   submitReferral,
+  getReferralSlip,
   updateReferral,
   getReferralNotes,
   saveReferralNotes
@@ -5884,6 +5886,49 @@ function ReferralPrivateCounselingNotes({ referral, counselor }) {
 // REFERRALS
 // ======================================================
 
+// Extra PSU referral-slip fields are fetched only for an authorized viewer.
+// Legacy referrals have no slip details and continue to display normally.
+function ReferralSlipDetails({ referralId }) {
+  const [slip, setSlip] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setSlip(null);
+    setError("");
+    getReferralSlip(referralId)
+      .then(data => { if (active) setSlip(data); })
+      .catch(err => { if (active) setError(err?.message || "Unable to load referral slip."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [referralId]);
+  if (loading) return <p className="referral-slip-status">Loading referral slip...</p>;
+  if (error) return <p className="referral-slip-status" role="alert">{error}</p>;
+  if (!slip) return <p className="referral-slip-status">Legacy referral — additional slip fields were not recorded.</p>;
+  const fields = [
+    ["Year level", slip.yearLevel], ["Age", slip.age],
+    ["Address", slip.address], ["Parent / Guardian", slip.parentGuardian],
+    ["Nature of Problem", slip.natureOfProblem],
+    ["Recommendation", slip.recommendation],
+    ["Printed Name", slip.signatureName],
+    ["Position", slip.position], ["Date", slip.submittedAt ? formatRecordDateTime(slip.submittedAt) : "Not recorded"]
+  ];
+  return (
+    <div className="referral-slip-details">
+      <h4>PSU Referral Slip Details</h4>
+      <div className="referral-slip-details-grid">
+        {fields.map(([label, value]) => (
+          <div className="review-request-detail-item" key={label}>
+            <span>{label}</span>
+            <strong className="review-request-details-text">{value || "Not provided"}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Referrals() {
 
   const { user } =
@@ -5990,6 +6035,8 @@ function Referrals() {
     selectedReferralId,
     setSelectedReferralId
   ] = useState("");
+  const [ownStatusFilter, setOwnStatusFilter] = useState("All");
+  const [expandedOwnReferralId, setExpandedOwnReferralId] = useState("");
 
 
   const rows =
@@ -6039,8 +6086,14 @@ function Referrals() {
       urgency:
         "Routine",
 
-      contact:
-        ""
+      contact: "",
+      yearLevel: "",
+      age: "",
+      address: "",
+      parentGuardian: "",
+      recommendation: "",
+      signatureName: user.name || "",
+      position: ""
 
     });
 
@@ -6131,6 +6184,24 @@ function Referrals() {
     }
 
 
+    if (form.personType === "Student" && !form.yearLevel.trim()) {
+      setReferralSubmitError("Please enter the student year level.");
+      return;
+    }
+    if (form.age && (!Number.isInteger(Number(form.age)) || Number(form.age) < 1 || Number(form.age) > 120)) {
+      setReferralSubmitError("Age must be a whole number between 1 and 120.");
+      return;
+    }
+    if (!form.position.trim()) {
+      setReferralSubmitError("Please enter your position.");
+      return;
+    }
+    if (String(form.signatureName || "").trim().replace(/\s+/g, " ").toLowerCase() !==
+        String(user.name || "").trim().replace(/\s+/g, " ").toLowerCase()) {
+      setReferralSubmitError("Your typed signature must match your registered full name.");
+      return;
+    }
+
     const matchingCounselors =
       counselorDirectory.filter(
         counselor =>
@@ -6189,7 +6260,7 @@ function Referrals() {
 
       // Supabase verifies the caller's staff role and resolves the counselor
       // from the ACTIVE college on the server; no client counselor ID is trusted.
-      await submitReferral(form);
+      await submitReferral(form, user);
 
 
       setForm({
@@ -6212,8 +6283,14 @@ function Referrals() {
         urgency:
           "Routine",
 
-        contact:
-          ""
+        contact: "",
+        yearLevel: "",
+        age: "",
+        address: "",
+        parentGuardian: "",
+        recommendation: "",
+        signatureName: user.name || "",
+        position: ""
 
       });
 
@@ -6862,6 +6939,7 @@ function Referrals() {
 
                   </div>
 
+                  <ReferralSlipDetails referralId={selectedSuperAdminReferral.id} />
 
                   <div className="referral-review-actions">
                     <button
@@ -7290,6 +7368,9 @@ function Referrals() {
 
                 </section>
 
+                <section className="review-request-modal-card referral-review-slip-card">
+                  <ReferralSlipDetails referralId={selectedCounselorReferral.id} />
+                </section>
 
                 <section className="review-request-modal-card referral-review-management-card">
 
@@ -7445,12 +7526,13 @@ function Referrals() {
   }
 
 
-  const own =
-    rows.filter(
-      row =>
-        row.referrerId ===
-        user.id
-    );
+  const own = [...rows]
+    .filter(row => String(row.referrerId || row.ownerId || "") === String(user.id))
+    .sort((a, b) => (recordDateObject(b.createdAt)?.getTime() || 0) -
+      (recordDateObject(a.createdAt)?.getTime() || 0));
+  const visibleOwn = ownStatusFilter === "All"
+    ? own
+    : own.filter(row => normalizedReferralStatus(row.status) === ownStatusFilter);
 
 
   return (
@@ -7465,10 +7547,9 @@ function Referrals() {
 
       />
       <div className="notice referral-workflow-note">
-        <strong>How referrals work:</strong> Enter the person's details, college/office,
-        reason, urgency, and contact number. MindTrack routes the referral to the
-        active counselor for that college. You can monitor its status:
-        Received → Contacted → Completed. You will be notified of status changes.
+        <strong>How referrals work:</strong> Complete the PSU Referral Slip fields and select the college/office.
+        MindTrack routes the referral to the active counselor for that college.
+        Follow its progress in My Referral Updates: Received, Contacted, or Completed. You will be notified when the status changes.
         This does not automatically book a counseling appointment.
       </div>
 
@@ -7503,18 +7584,20 @@ function Referrals() {
       )}
 
 
-      <div className="two-column">
+      <div className="two-column referral-page-grid">
 
 
         <form
-          className="panel"
+          className="panel referral-slip-form"
           onSubmit={submit}
         >
 
 
+          <h2>PSU Referral Slip</h2>
+          <p className="referral-slip-intro">Pangasinan State University — Guidance Referral</p>
           <label>
 
-            Name
+            Name of Student / Referred Person
 
             <input
 
@@ -7540,7 +7623,7 @@ function Referrals() {
 
           <label>
 
-            Type
+            Referred Person Type
 
             <select
 
@@ -7649,9 +7732,37 @@ function Referrals() {
             </label>
           )}
 
+          {form.personType === "Student" && (
+            <label>
+              Year Level
+              <select required value={form.yearLevel} onChange={e => setForm({ ...form, yearLevel: e.target.value })}>
+                <option value="">Select year level</option>
+                {["1st Year", "2nd Year", "3rd Year", "4th Year"].map(year =>
+                  <option key={year} value={year}>{year}</option>)}
+              </select>
+            </label>
+          )}
+          <label>
+            Age (if known)
+            <input type="number" min="1" max="120" step="1" value={form.age}
+              onChange={e => setForm({ ...form, age: e.target.value })} />
+          </label>
+          <label>
+            Address (if known)
+            <textarea rows="2" maxLength={500} value={form.address}
+              onChange={e => setForm({ ...form, address: e.target.value })} />
+          </label>
+          {form.personType === "Student" && (
+            <label>
+              Parent / Guardian (if known)
+              <input maxLength={150} value={form.parentGuardian}
+                onChange={e => setForm({ ...form, parentGuardian: e.target.value })} />
+            </label>
+          )}
+
           <label>
 
-            Contact information
+            Contact Number
 
             <input
 
@@ -7735,7 +7846,7 @@ function Referrals() {
 
           <label>
 
-            Reason
+            Nature of Problem
 
             <textarea
 
@@ -7761,8 +7872,31 @@ function Referrals() {
           </label>
 
 
+          <label>
+            Recommendation
+            <textarea rows="4" maxLength={3000} value={form.recommendation}
+              onChange={e => setForm({ ...form, recommendation: e.target.value })}
+              placeholder="Recommended guidance action or follow-up, if any." />
+          </label>
+          <div className="referral-slip-signature">
+            <label>
+              Printed Name
+              <input required maxLength={150} value={form.signatureName}
+                onChange={e => setForm({ ...form, signatureName: e.target.value })} />
+            </label>
+            <label>
+              Position
+              <input required maxLength={120} value={form.position}
+                onChange={e => setForm({ ...form, position: e.target.value })}
+                placeholder={user.role === "teaching" || user.role === "faculty" ? "e.g., Instructor" : "e.g., Administrative Staff"} />
+            </label>
+            <p className="referral-slip-date">Date: Recorded automatically when submitted.</p>
+            <p className="referral-slip-signature-note">Your typed name is an acknowledgment of the referral you are submitting; it is not a handwritten signature.</p>
+          </div>
+
           <button
-            className="primary-button"
+            type="submit"
+            className="primary-button referral-submit-button"
             disabled={
               submittingReferral ||
               !canSubmitReferral
@@ -7779,28 +7913,38 @@ function Referrals() {
 
         </form>
 
-
-        <section className="panel">
+        <section className="panel referral-updates-panel">
 
           <h2>
-            Referral status
+            My Referral Updates
           </h2>
 
 
-          <p
-            style={{
-              marginTop:
-                "-4px",
-
-              color:
-                "#667085"
-            }}
-          >
-            MindTrack will notify you whenever the assigned counselor changes
-            the status of a referral you submitted.
+          <p className="referral-updates-intro">
+            View the latest status of your submitted referrals. MindTrack also notifies you when a counselor updates a referral.
           </p>
 
 
+          <div className="referral-update-summary" aria-label="My referral status summary">
+            {referralStatusOptions.map(status => (
+              <div className="referral-update-count" key={status}>
+                <strong>{own.filter(row => normalizedReferralStatus(row.status) === status).length}</strong>
+                <span>{status}</span>
+              </div>
+            ))}
+          </div>
+          <div className="referral-update-controls">
+            <label>Filter status
+              <select value={ownStatusFilter} onChange={e => setOwnStatusFilter(e.target.value)}>
+                <option value="All">All statuses</option>
+                {referralStatusOptions.map(status => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </label>
+            <button type="button" className="secondary-button referral-refresh-button"
+              onClick={() => window.dispatchEvent(new Event("mindtrack:referrals-changed"))}>
+              Refresh Updates
+            </button>
+          </div>
           {own.length === 0
 
             ? (
@@ -7811,11 +7955,13 @@ function Referrals() {
 
             )
 
-            : own.map(
+            : visibleOwn.length === 0 ? (
+                <Empty text={`No referrals with status ${ownStatusFilter}.`} />
+              ) : visibleOwn.map(
                 row => (
 
                   <article
-                    className="record-card"
+                    className="record-card referral-update-card"
                     key={
                       row.id
                     }
@@ -7860,6 +8006,9 @@ function Referrals() {
                     </p>
 
 
+                    <small className="referral-update-date">
+                      Last updated: {formatRecordDateTime(row.updatedAt || row.createdAt)}
+                    </small>
                     {row.updatedByName && (
 
                       <small
@@ -7880,6 +8029,12 @@ function Referrals() {
 
                     )}
 
+                    <button type="button" className="text-button referral-slip-toggle"
+                      aria-expanded={expandedOwnReferralId === row.id}
+                      onClick={() => setExpandedOwnReferralId(current => current === row.id ? "" : row.id)}>
+                      {expandedOwnReferralId === row.id ? "Hide referral slip" : "View referral slip"}
+                    </button>
+                    {expandedOwnReferralId === row.id && <ReferralSlipDetails referralId={row.id} />}
                   </article>
 
                 )
@@ -9800,9 +9955,9 @@ function Monitoring() {
   }
 
 
-  // Staff monitor their OWN referrals. Students retain assessment monitoring.
+  // Teaching / Non-teaching users track referrals inside their Referrals page.
   if (REFERRAL_USER_ROLE_VALUES.includes(user.role)) {
-    return <StaffReferralMonitoring user={user} />;
+    return <Navigate to="/referrals" replace />;
   }
 
   return (
@@ -9814,11 +9969,10 @@ function Monitoring() {
 
 
 // ======================================================
-// TEACHING / NON-TEACHING REFERRAL MONITORING
+// SHARED REFERRAL STATUS NORMALIZATION
 // ======================================================
-// This view reads the same secure Supabase referral RPC used by Referrals.
-// The backend limits staff to their own records; the owner filter below is
-// an additional UI safeguard, not a replacement for server authorization.
+// Teaching / Non-teaching users track their referrals inside Referrals.
+// The existing Supabase RPC still enforces role-scoped access.
 function staffReferralStatus(row) {
   const raw = String(row?.status || "Received").trim();
   const key = raw.toLowerCase();
@@ -9827,140 +9981,6 @@ function staffReferralStatus(row) {
   if (key === "completed") return "Completed";
   return raw;
 }
-
-function StaffReferralMonitoring({ user }) {
-  const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState("All");
-  const referrals = useRows("referrals", { ownerId: user.id });
-
-  const ownReferrals = useMemo(() => {
-    return [...referrals]
-      .filter(row =>
-        String(row.referrerId || row.ownerId || "") === String(user.id)
-      )
-      .sort((a, b) => {
-        const aTime = recordDateObject(a.createdAt)?.getTime() || 0;
-        const bTime = recordDateObject(b.createdAt)?.getTime() || 0;
-        return bTime - aTime;
-      });
-  }, [referrals, user.id]);
-
-  const received = ownReferrals.filter(row => staffReferralStatus(row) === "Received").length;
-  const contacted = ownReferrals.filter(row => staffReferralStatus(row) === "Contacted").length;
-  const completed = ownReferrals.filter(row => staffReferralStatus(row) === "Completed").length;
-  const visibleReferrals = statusFilter === "All"
-    ? ownReferrals
-    : ownReferrals.filter(row => staffReferralStatus(row) === statusFilter);
-
-  return (
-    <>
-      <PageTitle
-        title="Referral Monitoring"
-        subtitle="Track the referrals you submitted and the progress reported by the assigned Guidance Counselor."
-      />
-
-      {referrals.loading ? (
-        <section className="panel">
-          <Empty text="Loading your referrals..." />
-        </section>
-      ) : referrals.error ? (
-        <div className="error-box" role="alert">
-          Unable to load your referrals: {referrals.error}
-        </div>
-      ) : (
-        <>
-          <div className="stat-grid">
-            <Stat title="Total Referrals" value={ownReferrals.length} icon={<ClipboardList />} tone="primary" />
-            <Stat title="Received" value={received} icon={<Bell />} tone="info" />
-            <Stat title="Contacted" value={contacted} icon={<MessageCircle />} tone="indigo" />
-            <Stat title="Completed" value={completed} icon={<CheckCircle2 />} tone="low" />
-          </div>
-
-          <section className="panel" style={{ marginTop: 20 }}>
-            <div className="user-list-heading">
-              <div>
-                <h2>My Referral Status</h2>
-                <p>Only referrals submitted from your account are shown here.</p>
-              </div>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>Filter</span>
-                <select
-                  aria-label="Filter referrals by status"
-                  value={statusFilter}
-                  onChange={event => setStatusFilter(event.target.value)}
-                >
-                  <option value="All">All statuses</option>
-                  <option value="Received">Received</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </label>
-            </div>
-
-            {ownReferrals.length === 0 ? (
-              <div className="monitoring-empty-panel" style={{ textAlign: "center", padding: 20 }}>
-                <Users size={38} aria-hidden="true" />
-                <h2>No referrals submitted yet</h2>
-                <p>Submit a referral first. Its progress will appear here once saved.</p>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => navigate("/referrals")}
-                >
-                  Submit a referral
-                </button>
-              </div>
-            ) : visibleReferrals.length === 0 ? (
-              <Empty text={`No referrals with status ${statusFilter}.`} />
-            ) : (
-              <div className="table-wrap referral-list-table-wrap">
-                <table className="referral-list-table">
-                  <thead>
-                    <tr>
-                      <th>Referred person</th>
-                      <th>College / Office</th>
-                      <th>Program</th>
-                      <th>Submitted</th>
-                      <th>Urgency</th>
-                      <th>Status</th>
-                      <th>Assigned Counselor</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleReferrals.map(row => (
-                      <tr key={row.id}>
-                        <td><strong>{row.personName || "Referred person"}</strong></td>
-                        <td>{row.department || "Not provided"}</td>
-                        <td>{row.program || (row.personType === "Student" ? "Not provided" : "N/A")}</td>
-                        <td>{formatRecordDateTime(row.createdAt)}</td>
-                        <td>{row.urgency || "Routine"}</td>
-                        <td><span className="status">{staffReferralStatus(row)}</span></td>
-                        <td>{row.assignedCounselorName || "Not assigned"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {ownReferrals.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => navigate("/referrals")}
-                >
-                  View referrals / Submit another
-                </button>
-              </div>
-            )}
-          </section>
-        </>
-      )}
-    </>
-  );
-}
-
 
 function UserMonitoringContent({
   user
@@ -10822,8 +10842,8 @@ function StaffReferralHistory({ user }) {
             <h2>My Referral Records</h2>
             <p>Only referrals submitted using your account are listed.</p>
           </div>
-          <button type="button" className="secondary-button" onClick={() => navigate("/monitoring")}>
-            View referral monitoring
+          <button type="button" className="secondary-button" onClick={() => navigate("/referrals")}>
+            View referral updates
           </button>
         </div>
         {referrals.loading ? (
@@ -13937,6 +13957,8 @@ function CounselingRequestsManagement() {
   const [selected, setSelected] =
     useState(null);
 
+  // A request opens in read-only mode. Editing is an explicit action.
+  const [reviewEditing, setReviewEditing] = useState(false);
 
   const [
     transferTargetCounselorId,
@@ -14083,6 +14105,15 @@ function CounselingRequestsManagement() {
 
 
   function closeRequestReview() {
+    if (saving) return;
+    const currentStatus = normalizeCounselingRequestStatus(selected?.status);
+    const hasChanges = privateNotesDirty ||
+      (reviewEditing && selected && (
+        statusDraft !== currentStatus ||
+        remarksDraft !== (selected.counselorRemarks || "") ||
+        (statusDraft === "Rescheduled" && (rescheduleDate !== selected.date || rescheduleTime !== selected.time))
+      ));
+    if (hasChanges && !window.confirm("You have unsaved counseling changes. Close without saving?")) return;
 
     const destination =
       reviewReturnPathRef.current;
@@ -14097,6 +14128,7 @@ function CounselingRequestsManagement() {
 
 
     setSelected(null);
+    setReviewEditing(false);
 
     setTransferTargetCounselorId("");
 
@@ -14181,13 +14213,18 @@ function CounselingRequestsManagement() {
 
     },
 
-    [selected]
+    [selected, reviewEditing, privateNotesDirty, statusDraft, remarksDraft, rescheduleDate, rescheduleTime]
   );
 
 
   useEffect(() => {
     let active = true;
     if (!selected?.id || !selected?.ownerId) {
+      setPrivateNotesLoading(false);
+      setPrivateNotesExists(false);
+      return () => { active = false; };
+    }
+    if (user.role !== "counselor" || requestIsReadOnly(selected)) {
       setPrivateNotesLoading(false);
       setPrivateNotesExists(false);
       return () => { active = false; };
@@ -14221,7 +14258,7 @@ function CounselingRequestsManagement() {
     }
     void loadNotes();
     return () => { active = false; };
-  }, [selected?.id, selected?.ownerId]);
+  }, [selected?.id, selected?.ownerId, user.role, user.id]);
 
 
   const requestedRequestId =
@@ -14316,6 +14353,7 @@ function CounselingRequestsManagement() {
       setSelected(
         target
       );
+      setReviewEditing(false);
 
 
       setStatusDraft(
@@ -14369,6 +14407,7 @@ function CounselingRequestsManagement() {
       "";
 
     setSelected(row);
+    setReviewEditing(false);
 
     setTransferTargetCounselorId("");
 
@@ -14529,40 +14568,6 @@ function CounselingRequestsManagement() {
   }
 
 
-  async function savePrivateCounselingNotes() {
-    if (!selected || privateNotesSaving) return;
-    if (user.role !== "counselor") {
-      alert("Only the assigned Guidance Counselor can save private counseling notes.");
-      return;
-    }
-    if (requestIsReadOnly(selected)) {
-      alert("These notes are read-only because another counselor is assigned.");
-      return;
-    }
-    try {
-      setPrivateNotesSaving(true);
-      setPrivateNotesMessage("");
-      setPrivateNotesError("");
-      await saveCounselingNotes(selected.id, {
-        caseHistory: privateCaseHistoryDraft.trim(),
-        counselingSessionSummary: privateSessionSummaryDraft.trim(),
-        counselorObservation: privateObservationDraft.trim(),
-        recommendedActions: privateRecommendedActionsDraft.trim()
-      });
-      setPrivateNotesExists(true);
-      setPrivateNotesDirty(false);
-      setPrivateNotesUpdatedBy(user.name || user.email || "Guidance Counselor");
-      setPrivateNotesLoadedFromLegacyProfile(false);
-      setPrivateNotesMessage("Private counseling notes saved and verified in Supabase.");
-    } catch (error) {
-      console.error("Unable to save private counseling notes:", error);
-      setPrivateNotesError(error?.message || "Unable to save private counseling notes.");
-    } finally {
-      setPrivateNotesSaving(false);
-    }
-  }
-
-
   async function requestCounselorTransfer(row) {
     if (!canRequestTransfer(row)) {
       alert("Only the currently assigned counselor can request an eligible transfer.");
@@ -14587,7 +14592,7 @@ function CounselingRequestsManagement() {
   }
 
   async function saveRequestUpdate() {
-    if (!selected || saving) return;
+    if (!selected || saving || !reviewEditing || privateNotesLoading) return;
     if (requestIsReadOnly(selected)) {
       alert("Only the currently assigned counselor can update this request.");
       return;
@@ -14596,7 +14601,11 @@ function CounselingRequestsManagement() {
       alert("A terminated counseling request cannot be reopened.");
       return;
     }
-    if (statusDraft === "Rescheduled") {
+    const requestChanges =
+      statusDraft !== normalizeCounselingRequestStatus(selected.status) ||
+      remarksDraft.trim() !== String(selected.counselorRemarks || "").trim() ||
+      (statusDraft === "Rescheduled" && (rescheduleDate !== selected.date || rescheduleTime !== selected.time));
+    if (statusDraft === "Rescheduled" && requestChanges) {
       if (!rescheduleDate || !COUNSELING_TIME_SLOTS.includes(rescheduleTime)) {
         alert("Choose a valid new date and time for rescheduling.");
         return;
@@ -14655,26 +14664,30 @@ function CounselingRequestsManagement() {
         setPrivateNotesMessage("Private counseling notes saved and verified in Supabase.");
       }
 
-      const sessionNumber = await updateCounselingRequest(
-        selected.id, statusDraft, remarksDraft,
-        statusDraft === "Rescheduled"
-          ? { date: rescheduleDate, time: rescheduleTime }
-          : {}
-      );
-      setSelected(current => current && current.id === selected.id
-        ? {
-            ...current,
-            status: statusDraft,
-            counselorRemarks: remarksDraft,
-            ...(statusDraft === "Rescheduled" ? { date: rescheduleDate, time: rescheduleTime } : {}),
-            ...(sessionNumber ? { sessionNumber } : {})
-          }
-        : current);
-      // The Supabase counseling-update trigger creates the student notification
-      // in the same database transaction as the request update.
-      alert(privateNotesSavedThisAttempt
-        ? "Counseling request and private counseling notes saved successfully."
-        : "Counseling request updated successfully.");
+      if (requestChanges) {
+        const sessionNumber = await updateCounselingRequest(
+          selected.id, statusDraft, remarksDraft,
+          statusDraft === "Rescheduled"
+            ? { date: rescheduleDate, time: rescheduleTime }
+            : {}
+        );
+        setSelected(current => current && current.id === selected.id
+          ? {
+              ...current,
+              status: statusDraft,
+              counselorRemarks: remarksDraft,
+              ...(statusDraft === "Rescheduled" ? { date: rescheduleDate, time: rescheduleTime } : {}),
+              ...(sessionNumber ? { sessionNumber } : {})
+            }
+          : current);
+      }
+      // Do not report success until both Supabase operations complete.
+      setReviewEditing(false);
+      if (requestChanges || privateNotesSavedThisAttempt) {
+        alert(privateNotesSavedThisAttempt
+          ? "Counseling changes and private notes saved successfully."
+          : "Counseling request updated successfully.");
+      }
     } catch (error) {
       console.error("Counseling request update failed:", error);
       const failureMessage = error?.message || "Unable to save counseling changes.";
@@ -15465,6 +15478,7 @@ function CounselingRequestsManagement() {
                     }
 
                     disabled={
+                      !reviewEditing ||
                       requestIsReadOnly(
                         selected
                       ) ||
@@ -15527,7 +15541,7 @@ function CounselingRequestsManagement() {
 
 
                 {statusDraft === "Rescheduled" && (
-                  <div className="counseling-reschedule-fields">
+                  <fieldset className="counseling-reschedule-fields" disabled={!reviewEditing || requestIsReadOnly(selected)}>
                     <p><strong>New appointment schedule</strong></p>
                     <label>New date</label>
                     <CounselingDatePicker
@@ -15569,7 +15583,7 @@ function CounselingRequestsManagement() {
                             ? "The student has not saved weekly vacant hours. Confirm the proposed time directly with the student before saving."
                             : `The student has ${studentVacantSlots.length} saved weekly vacant slots. Only matching hours can be selected. Confirm the exact date with the student before finalizing.`}
                     </p>
-                  </div>
+                  </fieldset>
                 )}
 
                 <label>
@@ -15588,9 +15602,7 @@ function CounselingRequestsManagement() {
                     }
 
                     readOnly={
-                      requestIsReadOnly(
-                        selected
-                      )
+                      !reviewEditing || requestIsReadOnly(selected)
                     }
 
                     onChange={
@@ -15609,6 +15621,7 @@ function CounselingRequestsManagement() {
               </section>
 
 
+              {user.role === "counselor" && (
               <section
                 className="review-request-modal-card private-counseling-notes-card"
               >
@@ -15700,9 +15713,7 @@ function CounselingRequestsManagement() {
                               privateCaseHistoryDraft
                             }
                             readOnly={
-                              requestIsReadOnly(
-                                selected
-                              )
+                              !reviewEditing || requestIsReadOnly(selected)
                             }
                             onChange={
                               event => {
@@ -15725,9 +15736,7 @@ function CounselingRequestsManagement() {
                               privateSessionSummaryDraft
                             }
                             readOnly={
-                              requestIsReadOnly(
-                                selected
-                              )
+                              !reviewEditing || requestIsReadOnly(selected)
                             }
                             onChange={
                               event => {
@@ -15750,9 +15759,7 @@ function CounselingRequestsManagement() {
                               privateObservationDraft
                             }
                             readOnly={
-                              requestIsReadOnly(
-                                selected
-                              )
+                              !reviewEditing || requestIsReadOnly(selected)
                             }
                             onChange={
                               event => {
@@ -15775,9 +15782,7 @@ function CounselingRequestsManagement() {
                               privateRecommendedActionsDraft
                             }
                             readOnly={
-                              requestIsReadOnly(
-                                selected
-                              )
+                              !reviewEditing || requestIsReadOnly(selected)
                             }
                             onChange={
                               event => {
@@ -15795,8 +15800,7 @@ function CounselingRequestsManagement() {
 
                       {privateNotesDirty && (
                         <p role="status" style={{ color: "#9a6700", marginTop: "12px" }}>
-                          Unsaved private notes. Click Save private counseling notes,
-                          or Save request update &amp; notes below.
+                          Unsaved private notes. Click Save below to store the changes.
                         </p>
                       )}
 
@@ -15834,42 +15838,7 @@ function CounselingRequestsManagement() {
                       )}
 
 
-                      <div
-                        style={{
-                          marginTop:
-                            "14px"
-                        }}
-                      >
 
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          disabled={
-                            privateNotesSaving ||
-                            saving ||
-                            user.role !== "counselor" ||
-                            requestIsReadOnly(
-                              selected
-                            )
-                          }
-                          onClick={
-                            savePrivateCounselingNotes
-                          }
-                        >
-                          {
-                            user.role !== "counselor"
-                              ? "Private notes — counselor only"
-                              : requestIsReadOnly(
-                                  selected
-                                )
-                              ? "Private notes — read only"
-                              : privateNotesSaving
-                                ? "Saving private notes..."
-                                : "Save private counseling notes"
-                          }
-                        </button>
-
-                      </div>
 
                     </>
 
@@ -15877,7 +15846,7 @@ function CounselingRequestsManagement() {
                 }
 
               </section>
-
+              )}
 
               {isSuperAdmin && (
 
@@ -16112,56 +16081,31 @@ function CounselingRequestsManagement() {
                 )}
 
 
-                <div className="review-request-modal-actions">
-
+                <div className="review-request-modal-actions counseling-review-edit-actions">
                   <button
-
                     type="button"
-
+                    className="primary-button"
+                    disabled={reviewEditing || saving || privateNotesLoading || requestIsReadOnly(selected)}
+                    onClick={() => setReviewEditing(true)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    disabled={!reviewEditing || saving || privateNotesLoading || requestIsReadOnly(selected)}
+                    onClick={saveRequestUpdate}
+                  >
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
                     className="secondary-button"
-
-                    onClick={
-                      closeRequestReview
-                    }
-
+                    disabled={saving}
+                    onClick={closeRequestReview}
                   >
                     Close
                   </button>
-
-
-                  <button
-
-                    type="button"
-
-                    className="primary-button"
-
-                    disabled={
-                      saving ||
-                      privateNotesSaving ||
-                      privateNotesLoading ||
-                      requestIsReadOnly(
-                        selected
-                      )
-                    }
-
-                    onClick={
-                      saveRequestUpdate
-                    }
-
-                  >
-
-                    {
-                      requestIsReadOnly(
-                        selected
-                      )
-                        ? "Read only"
-                        : saving
-                          ? "Saving..."
-                          : "Save request update & notes"
-                    }
-
-                  </button>
-
                 </div>
 
               </div>
@@ -20631,6 +20575,8 @@ export default function App() {
       />
 
 
+      <Route path="/privacy-notice" element={<PrivacyNotice />} />
+
       {/* PUBLIC LOGIN */}
 
       <Route
@@ -20722,7 +20668,7 @@ export default function App() {
 
                   element={
                     <RoleProtected
-                      allowedRoles={GENERAL_USER_ROLE_VALUES}
+                      allowedRoles={["student"]}
                     >
                       <Monitoring />
                     </RoleProtected>

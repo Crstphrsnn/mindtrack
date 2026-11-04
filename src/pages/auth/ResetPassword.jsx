@@ -65,7 +65,7 @@ export default function ResetPassword() {
     };
   }, []);
 
-  const minimumLengthMet = password.length >= 6;
+  const minimumLengthMet = password.length >= 8;
   const passwordsMatch = Boolean(confirmPassword) && password === confirmPassword;
 
   async function submit(event) {
@@ -74,7 +74,7 @@ export default function ResetPassword() {
     setError("");
 
     if (!minimumLengthMet) {
-      setError("Password must contain at least 6 characters.");
+      setError("Password must contain at least 8 characters.");
       return;
     }
     if (password !== confirmPassword) {
@@ -146,8 +146,8 @@ export default function ResetPassword() {
               hint={password
                 ? minimumLengthMet
                   ? "Minimum length met"
-                  : `At least ${6 - password.length} more character(s) needed`
-                : "Use at least 6 characters"}
+                  : `At least ${8 - password.length} more character(s) needed`
+                : "Use at least 8 characters"}
               hintTone={password ? minimumLengthMet ? "success" : "warning" : "neutral"}
             />
             <PasswordField

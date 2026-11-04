@@ -18,8 +18,10 @@ export async function listReferrals() {
   return Array.isArray(rows) ? rows : [];
 }
 
-export async function submitReferral(form) {
-  const id = await rpc("mindtrack_submit_referral", {
+export async function submitReferral(form, user) {
+  let id;
+  try {
+    id = await rpc("mindtrack_submit_referral_slip", {
     p_person_name: String(form?.personName || "").trim(),
     p_person_type: String(form?.personType || ""),
     p_department: String(form?.department || "").trim(),
@@ -28,11 +30,33 @@ export async function submitReferral(form) {
       : "",
     p_contact: String(form?.contact || ""),
     p_reason: String(form?.reason || "").trim(),
-    p_urgency: String(form?.urgency || "")
-  });
+    p_urgency: String(form?.urgency || ""),
+    p_slip: {
+      yearLevel: form?.personType === "Student" ? String(form?.yearLevel || "").trim() : "",
+      age: form?.age ? Number(form.age) : null,
+      address: String(form?.address || "").trim(),
+      parentGuardian: form?.personType === "Student" ? String(form?.parentGuardian || "").trim() : "",
+      natureOfProblem: String(form?.reason || "").trim(),
+      recommendation: String(form?.recommendation || "").trim(),
+      signatureName: String(form?.signatureName || "").trim(),
+      position: String(form?.position || "").trim(),
+      referrerRole: String(user?.role || "")
+    }
+    });
+  } catch (error) {
+    if (error?.code === "PGRST202" || /mindtrack_submit_referral_slip.*not found|schema cache/i.test(error?.message || "")) {
+      throw new Error("Referral Slip database migration is not installed. Ask the Super Admin to run 01_REFERRAL_SLIP_DETAILS.sql before submitting.");
+    }
+    throw error;
+  }
   if (!id) throw new Error("Supabase did not confirm the referral submission.");
   refreshReferralViews();
   return id;
+}
+
+export async function getReferralSlip(referralId) {
+  if (!referralId) throw new Error("Select a referral before opening the slip.");
+  return rpc("mindtrack_get_referral_slip", { p_referral_id: referralId });
 }
 
 export async function updateReferral(id, status, remarks) {
