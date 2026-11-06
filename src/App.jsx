@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "./context/AuthContext";
+import { deleteTestStudentAccount } from "./services/studentDeletionService";
 import Layout from "./components/Layout";
 import CounselorTransfers from "./pages/counselor/CounselorTransfers";
 import StudentVacantTime from "./components/StudentVacantTime";
@@ -9237,6 +9238,32 @@ function UserProfilesContent({
 
   const [selected, setSelected] =
     useState(null);
+  const [deletingStudentId, setDeletingStudentId] = useState(null);
+
+  async function confirmDeleteTestStudent(account) {
+    if (!isSuperAdmin || account?.role !== "student" || !account?.id || deletingStudentId) return;
+    const confirmation = window.prompt(
+      `PERMANENTLY DELETE ACCOUNT: ${account.name || account.id}\n\n` +
+      "This removes the student's Auth account, assessments, consultations, and linked records. " +
+      "This cannot be undone. Only proceed for a disposable TEST account.\n\n" +
+      "Type DELETE ACCOUNT to continue:"
+    );
+    if (confirmation !== "DELETE ACCOUNT") return;
+    const reason = window.prompt("Enter an audit reason (10–500 characters):");
+    if (reason === null) return;
+    if (!window.confirm(`FINAL CONFIRMATION: Permanently delete ${account.name || account.id}?`)) return;
+    setDeletingStudentId(account.id);
+    try {
+      await deleteTestStudentAccount(account.id, reason, confirmation);
+      setSelected(null);
+      alert("Account permanently deleted. The user list will refresh.");
+    } catch (error) {
+      alert(error?.message || "Unable to delete the test student.");
+    } finally {
+      setDeletingStudentId(null);
+    }
+  }
+
 
   const [selectedCollege, setSelectedCollege] =
     useState(
@@ -9560,14 +9587,26 @@ function UserProfilesContent({
                                 ? <span className="transferred-table-badge">Transferred</span>
                                 : "—"}
                             </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="text-button"
-                                onClick={() => setSelected(account)}
-                              >
-                                View Profile
-                              </button>
+                            <td className="admin-user-profile-action-cell">
+                              <div className="admin-user-profile-actions">
+                                <button
+                                  type="button"
+                                  className="text-button"
+                                  onClick={() => setSelected(account)}
+                                >
+                                  View Profile
+                                </button>
+                                {isSuperAdmin && account.role === "student" && (
+                                  <button
+                                    type="button"
+                                    className="text-button admin-user-profile-delete-action"
+                                    disabled={Boolean(deletingStudentId)}
+                                    onClick={() => void confirmDeleteTestStudent(account)}
+                                  >
+                                    {deletingStudentId === account.id ? "Deleting…" : "Delete Account"}
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -19067,8 +19106,13 @@ function Reports() {
     { title: "Referral analytics", options: [
       { id: "referralOverview", label: "Referral statistics" },
       { id: "referralUrgency", label: "By urgency" },
-      { id: "referralMonth", label: "Monthly trend" }
+      { id: "referralMonth", label: "Monthly trend" },
+      { id: "referralYear", label: "By year level" },
+      { id: "referralCollege", label: "By college" },
+      { id: "referralProgram", label: "By program" },
+      { id: "referralAge", label: "By age group" }
     ] },
+    { title: "Counselor transfers", options: [{ id: "transferOverview", label: "Transfer statistics" }, { id: "transferStatus", label: "Transfer status" }] },
     ...(isSuperAdmin ? [{ title: "System feedback", options: [
       { id: "feedback", label: "Aggregate ratings and feedback (no personal comments)" }
     ] }] : [])
@@ -19078,7 +19122,7 @@ function Reports() {
       "overview", "assessmentCollege", "assessmentProgram", "assessmentUserType",
       "assessmentSex", "counselingCollege", "counselingProgram",
       "counselingUserType", "counselingSex", "referralOverview",
-      "referralUrgency", "referralMonth", "feedback"
+      "referralUrgency", "referralMonth", "referralYear", "referralCollege", "referralProgram", "referralAge", "transferOverview", "transferStatus", "feedback"
     ].map(id => [id, true]))
   );
   const printOptions = printGroups.flatMap(group => group.options);
@@ -19177,6 +19221,12 @@ function Reports() {
       .sort(categorySort);
   }
 
+  const demographicBreakdown = dimension => report.referralDemographics
+    .filter(row => row.dimension === dimension)
+    .map(row => ({ label: row.label, count: row.count }))
+    .sort(categorySort);
+  const transferByStatus = report.transferBreakdown;
+  const transferStatusCount = status => transferByStatus.find(row => row.label === status)?.count || 0;
   const priorityByCollege = priorityBreakdown("college");
   const priorityByProgram = priorityBreakdown("program");
   const priorityBySex = priorityBreakdown("sex");
@@ -20177,6 +20227,33 @@ function Reports() {
       />
 
 
+
+      {[
+        ["referralYear", "yearLevel", "Referrals by year level", "Student year level recorded on the referral form."],
+        ["referralCollege", "college", "Referrals by college", "College recorded for the referred person."],
+        ["referralProgram", "program", "Referrals by program", "Academic program recorded on the referral."],
+        ["referralAge", "ageGroup", "Referrals by age group", "Age at referral submission; missing ages are grouped separately."]
+      ].map(([id, dimension, title, subtitle]) => (
+        <AnalyticsBarChart key={id} printSectionId={id} title={title} subtitle={subtitle}
+          rows={demographicBreakdown(dimension)}
+          series={[{ key: "count", label: "Referrals", color: "#2563eb" }]}
+          emptyText="No referral demographic data is available." />
+      ))}
+
+      <div className="analytics-section-heading analytics-print-section" data-print-selected={printGroupSelected(["transferOverview", "transferStatus"]) ? "true" : "false"}>
+        <h2>Counselor Transfer Analytics</h2>
+        <p>Transfer requests and their current statuses. Approved transfers are counted separately from pending requests.</p>
+      </div>
+      <div className="stat-grid analytics-print-section" data-print-selected={isPrintSectionSelected("transferOverview") ? "true" : "false"}>
+        <Stat title="Total transfer requests" value={report.transferTotal} tone="primary" icon={<Users />} />
+        <Stat title="Approved" value={transferStatusCount("Approved")} tone="low" icon={<CheckCircle2 />} />
+        <Stat title="Pending" value={transferStatusCount("Pending")} tone="info" icon={<ClipboardList />} />
+        <Stat title="Cancelled" value={transferStatusCount("Cancelled")} tone="high" icon={<ClipboardList />} />
+      </div>
+      <AnalyticsBarChart printSectionId="transferStatus" title="Transfer requests by status"
+        subtitle="Current status of counselor transfer requests."
+        rows={transferByStatus} series={[{ key: "count", label: "Requests", color: "#0f766e" }]}
+        emptyText="No counselor transfer requests are available." />
 
       {isSuperAdmin && (
         <div className="analytics-print-section" data-print-selected={isPrintSectionSelected("feedback") ? "true" : "false"}>

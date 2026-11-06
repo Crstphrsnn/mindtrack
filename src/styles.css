@@ -8838,3 +8838,27 @@ th {
 .referral-review-heading h3 { margin:0; }
 .referral-review-modal .referral-review-management-card { width:100%; max-width:none; }
 .referral-review-modal .referral-review-management-card > label { display:block; margin-bottom:14px; }
+
+/* Super Admin > User Profiles: keep both actions aligned within each row. */
+.admin-user-profile-action-cell {
+  vertical-align: middle;
+}
+.admin-user-profile-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 132px;
+}
+.admin-user-profile-actions .text-button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+.admin-user-profile-actions .admin-user-profile-delete-action {
+  color: #b42318;
+}

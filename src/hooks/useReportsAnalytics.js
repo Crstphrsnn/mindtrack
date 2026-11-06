@@ -9,6 +9,9 @@ const EMPTY_REPORT = Object.freeze({
   counselingTotal: 0,
   scheduledTotal: 0,
   referralTotal: 0,
+  transferTotal: 0,
+  transferBreakdown: [],
+  referralDemographics: [],
   assessmentBreakdown: [],
   counselingBreakdown: [],
   referralBreakdown: []
@@ -27,7 +30,10 @@ export function normalizeMindTrackReport(raw) {
     assessmentTotal: positiveInteger(raw.assessmentTotal),
     counselingTotal: positiveInteger(raw.counselingTotal),
     scheduledTotal: positiveInteger(raw.scheduledTotal),
-    referralTotal: positiveInteger(raw.referralTotal)
+    referralTotal: positiveInteger(raw.referralTotal),
+    transferTotal: positiveInteger(raw.transferTotal ?? 0),
+    transferBreakdown: Array.isArray(raw.transferBreakdown) ? raw.transferBreakdown.map(row => ({ label: String(row.label || "Other"), count: positiveInteger(row.count) })) : [],
+    referralDemographics: Array.isArray(raw.referralDemographics) ? raw.referralDemographics.map(row => ({ dimension: String(row.dimension || ""), label: String(row.label || "Not specified"), count: positiveInteger(row.count) })) : []
   };
   for (const field of ["assessmentBreakdown", "counselingBreakdown", "referralBreakdown"]) {
     if (!Array.isArray(raw[field])) {
@@ -63,7 +69,9 @@ export function useReportsAnalytics() {
       try {
         const { data, error: rpcError } = await supabase.rpc("mindtrack_get_reports_analytics");
         if (rpcError) throw rpcError;
-        const next = normalizeMindTrackReport(data);
+        const { data: extra, error: extraError } = await supabase.rpc("mindtrack_get_extended_reports_analytics");
+        if (extraError) throw extraError;
+        const next = normalizeMindTrackReport({ ...data, ...extra });
         if (!active || version !== requestVersion) return;
         setReport(next);
         setError("");
