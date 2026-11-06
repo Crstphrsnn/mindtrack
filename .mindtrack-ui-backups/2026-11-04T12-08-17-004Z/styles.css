@@ -1,0 +1,8502 @@
+/* =====================================================
+   GLOBAL
+===================================================== */
+
+:root {
+  font-family: Inter, Arial, sans-serif;
+  color: #172033;
+  background: #f5f7fb;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+
+/* =====================================================
+   LOGIN / REGISTER
+===================================================== */
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(
+    135deg,
+    #d9edff,
+    #d5fff2
+  );
+}
+
+.auth-card {
+  width: min(460px, 100%);
+  background: #ffffff;
+  padding: 36px;
+  border-radius: 24px;
+  box-shadow: 0 24px 70px #16406b22;
+  text-align: center;
+}
+
+.register-card {
+  width: min(520px, 100%);
+}
+
+.auth-card h1 {
+  margin: 10px 0 4px;
+}
+
+.auth-card > p {
+  color: #687084;
+  margin-bottom: 22px;
+}
+
+
+/* =====================================================
+   PSU LOGO
+===================================================== */
+
+.auth-logo-image {
+  width: 105px;
+  height: 105px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* PSU logo inside sidebar */
+.sidebar-logo-image {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* =====================================================
+   FORM
+===================================================== */
+
+label {
+  display: block;
+  text-align: left;
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #cfd5df;
+  border-radius: 11px;
+  background: #ffffff;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #2454b8;
+  box-shadow: 0 0 0 3px #2454b81a;
+}
+
+textarea {
+  resize: vertical;
+}
+
+
+/* =====================================================
+   BUTTONS
+===================================================== */
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 11px;
+  padding: 13px 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    opacity 0.15s;
+}
+
+.primary-button {
+  background: #173f8f;
+  color: #ffffff;
+}
+
+.primary-button:hover:not(:disabled) {
+  opacity: 0.94;
+}
+
+.primary-button:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.secondary-button {
+  background: #0B4A6F;
+  color: #FFFFFF;
+}
+
+.auth-card .primary-button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+
+/* =====================================================
+   LOGIN / REGISTER SWITCH
+===================================================== */
+
+.auth-switch {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf0f4;
+  text-align: center;
+  font-size: 14px;
+  color: #687084;
+}
+
+.auth-switch span {
+  margin-right: 4px;
+}
+
+.register-link {
+  border: 0;
+  background: transparent;
+  color: #173f8f;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.register-link:hover {
+  text-decoration: underline;
+}
+
+
+/* =====================================================
+   DEMO ACCOUNTS
+===================================================== */
+
+.demo-accounts {
+  margin-top: 25px;
+  padding: 14px;
+  background: #f3f6fb;
+  border-radius: 14px;
+  display: grid;
+  gap: 7px;
+  text-align: left;
+}
+
+.demo-accounts button {
+  background: #ffffff;
+  border: 1px solid #d7ddea;
+  padding: 8px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   ERROR / WARNING
+===================================================== */
+
+.error-box,
+.critical-notice {
+  background: #fee9e9;
+  color: #9d1c1c;
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 12px;
+}
+
+
+/* =====================================================
+   MAIN APP
+===================================================== */
+
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  overflow: hidden;
+}
+
+
+/* =====================================================
+   SIDEBAR
+===================================================== */
+
+.sidebar {
+  width: 225px;
+  background: #191970;
+  border-right: none;
+  padding: 16px 14px;
+  position: fixed;
+  inset: 0 auto 0 0;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 20;
+}
+
+.brand {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 7px 4px 18px;
+  min-height: 68px;
+}
+
+
+.brand strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.1;
+  color: #FFFFFF;
+}
+
+.brand small,
+.top-user small {
+  display: block;
+  color: #C7DCE8;
+  text-transform: capitalize;
+}
+
+
+/* =====================================================
+   NAVIGATION
+===================================================== */
+
+.sidebar nav {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  grid-auto-rows: max-content;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.sidebar nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  color: #E8F2F7;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.nav-link:hover:not(.active) {
+  background: #e8eefb;
+  color: #173f8f;
+}
+
+.nav-link.active {
+  background: #173f8f;
+  color: #ffffff;
+  border: 2px solid #d4af37;
+  box-shadow: 0 3px 8px rgba(23, 63, 143, 0.18);
+}
+
+.logout {
+  margin-top: auto;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+}
+
+
+/* Compact desktop sidebar without sacrificing readable labels. */
+@media (min-width: 901px) {
+  .nav-link {
+    font-size: 14px;
+    line-height: 1.2;
+    min-height: 44px;
+  }
+
+  .nav-link svg {
+    width: 19px;
+    height: 19px;
+    min-width: 19px;
+  }
+
+  .sidebar nav {
+    gap: 5px;
+  }
+
+  .logout {
+    margin-top: auto;
+    padding-top: 8px;
+  }
+}
+
+/* Use one clean workspace scrollbar at the far-right edge. */
+.workspace {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.workspace::-webkit-scrollbar {
+  width: 9px;
+}
+
+.workspace::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.workspace::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  background-clip: padding-box;
+}
+
+
+
+/* Final desktop shell corrections: natural nav rows, visible logout, single outer scrollbar. */
+.sidebar {
+  box-sizing: border-box;
+}
+
+.sidebar nav > .nav-link {
+  align-self: start;
+  width: 100%;
+}
+
+.sidebar .logout {
+  align-self: stretch;
+}
+
+.workspace {
+  scrollbar-gutter: stable;
+}
+
+.content > :last-child {
+  margin-bottom: 24px;
+}
+
+/* =====================================================
+   WORKSPACE
+===================================================== */
+
+.workspace {
+  margin-left: 225px;
+  min-width: 0;
+  width: calc(100% - 225px);
+  height: 100vh;
+  height: 100dvh;
+  background: #EAF4FF;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+
+/* =====================================================
+   TOPBAR
+===================================================== */
+
+.topbar {
+  height: 66px;
+  background: #000080;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  flex: 0 0 66px;
+  z-index: 40;
+}
+
+.topbar > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.live-pill,
+.demo-pill {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 20px;
+}
+
+.live-pill {
+  background: #164f31;
+  color: #91f7b7;
+}
+
+.demo-pill {
+  background: #5c4312;
+  color: #ffe38a;
+}
+
+.top-user {
+  text-align: right;
+}
+
+.topbar .top-user strong {
+  color: #ffffff;
+}
+
+.topbar .top-user small {
+  color: #dce7ff;
+}
+
+
+/* =====================================================
+   PAGE CONTENT
+===================================================== */
+
+.content {
+  padding: 34px;
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  flex: 0 0 auto;
+  min-height: calc(100dvh - 66px);
+  overflow: visible;
+}
+
+.page-title h1 {
+  font-size: 32px;
+  margin: 0;
+}
+
+.page-title p {
+  color: #6a7283;
+  margin: 8px 0 26px;
+}
+
+
+/* =====================================================
+   STAT CARDS
+===================================================== */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #dfe3eb;
+  border-radius: 17px;
+  padding: 22px;
+  display: grid;
+  gap: 9px;
+}
+
+.stat-card > div {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #e7eefc;
+  color: #173f8f;
+}
+
+.stat-card span {
+  color: #657084;
+}
+
+.stat-card strong {
+  font-size: 29px;
+}
+
+.stat-card.danger {
+  border-color: #ffc8c8;
+}
+
+.stat-card.warning {
+  border-color: #ffe1a4;
+}
+
+
+/* =====================================================
+   PANELS
+===================================================== */
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #dfe3eb;
+  border-radius: 18px;
+  padding: 24px;
+  margin-top: 22px;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+
+/* =====================================================
+   QUICK ACTIONS
+===================================================== */
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.action-card {
+  border: 1px solid #dce2eb;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.2s,
+    border-color 0.2s,
+    background 0.2s,
+    box-shadow 0.2s;
+}
+
+.action-card:hover {
+  transform: translateY(-2px);
+  border-color: #173f8f;
+  background: #f6f9ff;
+  box-shadow: 0 8px 20px rgba(23, 63, 143, 0.08);
+}
+
+.action-card-icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #173f8f;
+  background: #eaf1ff;
+}
+
+.action-card-copy {
+  min-width: 0;
+}
+
+.action-card-copy strong {
+  display: block;
+  color: #17233f;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.action-card p {
+  margin: 6px 0 0;
+  color: #6e7687;
+  line-height: 1.45;
+}
+
+
+/* =====================================================
+   ASSESSMENT
+===================================================== */
+
+.assessment-form {
+  max-width: 950px;
+}
+
+.question {
+  padding: 19px 0;
+  border-bottom: 1px solid #e5e8ee;
+}
+
+.choice-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.choice {
+  border: 1px solid #d7dce5;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  margin: 0;
+}
+
+.choice input {
+  width: auto;
+  margin-right: 7px;
+}
+
+.choice.selected {
+  border-color: #173f8f;
+  background: #edf3ff;
+}
+
+
+/* =====================================================
+   ASSESSMENT RESULT
+===================================================== */
+
+.result-card {
+  max-width: 760px;
+  margin: 40px auto;
+  text-align: center;
+  background: #ffffff;
+  padding: 44px;
+  border-radius: 22px;
+  border: 1px solid #dfe4ec;
+}
+
+.result-card svg {
+  color: #1ca25b;
+}
+
+.notice {
+  margin-top: 20px;
+  background: #edf5ff;
+  color: #244570;
+  padding: 15px;
+  border-radius: 12px;
+}
+
+
+/* =====================================================
+   PRIORITY
+===================================================== */
+
+.priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  min-height: 40px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  vertical-align: middle;
+  white-space: normal;
+}
+
+.priority.big {
+  min-width: 0;
+  min-height: 0;
+  font-size: 18px;
+  padding: 9px 18px;
+  margin: 8px;
+}
+
+.priority.low {
+  background: #dff8e9;
+  color: #157442;
+}
+
+.priority.moderate {
+  background: #fff0c9;
+  color: #936000;
+}
+
+.priority.high {
+  background: #ffe0e0;
+  color: #a72b2b;
+}
+
+.priority.critical {
+  background: #971a1a;
+  color: #ffffff;
+}
+
+
+/* =====================================================
+   STANDARDIZED ASSESSMENT SEVERITY BADGES
+   Matches the current MindTrack severity labels.
+===================================================== */
+
+.priority.minimal-none,
+.priority.minimal {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.priority.mild {
+  background: #ecfccb;
+  color: #4d7c0f;
+  border: 1px solid #bef264;
+}
+
+.priority.moderate {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.priority.moderately-severe {
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+}
+
+.priority.severe {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.priority.extremely-severe {
+  background: #991b1b;
+  color: #ffffff;
+  border: 1px solid #7f1d1d;
+}
+
+.priority.no-assessment,
+.priority.no-severity {
+  background: #e2e8f0;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+
+/* =====================================================
+   CONSULTATIONS / REFERRALS
+===================================================== */
+
+.two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+
+.record-card {
+  border: 1px solid #dce2eb;
+  border-radius: 13px;
+  padding: 16px;
+  margin: 12px 0;
+  position: relative;
+}
+
+.record-card .status {
+  float: right;
+}
+
+.status {
+  background: #e7eefc;
+  color: #173f8f;
+  padding: 5px 9px;
+  border-radius: 15px;
+  font-size: 12px;
+}
+
+.record-card p {
+  color: #697286;
+}
+
+.record-card select {
+  width: auto;
+  float: right;
+  padding: 7px;
+}
+
+
+/* =====================================================
+   CASE MANAGEMENT
+===================================================== */
+
+.case-layout {
+  display: grid;
+  grid-template-columns: 1.35fr 0.9fr;
+  gap: 22px;
+}
+
+.detail-panel {
+  position: sticky;
+  top: 88px;
+  height: max-content;
+}
+
+
+/* =====================================================
+   TABLE
+===================================================== */
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 14px;
+  text-align: left;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+th {
+  /* Ice Blue from the provided color reference */
+  background: #94C6F7;
+  color: #111827;
+}
+
+.text-button {
+  border: 0;
+  background: none;
+  color: #17489d;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   SCHEDULE
+===================================================== */
+
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.schedule-card {
+  display: flex;
+  gap: 14px;
+  border: 1px solid #dce1ea;
+  padding: 17px;
+  border-radius: 14px;
+}
+
+.schedule-card svg {
+  color: #173f8f;
+}
+
+.schedule-card p {
+  color: #6c7587;
+}
+
+
+/* =====================================================
+   REPORTS / ANALYTICS BAR GRAPHS
+===================================================== */
+
+.analytics-chart-panel,
+.analytics-breakdown-panel {
+  margin-top: 18px;
+}
+
+.analytics-breakdown-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.analytics-breakdown-heading h2 {
+  margin: 0 0 5px;
+  color: #173f8f;
+}
+
+.analytics-breakdown-heading p,
+.analytics-section-note {
+  margin: 0;
+  color: #667085;
+  line-height: 1.55;
+}
+
+.analytics-data-note {
+  margin-bottom: 18px;
+}
+
+.analytics-summary-bars {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.analytics-bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 210px) minmax(160px, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.analytics-bar-label {
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.analytics-bar-track {
+  position: relative;
+  height: 15px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f7;
+  border: 1px solid #e3e8f0;
+}
+
+.analytics-bar-fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: #173f8f;
+  transition: width 180ms ease;
+}
+
+.analytics-bar-value {
+  min-width: 32px;
+  text-align: right;
+  color: #172b4d;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-tone-low {
+  background: #2f855a;
+}
+
+.analytics-tone-moderate {
+  background: #d69e2e;
+}
+
+.analytics-tone-high {
+  background: #dd6b20;
+}
+
+.analytics-tone-critical {
+  background: #c53030;
+}
+
+.analytics-tone-assessment {
+  background: #173f8f;
+}
+
+.analytics-tone-requests {
+  background: #5b4fb3;
+}
+
+.analytics-tone-sessions {
+  background: #0f766e;
+}
+
+.analytics-tone-referrals {
+  background: #667085;
+}
+
+.analytics-tone-reviewed {
+  background: #3f6f4f;
+}
+
+.analytics-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 2px 0 18px;
+  padding: 10px 12px;
+  border: 1px solid #e4e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.analytics-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-legend-swatch {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border-radius: 3px;
+}
+
+.analytics-groups-list {
+  display: grid;
+  gap: 16px;
+}
+
+.analytics-group-chart {
+  break-inside: avoid;
+  padding: 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 15px;
+  background: #ffffff;
+}
+
+.analytics-group-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.analytics-group-chart-head h3 {
+  margin: 0;
+  color: #172b4d;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.analytics-group-chart-head span {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.analytics-chart-block {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.analytics-chart-block + .analytics-chart-block {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px dashed #d9e0ea;
+}
+
+.analytics-chart-block h4 {
+  margin: 0 0 2px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.analytics-print-panel {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bar-list > div {
+  display: grid;
+  grid-template-columns: 100px 1fr 35px;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.bar {
+  height: 13px;
+  background: #edf0f4;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  background: #173f8f;
+}
+
+@media (max-width: 680px) {
+
+  .analytics-bar-row {
+    grid-template-columns: 1fr 40px;
+    gap: 7px 10px;
+  }
+
+  .analytics-bar-label {
+    grid-column: 1 / -1;
+  }
+
+  .analytics-bar-track {
+    grid-column: 1;
+  }
+
+  .analytics-bar-value {
+    grid-column: 2;
+  }
+
+  .analytics-group-chart-head {
+    display: block;
+  }
+
+  .analytics-group-chart-head span {
+    display: inline-block;
+    margin-top: 8px;
+  }
+}
+
+
+/* =====================================================
+   EMPTY / LOADING
+===================================================== */
+
+.empty {
+  padding: 35px;
+  text-align: center;
+  color: #828a99;
+}
+
+.center-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 900px) {
+
+  .sidebar {
+    width: 88px;
+    padding: 10px 8px;
+  }
+
+  .brand > div:last-child {
+    display: none;
+  }
+
+  .brand {
+    justify-content: center;
+    min-height: 62px;
+    padding: 4px 0 10px;
+  }
+
+  .sidebar-logo-image {
+    width: 46px;
+    height: 46px;
+  }
+
+  .sidebar nav {
+    gap: 4px;
+    padding-bottom: 4px;
+  }
+
+  .nav-link {
+    min-height: 58px;
+    padding: 7px 4px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    font-size: 10px;
+    line-height: 1.08;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .nav-link svg {
+    min-width: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .nav-link > span:not(.sidebar-notification-badge) {
+    display: block;
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .nav-link {
+    position: relative;
+  }
+
+  .sidebar-notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    margin-left: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 9px;
+  }
+
+  .logout {
+    min-height: 54px;
+    margin-top: 6px;
+  }
+
+  .workspace {
+    margin-left: 88px;
+    width: calc(100% - 88px);
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .two-column,
+  .case-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-panel {
+    position: static;
+  }
+
+  .choice-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .action-grid,
+  .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content {
+    padding: 22px;
+  }
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 560px) {
+
+  .sidebar {
+    width: 82px;
+    padding: 8px 6px;
+  }
+
+  .workspace {
+    margin-left: 82px;
+    width: calc(100% - 82px);
+  }
+
+  .nav-link {
+    min-height: 55px;
+    font-size: 9px;
+    padding: 6px 3px;
+  }
+
+  .auth-page {
+    padding: 14px;
+  }
+
+  .auth-card,
+  .register-card {
+    padding: 25px 20px;
+    border-radius: 18px;
+  }
+
+  .auth-logo-image {
+    width: 82px;
+    height: 82px;
+  }
+
+  .sidebar-logo-image {
+    width: 44px;
+    height: 44px;
+  }
+
+  .auth-card h1 {
+    font-size: 27px;
+  }
+
+  .auth-card > p {
+    font-size: 14px;
+  }
+
+  .topbar {
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .topbar > div:first-child strong {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .top-user {
+    display: none;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .page-title h1 {
+    font-size: 26px;
+  }
+
+  .choice-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bar-list > div {
+    grid-template-columns: 80px 1fr 30px;
+  }
+}
+
+
+
+
+/* =====================================================
+   REGISTRATION SECTIONS
+===================================================== */
+
+.register-card {
+  width: min(780px, 100%);
+}
+
+.registration-section {
+  padding: 6px 0 20px;
+  text-align: left;
+}
+
+.registration-section + .registration-section {
+  border-top: 1px solid #e4e8ef;
+  padding-top: 22px;
+}
+
+.registration-section h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: #173f8f;
+}
+
+.registration-subheading {
+  margin: 20px 0 4px;
+  font-size: 18px;
+  color: #173f8f;
+  font-weight: 700;
+}
+
+.registration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.registration-grid label {
+  min-width: 0;
+}
+
+.full-width-field {
+  grid-column: 1 / -1;
+}
+
+.optional-text {
+  color: #7b8495;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+
+/* =====================================================
+   SUCCESS MESSAGE
+===================================================== */
+
+.success-box {
+  background: #e4f7eb;
+  color: #17643b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 12px;
+  border: 1px solid #bfe7ce;
+}
+
+
+/* =====================================================
+   USER PROFILE
+===================================================== */
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.72fr) minmax(0, 1.8fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.profile-summary-card {
+  text-align: center;
+  position: sticky;
+  top: 88px;
+}
+
+.profile-summary-card h2 {
+  margin: 14px 0 5px;
+}
+
+.profile-summary-card p {
+  margin: 0;
+  color: #687084;
+  overflow-wrap: anywhere;
+}
+
+.profile-avatar {
+  width: 92px;
+  height: 92px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #173f8f;
+  color: #ffffff;
+  font-size: 38px;
+  font-weight: 800;
+  border: 4px solid #dce8fb;
+}
+
+.profile-role-badge {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.profile-form-panel h2 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  color: #172033;
+}
+
+.profile-form-panel form {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid #e4e8ef;
+}
+
+.profile-form-panel form h2:not(:first-child) {
+  margin-top: 26px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.profile-grid label {
+  min-width: 0;
+}
+
+.profile-form-panel input[readonly] {
+  background: #f3f5f8;
+  color: #5f6879;
+  cursor: not-allowed;
+}
+
+.profile-note {
+  margin-top: 17px;
+  padding: 13px 15px;
+  background: #edf5ff;
+  color: #244570;
+  border-radius: 11px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.profile-form-panel .primary-button {
+  margin-top: 20px;
+}
+
+
+/* =====================================================
+   PROFILE / REGISTRATION RESPONSIVE
+===================================================== */
+
+@media (max-width: 900px) {
+
+  .register-card {
+    width: min(680px, 100%);
+  }
+
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-summary-card {
+    position: static;
+  }
+}
+
+@media (max-width: 680px) {
+
+  .registration-grid,
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width-field {
+    grid-column: auto;
+  }
+
+  .registration-section {
+    padding-bottom: 16px;
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 32px;
+  }
+}
+
+
+
+
+/* =====================================================
+   READ-ONLY USER PROFILES
+   Counselor / Super Admin
+===================================================== */
+
+.readonly-access-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border: 1px solid #cbdaf0;
+  border-radius: 12px;
+  background: #f4f8ff;
+  color: #244570;
+}
+
+.readonly-access-notice strong {
+  flex-shrink: 0;
+  color: #173f8f;
+}
+
+.readonly-access-notice span {
+  line-height: 1.5;
+}
+
+.user-profile-view-layout {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.25fr)
+    minmax(360px, 0.9fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.readonly-profile-panel {
+  position: sticky;
+  top: 88px;
+  min-width: 0;
+}
+
+.readonly-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e4e8ef;
+}
+
+.readonly-profile-header .profile-avatar {
+  width: 72px;
+  height: 72px;
+  margin: 0;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.readonly-profile-header h2 {
+  margin: 0 0 4px;
+}
+
+.readonly-profile-header p {
+  margin: 0;
+  color: #687084;
+  overflow-wrap: anywhere;
+}
+
+.readonly-profile-header .profile-role-badge {
+  margin-top: 8px;
+}
+
+.readonly-profile-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.readonly-profile-item {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 11px;
+  background: #f8fafc;
+}
+
+.readonly-profile-item.full {
+  grid-column: 1 / -1;
+}
+
+.readonly-profile-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: #737d8f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.readonly-profile-item strong {
+  display: block;
+  color: #172033;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+
+  .user-profile-view-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .readonly-profile-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 680px) {
+
+  .readonly-access-notice {
+    display: block;
+  }
+
+  .readonly-access-notice strong {
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .readonly-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .readonly-profile-item.full {
+    grid-column: auto;
+  }
+
+  .readonly-profile-header {
+    align-items: flex-start;
+  }
+}
+
+
+
+
+/* =====================================================
+   SUPER ADMIN USER PROFILE DEPARTMENT CATEGORIES
+===================================================== */
+
+.user-list-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.user-list-heading h2 {
+  margin-bottom: 4px;
+}
+
+.user-list-heading p {
+  margin: 0;
+  color: #6a7283;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.department-category-list {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 22px;
+}
+
+.department-category {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #d8e1ee;
+  border-radius: 11px;
+  background: #f8fafc;
+  color: #344158;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+
+.department-category:hover {
+  border-color: #173f8f;
+  background: #f1f6ff;
+  color: #173f8f;
+}
+
+.department-category.active {
+  border-color: #173f8f;
+  background: #173f8f;
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(23, 63, 143, 0.18);
+}
+
+.department-category span {
+  min-width: 0;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.department-category strong {
+  flex-shrink: 0;
+  min-width: 30px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 12px;
+  text-align: center;
+}
+
+.department-category.active strong {
+  background: #ffffff;
+  color: #173f8f;
+}
+
+@media (max-width: 680px) {
+
+  .department-category-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
+
+/* =====================================================
+   RATINGS & FEEDBACK
+===================================================== */
+
+.feedback-page-layout {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(340px, 0.85fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.feedback-form-panel h2,
+.feedback-history-panel h2,
+.feedback-analytics-panel h2 {
+  margin-bottom: 6px;
+}
+
+.feedback-help-text {
+  margin: 0 0 14px;
+  color: #6a7283;
+  line-height: 1.55;
+}
+
+.star-rating {
+  display: flex;
+  gap: 5px;
+  margin: 18px 0 8px;
+}
+
+.star-button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #b8c0cc;
+  padding: 4px;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    color 0.15s;
+}
+
+.star-button:hover {
+  transform: translateY(-2px);
+  color: #d4af37;
+}
+
+.star-button.selected {
+  color: #d4af37;
+}
+
+.rating-label {
+  min-height: 22px;
+  margin-bottom: 8px;
+  color: #173f8f;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.feedback-character-count {
+  margin-top: 5px;
+  text-align: right;
+  color: #7b8495;
+  font-size: 12px;
+}
+
+.feedback-form-panel .primary-button {
+  margin-top: 18px;
+}
+
+.feedback-history-panel {
+  position: sticky;
+  top: 88px;
+}
+
+.feedback-history-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.feedback-history-card {
+  padding: 15px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.feedback-history-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #172033;
+}
+
+.feedback-history-card p {
+  margin: 8px 0 0;
+  color: #5f6879;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.feedback-history-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feedback-history-top small {
+  color: #7b8495;
+}
+
+.feedback-stars-text,
+.table-star-rating {
+  color: #d4af37;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.feedback-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.feedback-section-heading p {
+  margin: 0;
+  color: #6a7283;
+}
+
+.feedback-summary-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.feedback-summary-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.feedback-summary-card svg {
+  color: #173f8f;
+}
+
+.feedback-summary-card:first-child svg {
+  color: #d4af37;
+}
+
+.feedback-summary-card span {
+  color: #657084;
+}
+
+.feedback-summary-card strong {
+  font-size: 27px;
+  color: #172033;
+}
+
+.feedback-report-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.feedback-report-block {
+  padding: 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+}
+
+.feedback-report-block h3 {
+  margin: 0 0 16px;
+}
+
+.feedback-distribution-row {
+  display: grid;
+  grid-template-columns:
+    78px 1fr 32px;
+  gap: 10px;
+  align-items: center;
+  margin: 11px 0;
+}
+
+.feedback-distribution-row > span {
+  color: #d4af37;
+  white-space: nowrap;
+}
+
+.feedback-distribution-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf0f4;
+}
+
+.feedback-distribution-bar i {
+  display: block;
+  height: 100%;
+  background: #173f8f;
+}
+
+.feedback-category-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.feedback-category-row:last-child {
+  border-bottom: 0;
+}
+
+.feedback-category-row span {
+  color: #465064;
+}
+
+.feedback-category-row strong {
+  min-width: 30px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  text-align: center;
+}
+
+.feedback-recent-section {
+  margin-top: 24px;
+}
+
+.feedback-recent-section h3 {
+  margin-bottom: 14px;
+}
+
+.feedback-comment-cell {
+  min-width: 220px;
+  max-width: 360px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.capitalize-text {
+  text-transform: capitalize;
+}
+
+@media (max-width: 1100px) {
+
+  .feedback-page-layout,
+  .feedback-report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feedback-history-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 680px) {
+
+  .feedback-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .star-rating {
+    flex-wrap: wrap;
+  }
+
+  .feedback-distribution-row {
+    grid-template-columns:
+      70px 1fr 28px;
+  }
+}
+
+
+/* =====================================================
+   PRINT
+===================================================== */
+
+@media print {
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sidebar,
+  .topbar,
+  .primary-button,
+  .secondary-button,
+  .analytics-print-panel {
+    display: none !important;
+  }
+
+  .workspace {
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .content {
+    width: 100%;
+    max-width: none;
+    padding: 0 !important;
+  }
+
+  .page-title {
+    margin-bottom: 12px;
+  }
+
+  .page-title h1 {
+    color: #191970 !important;
+    font-size: 24px;
+  }
+
+  .page-title p {
+    margin-bottom: 14px;
+    color: #475467 !important;
+    font-size: 11px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+    margin-bottom: 12px;
+  }
+
+  .stat-card {
+    min-height: 0;
+    padding: 9px;
+    border-radius: 9px;
+    box-shadow: none !important;
+  }
+
+  .stat-card > div {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+  }
+
+  .stat-card > div svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .stat-card span {
+    font-size: 9px;
+  }
+
+  .stat-card strong {
+    font-size: 19px;
+  }
+
+  .notice.analytics-data-note {
+    margin: 8px 0 12px;
+    padding: 8px 10px;
+    font-size: 9px;
+  }
+
+  .panel,
+  .analytics-chart-panel,
+  .analytics-group-chart {
+    box-shadow: none !important;
+  }
+
+  .analytics-chart-panel {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #d7dee8;
+    border-radius: 10px;
+  }
+
+  .analytics-breakdown-heading {
+    margin-bottom: 8px;
+  }
+
+  .analytics-breakdown-heading h2 {
+    font-size: 16px;
+  }
+
+  .analytics-breakdown-heading p,
+  .analytics-section-note {
+    font-size: 9px;
+  }
+
+  .analytics-chart-legend {
+    gap: 5px 10px;
+    margin: 0 0 9px;
+    padding: 6px 8px;
+    border-radius: 8px;
+  }
+
+  .analytics-legend-item {
+    font-size: 8px;
+  }
+
+  .analytics-legend-swatch {
+    width: 8px;
+    height: 8px;
+    flex-basis: 8px;
+  }
+
+  .analytics-summary-bars,
+  .analytics-groups-list {
+    gap: 7px;
+  }
+
+  .analytics-group-chart {
+    padding: 9px;
+    border-radius: 9px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .analytics-group-chart-head {
+    padding-bottom: 6px;
+  }
+
+  .analytics-group-chart-head h3 {
+    font-size: 11px;
+  }
+
+  .analytics-group-chart-head span {
+    padding: 3px 6px;
+    font-size: 7px;
+  }
+
+  .analytics-chart-block {
+    gap: 5px;
+    margin-top: 7px;
+  }
+
+  .analytics-chart-block + .analytics-chart-block {
+    margin-top: 8px;
+    padding-top: 7px;
+  }
+
+  .analytics-chart-block h4 {
+    font-size: 7px;
+  }
+
+  .analytics-bar-row {
+    grid-template-columns: 112px minmax(110px, 1fr) 26px;
+    gap: 5px;
+  }
+
+  .analytics-bar-label,
+  .analytics-bar-value {
+    font-size: 8px;
+  }
+
+  .analytics-bar-track {
+    height: 9px;
+    border-width: 0.5px;
+  }
+
+  .analytics-bar-fill {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .analytics-chart-panel,
+  .analytics-group-chart,
+  .stat-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .feedback-analytics,
+  .feedback-summary-grid,
+  .feedback-distribution {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* =====================================================
+   USER PROFILE FILTERS
+===================================================== */
+
+.profile-filter-panel {
+  margin-top: 0;
+  margin-bottom: 22px;
+}
+
+.profile-filter-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.profile-filter-heading h2 {
+  margin: 0 0 5px;
+  color: #173f8f;
+}
+
+.profile-filter-heading p {
+  margin: 0;
+  color: #6a7283;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.profile-result-count {
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.profile-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.profile-filter-grid label {
+  margin-top: 8px;
+}
+
+@media (max-width: 680px) {
+  .profile-filter-heading {
+    display: block;
+  }
+
+  .profile-result-count {
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .profile-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   FULL-SCREEN USER PROFILE
+   Counselor / Super Admin
+===================================================== */
+
+.user-profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(12, 25, 48, 0.56);
+  backdrop-filter: blur(4px);
+}
+
+.user-profile-modal {
+  width: min(1480px, calc(100vw - 40px));
+  height: min(94vh, 980px);
+  overflow: hidden;
+  border: 1px solid #d8e2f0;
+  border-radius: 22px;
+  background: #f7fbff;
+  box-shadow: 0 30px 90px rgba(10, 29, 62, 0.30);
+}
+
+.user-profile-modal-header {
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #dfe7f1;
+  background: #ffffff;
+}
+
+.user-profile-modal-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-profile-modal-identity .profile-avatar {
+  width: 76px;
+  height: 76px;
+  margin: 0;
+  flex: 0 0 76px;
+  font-size: 30px;
+}
+
+.user-profile-modal-name {
+  min-width: 0;
+  flex: 1;
+}
+
+.user-profile-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+
+.user-profile-name-row h2 {
+  min-width: 0;
+  margin: 0;
+  color: #172033;
+  font-size: 26px;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-name-row .priority {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.priority.none {
+  background: #edf0f4;
+  color: #697286;
+}
+
+.user-profile-modal-name > p {
+  margin: 5px 0 0;
+  color: #687084;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-header-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.user-profile-header-badges .profile-role-badge {
+  margin-top: 0;
+}
+
+.assigned-counselor-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #f0f4f9;
+  color: #536174;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-profile-close-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8e1ec;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #344158;
+  cursor: pointer;
+}
+
+.user-profile-close-button:hover {
+  border-color: #173f8f;
+  color: #173f8f;
+  background: #f5f8ff;
+}
+
+.user-profile-modal-body {
+  height: calc(100% - 112px);
+  overflow-y: auto;
+  padding: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-content: start;
+}
+
+.user-profile-modal-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #dfe6f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.user-profile-modal-card > h3,
+.user-profile-section-title h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 19px;
+}
+
+.user-profile-section-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.user-profile-section-title p {
+  margin: 5px 0 0;
+  color: #6a7283;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.user-profile-section-title > svg {
+  flex-shrink: 0;
+  color: #173f8f;
+}
+
+
+.profile-schedule-list,
+.profile-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-schedule-card,
+.profile-history-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.profile-schedule-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-schedule-card > div {
+  min-width: 0;
+}
+
+.profile-schedule-card strong,
+.profile-history-card strong {
+  color: #172033;
+}
+
+.profile-schedule-card span:not(.status) {
+  display: block;
+  margin-top: 5px;
+  color: #687084;
+  font-size: 13px;
+}
+
+.profile-history-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-history-card p {
+  margin: 8px 0;
+  color: #687084;
+  font-size: 13px;
+}
+
+.profile-history-card small {
+  display: block;
+  margin-top: 6px;
+  color: #536174;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-empty {
+  padding: 28px 18px;
+  border: 1px dashed #ccd6e3;
+  border-radius: 12px;
+  color: #7b8495;
+  text-align: center;
+  background: #fafcff;
+}
+
+
+
+
+/* The old side detail panel is no longer needed once the
+   full-screen profile viewer is enabled. */
+.user-profile-view-layout {
+  grid-template-columns: 1fr;
+}
+
+.readonly-profile-panel {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .user-profile-modal-backdrop {
+    padding: 10px;
+  }
+
+  .user-profile-modal {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+    border-radius: 16px;
+  }
+
+  .user-profile-modal-body {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .user-profile-modal-header {
+    align-items: flex-start;
+    padding: 15px;
+  }
+
+  .user-profile-modal-identity {
+    align-items: flex-start;
+  }
+
+  .user-profile-modal-identity .profile-avatar {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+    font-size: 23px;
+  }
+
+  .user-profile-name-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .user-profile-name-row h2 {
+    font-size: 20px;
+  }
+
+  .user-profile-name-row .priority {
+    margin-left: 0;
+  }
+
+  .user-profile-header-badges {
+    display: grid;
+  }
+
+  .readonly-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .readonly-profile-item.full {
+    grid-column: auto;
+  }
+
+  .profile-schedule-card {
+    display: block;
+  }
+
+  .profile-schedule-card .status {
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .profile-history-card-top {
+    display: block;
+  }
+
+  .profile-history-card-top .status {
+    display: inline-block;
+    margin-top: 8px;
+  }
+}
+
+
+/* =====================================================
+   FULL-SCREEN COUNSELING REQUEST REVIEW
+   Counselor / Super Admin
+===================================================== */
+
+.counseling-request-list-panel {
+  max-width: 1180px;
+}
+
+.counseling-request-list-card {
+  padding: 20px;
+}
+
+.counseling-request-list-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.counseling-request-list-card-header > strong {
+  min-width: 0;
+}
+
+.counseling-request-status-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-left: auto;
+}
+
+.counseling-request-list-card .counseling-request-status-group .status {
+  float: none;
+}
+
+.counseling-request-list-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.review-request-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(12, 25, 48, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.review-request-modal {
+  width: min(1480px, calc(100vw - 36px));
+  height: min(94vh, 980px);
+  overflow: hidden;
+  border: 1px solid #d8e2f0;
+  border-radius: 22px;
+  background: #f7fbff;
+  box-shadow: 0 30px 90px rgba(10, 29, 62, 0.30);
+}
+
+.review-request-modal-header {
+  min-height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 26px;
+  border-bottom: 1px solid #dfe7f1;
+  background: #ffffff;
+}
+
+.review-request-modal-header > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.review-request-modal-eyebrow {
+  margin: 0 0 6px;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.review-request-modal-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.review-request-modal-title-row h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 28px;
+  overflow-wrap: anywhere;
+}
+
+.review-request-modal-subtitle {
+  margin: 7px 0 0;
+  color: #687084;
+  line-height: 1.45;
+}
+
+.review-request-close-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8e1ec;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #344158;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-request-close-button:hover {
+  border-color: #173f8f;
+  color: #173f8f;
+  background: #f5f8ff;
+}
+
+.review-request-modal-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.review-request-header-delete-button {
+  min-height: 44px;
+  min-width: 148px;
+  white-space: nowrap;
+}
+
+.review-request-modal-body {
+  height: calc(100% - 118px);
+  overflow-y: auto;
+  padding: 22px;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.15fr)
+    minmax(360px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.review-request-modal-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #dfe6f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.review-request-modal-card h3 {
+  margin: 0 0 18px;
+  color: #172033;
+  font-size: 20px;
+}
+
+.review-request-account-card {
+  grid-column: 1 / -1;
+}
+
+.review-request-account-heading p {
+  margin: -10px 0 18px;
+  color: #687084;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.review-request-account-grid {
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+}
+
+.review-field-visibility-note {
+  display: block;
+  margin: 6px 0 8px;
+  color: #48627f;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.review-private-case-section {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid #dfe6ef;
+}
+
+.review-private-case-heading {
+  margin-bottom: 12px;
+}
+
+.review-private-case-heading h4 {
+  margin: 0;
+  color: #172033;
+  font-size: 17px;
+}
+
+.review-private-case-heading p {
+  margin: 6px 0 0;
+  color: #687084;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.review-private-case-restricted {
+  margin-top: 18px;
+  padding: 13px 14px;
+  border: 1px solid #d8e2ef;
+  border-radius: 11px;
+  background: #f5f8fc;
+  color: #5f6879;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.review-private-case-section
+.counselor-notes-grid {
+  margin-top: 14px;
+}
+
+.review-request-detail-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.review-request-detail-item {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.review-request-detail-item.full {
+  grid-column: 1 / -1;
+}
+
+.review-request-detail-item span {
+  display: block;
+  margin-bottom: 6px;
+  color: #737d8f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.review-request-detail-item strong {
+  display: block;
+  color: #172033;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.review-request-details-text {
+  white-space: pre-wrap;
+}
+
+.review-request-update-card label:first-of-type {
+  margin-top: 0;
+}
+
+.review-request-update-card textarea {
+  min-height: 220px;
+}
+
+.review-request-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.review-request-modal-actions .primary-button,
+.review-request-modal-actions .secondary-button {
+  min-width: 150px;
+}
+
+@media (max-width: 900px) {
+
+  .review-request-modal-backdrop {
+    padding: 10px;
+  }
+
+  .review-request-modal {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+    border-radius: 16px;
+  }
+
+  .review-request-modal-body {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .review-request-account-card {
+    grid-column: auto;
+  }
+
+  .review-request-account-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+
+  .review-request-modal-header {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .review-request-modal-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .review-request-modal-header-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .review-request-header-delete-button {
+    min-width: 0;
+  }
+
+  .review-request-modal-title-row h2 {
+    font-size: 22px;
+  }
+
+  .review-request-detail-grid,
+  .review-request-account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-request-detail-item.full {
+    grid-column: auto;
+  }
+
+  .review-request-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .review-request-modal-actions .primary-button,
+  .review-request-modal-actions .secondary-button {
+    width: 100%;
+  }
+}
+
+
+/* =====================================================
+   ASSESSMENT PROGRESS BAR
+   Student / Faculty / Personnel
+===================================================== */
+
+.assessment-progress-panel {
+  position: sticky;
+  top: 78px;
+  z-index: 3;
+  max-width: 950px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 14px 16px 16px;
+  border: 1px solid #b9ccec;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(23, 63, 143, 0.10);
+}
+
+.assessment-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.assessment-progress-header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.assessment-progress-header > div > strong {
+  color: #173f8f;
+  font-size: 14px;
+}
+
+.assessment-progress-header > div > span {
+  color: #657084;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.assessment-progress-percent {
+  flex-shrink: 0;
+  color: #1B3F8B;
+  font-size: 18px;
+}
+
+.assessment-progress-track {
+  width: 100%;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce8fa;
+  box-shadow: inset 0 0 0 1px rgba(23, 63, 143, 0.08);
+}
+
+.assessment-progress-fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: #1B3F8B;
+  transition: width 0.25s ease;
+}
+
+@media (max-width: 560px) {
+  .assessment-progress-panel {
+    top: 74px;
+    padding: 12px 13px 14px;
+  }
+
+  .assessment-progress-header {
+    align-items: flex-start;
+  }
+
+  .assessment-progress-percent {
+    font-size: 16px;
+  }
+
+  .assessment-progress-track {
+    height: 12px;
+  }
+}
+
+
+/* =====================================================
+   STANDARDIZED PSYCHOLOGICAL ASSESSMENTS
+   WHO-5 / PHQ-9 / GAD-7
+===================================================== */
+
+.standardized-assessment-form {
+  display: grid;
+  gap: 22px;
+}
+
+.standardized-assessment-form .panel {
+  margin-top: 0;
+}
+
+.assessment-instrument-card {
+  max-width: 1100px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.assessment-instrument-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4e8ef;
+}
+
+.assessment-instrument-heading h2 {
+  margin: 5px 0 0;
+  color: #172033;
+}
+
+.assessment-instrument-code {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.assessment-score-range {
+  flex-shrink: 0;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: #f3f6fb;
+  color: #536174;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-instructions {
+  margin: 17px 0 4px;
+  color: #536174;
+  line-height: 1.6;
+}
+
+.assessment-source-note {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border: 1px solid #dbe6f5;
+  border-radius: 11px;
+  background: #f5f9ff;
+  color: #405571;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.assessment-choice-row-wide {
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+}
+
+.assessment-difficulty-field {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #e4e8ef;
+}
+
+.assessment-final-section {
+  max-width: 1100px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.assessment-final-section .primary-button {
+  margin-top: 18px;
+}
+
+.standardized-result-card {
+  max-width: 980px;
+}
+
+.assessment-result-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.assessment-result-item {
+  padding: 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.assessment-result-item > span {
+  display: block;
+  color: #173f8f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.assessment-result-item > strong {
+  display: block;
+  margin-top: 6px;
+  color: #172033;
+  font-size: 28px;
+}
+
+.assessment-result-item > small {
+  display: block;
+  margin-top: 5px;
+  color: #687084;
+  line-height: 1.4;
+}
+
+.assessment-result-item > p {
+  margin: 10px 0 0;
+  color: #536174;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.assessment-monitoring-recommendation {
+  margin: 18px 0;
+  color: #344158;
+  line-height: 1.65;
+}
+
+.assessment-review-score-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item {
+  min-height: 150px;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item strong {
+  margin-top: 4px;
+  font-size: 24px;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item small {
+  display: block;
+  margin-top: 5px;
+  color: #687084;
+}
+
+.assessment-review-score-grid
+.review-request-detail-item p {
+  margin: 9px 0 0;
+  color: #536174;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.assessment-review-meta-grid {
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+
+  .assessment-choice-row-wide {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .assessment-result-grid,
+  .assessment-review-score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-review-score-grid
+  .review-request-detail-item {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+
+  .assessment-instrument-heading {
+    display: block;
+  }
+
+  .assessment-score-range {
+    display: inline-block;
+    margin-top: 12px;
+  }
+
+  .assessment-choice-row-wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================
+   LOGIN - FORGOT PASSWORD
+===================================================== */
+
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -6px;
+  margin-bottom: 12px;
+}
+
+.forgot-password-link {
+  border: 0;
+  background: transparent;
+  color: #173f8f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.forgot-password-link:hover {
+  text-decoration: underline;
+}
+
+.forgot-password-link:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+
+/* =====================================================
+   COUNSELOR FILTERS
+   Assessment Cases / Counseling Requests
+===================================================== */
+
+.counselor-filter-panel {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.counselor-filter-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.counselor-filter-heading h2 {
+  margin: 0 0 5px;
+  color: #173f8f;
+}
+
+.counselor-filter-heading p {
+  margin: 0;
+  color: #6a7283;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.counselor-filter-count {
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.counselor-filter-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.counselor-filter-grid label {
+  margin-top: 8px;
+}
+
+.priority.no-assessment {
+  background: #eef1f5;
+  color: #667085;
+}
+
+.counseling-request-priority-row {
+  display: flex;
+  margin-top: 12px;
+}
+
+
+/* =====================================================
+   CLICKABLE COUNSELOR SCHEDULE
+===================================================== */
+
+.schedule-card-button {
+  width: 100%;
+  text-align: left;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.schedule-card-button:hover {
+  border-color: #173f8f;
+  box-shadow: 0 8px 22px rgba(23, 63, 143, 0.12);
+  transform: translateY(-1px);
+}
+
+.schedule-card-button:focus-visible {
+  outline: 3px solid rgba(23, 63, 143, 0.22);
+  outline-offset: 2px;
+}
+
+.schedule-card-button > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.schedule-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.schedule-open-hint {
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 680px) {
+
+  .counselor-filter-heading {
+    display: block;
+  }
+
+  .counselor-filter-count {
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .counselor-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* =====================================================
+   USER SIDEBAR NOTIFICATION BADGE
+===================================================== */
+
+.sidebar-notification-badge {
+  margin-left: auto;
+  min-width: 21px;
+  height: 21px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #173f8f;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.nav-link.active .sidebar-notification-badge {
+  background: #ffffff;
+  color: #173f8f;
+}
+
+
+/* =====================================================
+   USER NOTIFICATIONS
+===================================================== */
+
+.notification-panel {
+  max-width: 1000px;
+}
+
+.notification-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.notification-panel-heading h2,
+.notification-panel-heading p {
+  margin-top: 0;
+}
+
+.notification-panel-heading p {
+  margin-bottom: 0;
+  color: #6a7283;
+}
+
+.notification-list {
+  display: grid;
+  gap: 10px;
+}
+
+.notification-card {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notification-card:hover {
+  border-color: #9cb6df;
+  background: #f8fbff;
+}
+
+.notification-card.unread {
+  border-color: #b8cbed;
+  background: #f1f6ff;
+}
+
+.notification-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #e7eefc;
+  color: #173f8f;
+}
+
+.notification-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.notification-title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.notification-title-row strong {
+  color: #172033;
+}
+
+.notification-unread-label {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #173f8f;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.notification-content p {
+  margin: 6px 0 7px;
+  color: #4f596c;
+  line-height: 1.5;
+}
+
+.notification-content small {
+  color: #7b8495;
+}
+
+
+/* =====================================================
+   USER MENTAL HEALTH MONITORING
+===================================================== */
+
+.monitoring-empty-panel {
+  max-width: 760px;
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.monitoring-empty-panel > svg {
+  color: #173f8f;
+}
+
+.monitoring-empty-panel p {
+  max-width: 560px;
+  margin: 10px auto 20px;
+  color: #687084;
+  line-height: 1.6;
+}
+
+.monitoring-summary-panel {
+  margin-bottom: 18px;
+}
+
+.monitoring-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.monitoring-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.monitoring-summary-header h2 {
+  margin: 0 0 5px;
+}
+
+.monitoring-summary-header p {
+  margin: 0;
+  color: #737d8f;
+}
+
+.monitoring-status-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.monitoring-status-item {
+  padding: 14px;
+  border: 1px solid #e0e6ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.monitoring-status-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: #737d8f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.monitoring-status-item strong {
+  color: #172033;
+}
+
+.monitoring-counselor-note {
+  margin-top: 14px;
+  padding: 15px;
+  border-left: 4px solid #173f8f;
+  border-radius: 10px;
+  background: #f4f8ff;
+}
+
+.monitoring-counselor-note p {
+  margin: 7px 0 0;
+  white-space: pre-wrap;
+  color: #40506a;
+  line-height: 1.55;
+}
+
+.monitoring-score-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.monitoring-score-card {
+  margin-top: 0;
+}
+
+.monitoring-score-card > span {
+  display: block;
+  color: #173f8f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.monitoring-score-card > strong {
+  display: block;
+  margin: 8px 0 5px;
+  color: #172033;
+  font-size: 28px;
+}
+
+.monitoring-score-card > small {
+  display: block;
+  color: #737d8f;
+}
+
+.monitoring-score-card > p {
+  margin: 10px 0 0;
+  color: #526074;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.monitoring-guidance-panel {
+  margin-bottom: 18px;
+}
+
+.monitoring-guidance-panel > p {
+  color: #40506a;
+  line-height: 1.6;
+}
+
+.monitoring-history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.monitoring-history-heading h2,
+.monitoring-history-heading p {
+  margin-top: 0;
+}
+
+.monitoring-history-heading p {
+  margin-bottom: 0;
+  color: #737d8f;
+}
+
+.monitoring-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.monitoring-history-card {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1fr)
+    auto
+    minmax(280px, 1.5fr);
+  align-items: center;
+  gap: 16px;
+  padding: 15px;
+  border: 1px solid #e0e6ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.monitoring-history-card > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.monitoring-history-card small {
+  color: #737d8f;
+}
+
+.monitoring-history-scores {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 14px;
+  color: #526074;
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+
+  .monitoring-score-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .monitoring-history-card {
+    grid-template-columns: 1fr auto;
+  }
+
+  .monitoring-history-scores {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 620px) {
+
+  .notification-panel-heading,
+  .monitoring-summary-header,
+  .monitoring-history-heading {
+    flex-direction: column;
+  }
+
+  .monitoring-status-grid,
+  .monitoring-score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .monitoring-history-card {
+    grid-template-columns: 1fr;
+  }
+
+  .monitoring-history-scores {
+    grid-column: auto;
+  }
+}
+
+
+/* =====================================================
+   REGISTRATION REQUIRED FIELD ASTERISKS
+===================================================== */
+
+.required-fields-note {
+  margin: 0 0 14px;
+  color: #687084;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.required-asterisk {
+  margin-left: 3px;
+  color: #c62828;
+  font-weight: 800;
+}
+
+
+/* =====================================================
+   SUPER ADMIN CASE / REQUEST FILTERS
+===================================================== */
+
+.counselor-filter-grid.three-columns {
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 980px) {
+
+  .counselor-filter-grid.three-columns {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+
+  .counselor-filter-grid.three-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   ASSESSMENT - EASIER TO UNDERSTAND CHOICES
+===================================================== */
+
+.assessment-simple-guide {
+  max-width: 950px;
+  margin: 0 0 18px;
+  padding: 15px 17px;
+  border: 1px solid #cbd9ee;
+  border-radius: 12px;
+  background: #f6f9ff;
+}
+
+.assessment-simple-guide strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #173f8f;
+  font-size: 14px;
+}
+
+.assessment-simple-guide p {
+  margin: 0;
+  color: #48566d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 72px;
+}
+
+.choice input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  margin-right: 0;
+}
+
+.assessment-choice-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.assessment-choice-label {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.assessment-choice-helper {
+  display: block;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.choice.selected .assessment-choice-label {
+  color: #173f8f;
+}
+
+.choice.selected .assessment-choice-helper {
+  color: #405a88;
+}
+
+.assessment-field-helper {
+  display: block;
+  margin: 7px 0 8px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+@media (max-width: 780px) {
+
+  .assessment-choice-row-wide,
+  .choice-row {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+
+  .assessment-choice-row-wide,
+  .choice-row {
+    grid-template-columns: 1fr;
+  }
+
+  .choice {
+    min-height: auto;
+  }
+}
+
+
+/* =====================================================
+   DASS-21 SEPARATE SUBSCALE SCORES
+===================================================== */
+
+.dass21-subscale-card {
+  border-top: 3px solid #173f8f;
+}
+
+.dass21-table-scores {
+  display: grid;
+  gap: 3px;
+  min-width: 84px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.dass21-table-scores span {
+  white-space: nowrap;
+}
+
+
+/* =====================================================
+   COUNSELOR-ONLY CLICKABLE NOTIFICATIONS
+===================================================== */
+
+.notification-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 7px;
+}
+
+.notification-open-link {
+  flex-shrink: 0;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.notification-card:hover .notification-open-link {
+  text-decoration: underline;
+}
+
+.notification-target-highlight {
+  border-color: #173f8f !important;
+  box-shadow: 0 0 0 3px rgba(23, 63, 143, 0.13);
+}
+
+.monitoring-notification-banner {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #eaf2ff;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 540px) {
+
+  .notification-meta-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+
+/* =====================================================
+   CLEAN ASSESSMENT CASE LIST + ACCOUNT HISTORY REVIEW
+===================================================== */
+
+.assessment-account-table strong {
+  color: #172033;
+}
+
+.assessment-count-badge {
+  min-width: 30px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.assessment-history-review-modal {
+  width: min(1380px, 96vw);
+  max-height: 94vh;
+}
+
+.assessment-history-review-body {
+  grid-template-columns:
+    minmax(310px, 0.82fr)
+    minmax(0, 1.45fr);
+}
+
+.assessment-user-history-card {
+  grid-row: span 2;
+  min-width: 0;
+}
+
+.assessment-history-heading h3,
+.assessment-selected-detail-heading h3 {
+  margin: 0;
+}
+
+.assessment-history-heading p,
+.assessment-selected-detail-heading p {
+  margin: 5px 0 0;
+  color: #737d8f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.assessment-history-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 15px;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 3px;
+}
+
+.assessment-history-item {
+  width: 100%;
+  display: block;
+  padding: 13px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.assessment-history-item:hover {
+  border-color: #9eb7df;
+  background: #f8fbff;
+}
+
+.assessment-history-item.active {
+  border-color: #173f8f;
+  background: #f2f6ff;
+  box-shadow: 0 0 0 2px rgba(23, 63, 143, 0.08);
+}
+
+.assessment-history-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.assessment-history-item-top > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.assessment-history-item-top strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.assessment-history-item-top small {
+  color: #667085;
+  font-size: 11px;
+}
+
+.assessment-history-score-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 11px;
+}
+
+.assessment-history-score-list span {
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: #f1f4f8;
+  color: #48566d;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.assessment-history-open-label {
+  display: inline-block;
+  margin-top: 10px;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.assessment-selected-detail-card {
+  min-width: 0;
+}
+
+.assessment-selected-detail-heading {
+  margin-bottom: 15px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5eaf1;
+}
+
+.assessment-review-record-note {
+  margin: 0 0 14px;
+  color: #687084;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.assessment-case-update-card {
+  align-self: start;
+}
+
+@media (max-width: 980px) {
+
+  .assessment-history-review-body {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-user-history-card {
+    grid-row: auto;
+  }
+
+  .assessment-history-list {
+    max-height: 360px;
+  }
+}
+
+@media (max-width: 620px) {
+
+  .assessment-history-item-top {
+    flex-direction: column;
+  }
+}
+
+
+/* =====================================================
+   COUNSELOR-REVIEWED MONITORING STATE + TREND
+===================================================== */
+
+.monitoring-review-gate {
+  max-width: 800px;
+  text-align: center;
+  padding: 38px 24px;
+}
+
+.monitoring-review-gate > svg {
+  color: #173f8f;
+}
+
+.monitoring-review-gate h2 {
+  margin: 12px 0 8px;
+  color: #172033;
+}
+
+.monitoring-review-gate > p {
+  max-width: 650px;
+  margin: 0 auto 16px;
+  color: #5d687b;
+  line-height: 1.6;
+}
+
+.monitoring-pending-count {
+  display: inline-flex;
+  margin-top: 14px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: #173f8f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.monitoring-trend-panel {
+  margin-bottom: 18px;
+  border-left: 5px solid #8793a5;
+}
+
+.monitoring-trend-panel.improving {
+  border-left-color: #2f7d4a;
+}
+
+.monitoring-trend-panel.not-improving {
+  border-left-color: #a33a3a;
+}
+
+.monitoring-trend-panel.no-clear-change {
+  border-left-color: #9a7b2f;
+}
+
+.monitoring-trend-panel.insufficient {
+  border-left-color: #6b7280;
+}
+
+.monitoring-trend-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.monitoring-trend-header > svg {
+  color: #173f8f;
+  flex-shrink: 0;
+}
+
+.monitoring-trend-header h2 {
+  margin: 2px 0 0;
+  color: #172033;
+}
+
+.monitoring-trend-panel > p {
+  margin: 12px 0 6px;
+  color: #48566d;
+  line-height: 1.6;
+}
+
+.monitoring-trend-panel > small {
+  display: block;
+  color: #737d8f;
+  line-height: 1.45;
+}
+
+.monitoring-trend-note {
+  margin-top: 14px;
+}
+
+.monitoring-pending-panel {
+  margin-top: 18px;
+}
+
+.monitoring-pending-panel > p {
+  color: #5d687b;
+  line-height: 1.55;
+}
+
+.monitoring-pending-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.monitoring-pending-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e1e6ee;
+  border-radius: 10px;
+  background: #f9fafc;
+}
+
+.monitoring-pending-item strong {
+  color: #273246;
+  font-size: 13px;
+}
+
+.monitoring-pending-item span {
+  color: #7a8495;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 620px) {
+
+  .monitoring-trend-header,
+  .monitoring-pending-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* =====================================================
+   PRIVATE CASE FIELDS - COUNSELING REVIEW
+===================================================== */
+
+.counselor-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.counselor-note-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.counselor-note-field > span {
+  color: #273246;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.counselor-note-field textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+}
+
+.counselor-note-field textarea[readonly] {
+  background: #f3f5f8;
+  color: #5f6879;
+  cursor: not-allowed;
+}
+
+@media (max-width: 800px) {
+  .counselor-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================
+   COUNSELOR TRANSFER WORKFLOW
+===================================================== */
+
+.transfer-dashboard-panel {
+  border-left: 4px solid #173f8f;
+}
+
+.transfer-dashboard-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.transfer-dashboard-heading h2 {
+  margin: 0;
+}
+
+.transfer-dashboard-heading p {
+  margin: 5px 0 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.transfer-count-badge {
+  min-width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #173f8f;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.transfer-request-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 12px;
+}
+
+.transfer-request-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.transfer-request-card > div {
+  display: grid;
+  gap: 4px;
+}
+
+.transfer-request-card p,
+.transfer-request-card small {
+  margin: 0;
+  color: #667085;
+}
+
+.transfer-empty-state {
+  padding: 14px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  color: #667085;
+}
+
+.transfer-user-button {
+  border: 0;
+  border-radius: 11px;
+  padding: 13px 20px;
+  background: #0B4A6F;
+  color: #FFFFFF;
+  font: inherit;
+  font-weight: 700;
+  line-height: normal;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    opacity 0.15s;
+}
+
+.transfer-user-button:hover:not(:disabled) {
+  opacity: 0.94;
+}
+
+.transfer-user-button:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.transfer-user-button:disabled {
+  border: 0;
+  background: #f3f5f8;
+  color: #7b8495;
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.transfer-dashboard-section + .transfer-dashboard-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e9f0;
+}
+
+.transfer-dashboard-subheading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.transfer-dashboard-subheading h3 {
+  margin: 0;
+  color: #172b4d;
+  font-size: 15px;
+}
+
+.transfer-dashboard-subheading > span {
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.transfer-request-card-outgoing {
+  background: #f9fbff;
+}
+
+.transfer-deadline-warning {
+  color: #b42318 !important;
+  font-weight: 800;
+}
+
+.transfer-deadline-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #fee4e2;
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.user-transfer-status {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.user-transfer-status strong {
+  font-size: 13px;
+}
+
+.user-transfer-status-pending {
+  border-color: #f1c27d;
+  background: #fff8e8;
+  color: #7a4b00;
+}
+
+.user-transfer-status-approved {
+  border-color: #b9d7c5;
+  background: #f0faf4;
+  color: #245c3a;
+}
+
+.transfer-pending-label,
+.transferred-table-badge,
+.transferred-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #fff0d8;
+  color: #8a5400;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.transferred-profile-badge {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.transfer-profile-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 850px) {
+
+  .counseling-request-list-card-header {
+    display: grid;
+    gap: 9px;
+  }
+
+  .counseling-request-status-group {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .counseling-request-list-actions {
+    align-items: stretch;
+  }
+
+  .counseling-request-list-actions .secondary-button,
+  .counseling-request-list-actions .transfer-user-button {
+    width: 100%;
+  }
+
+  .transfer-profile-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transfer-request-card,
+  .transfer-dashboard-heading {
+    flex-direction: column;
+  }
+}
+
+
+/* =====================================================
+   ONE ACTIVE COUNSELING REQUEST
+===================================================== */
+
+.counseling-request-limit-notice {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 16px;
+}
+
+.counseling-request-limit-notice strong {
+  color: #7a4b00;
+}
+
+.counseling-request-limit-notice span {
+  line-height: 1.5;
+}
+
+.counseling-new-request-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.counseling-new-request-fieldset:disabled {
+  opacity: 0.58;
+}
+
+.counseling-new-request-fieldset:disabled .primary-button {
+  cursor: not-allowed;
+}
+
+
+/* =====================================================
+   LATEST UI COMPATIBILITY PATCH
+   Keeps the full MindTrack stylesheet and adds only the
+   newer Referral / registration / filter UI classes.
+===================================================== */
+
+/* Generic filter grids used by newer management pages. */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.filter-grid > label {
+  margin-top: 0;
+}
+
+/* Referral status card: keep counselor and privacy note separated. */
+.referral-status-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e9f0;
+}
+
+.referral-status-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: #49566a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.referral-status-detail-row strong {
+  color: #24324a;
+}
+
+.referral-status-privacy-note {
+  display: block;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #f6f8fb;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Referral-management status control must remain readable in a table cell. */
+.referral-management-status-select {
+  width: 150px;
+  min-width: 150px;
+  max-width: 100%;
+  padding: 8px 30px 8px 10px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* Registration helper text used by the latest registration flow. */
+.registration-section-note {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f3f7fd;
+  color: #53627a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Email verification resend action, aligned with current secondary actions. */
+.auth-resend-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 13px;
+  background: #e7eefc;
+  color: #173f8f;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-resend-button:hover:not(:disabled) {
+  background: #dbe6f8;
+}
+
+.auth-resend-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .referral-management-status-select {
+    width: 160px;
+    min-width: 160px;
+  }
+}
+
+
+/* =====================================================
+   TOPBAR NOTIFICATION BELL
+===================================================== */
+
+.top-user-area {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.topbar-notification-button {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+
+.topbar-notification-button:hover {
+  background: rgba(255, 255, 255, 0.20);
+  transform: translateY(-1px);
+}
+
+.topbar-notification-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #000080;
+  border-radius: 999px;
+  background: #DECA57;
+  color: #111827;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+
+/* =====================================================
+   ONE ACTIVE ASSESSMENT
+===================================================== */
+
+.assessment-limit-panel {
+  max-width: 820px;
+}
+
+.assessment-limit-panel h2 {
+  margin-top: 0;
+}
+
+.assessment-limit-notice {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 650px) {
+  .top-user-area {
+    gap: 8px;
+  }
+
+  .topbar-notification-button {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+}
+
+/* =====================================================
+   FINAL USER PROFILE / TRANSFER / PRIVATE NOTES FIX
+   Added to resolve profile-header alignment, transfer
+   documentation layout, and private counseling-note UI.
+===================================================== */
+
+/* Let the modal header grow naturally without breaking the
+   scrollable body height when counselor/transfer metadata wraps. */
+.user-profile-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-profile-modal-header {
+  min-height: 0;
+  flex: 0 0 auto;
+  align-items: flex-start;
+}
+
+.user-profile-modal-body {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: start;
+}
+
+/* Keep identity content aligned and allow long college names
+   to wrap without pushing the close button or priority badge. */
+.user-profile-modal-identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.user-profile-modal-name {
+  width: 100%;
+  min-width: 0;
+}
+
+.user-profile-name-row {
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.user-profile-name-row .priority {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* Split status badges and counselor information into separate rows. */
+.user-profile-header-badges {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.user-profile-status-badges,
+.user-profile-counselor-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.user-profile-counselor-meta {
+  width: 100%;
+}
+
+.assigned-counselor-badge,
+.assigned-counselor-department-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.assigned-counselor-badge {
+  background: #f0f4f9;
+  color: #536174;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.assigned-counselor-department-badge {
+  background: #f2f5f9;
+  color: #5e687a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.assigned-counselor-badge strong,
+.assigned-counselor-department-badge strong {
+  color: #344158;
+  font-weight: 800;
+}
+
+/* Keep transferred badge consistent with the existing theme. */
+.transferred-badge,
+.transferred-table-badge,
+.transferred-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.transferred-profile-badge {
+  border: 1px solid #d8c2ef;
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+/* Documentation access now occupies one complete grid row and
+   lines up with Account Information / Counseling Schedule. */
+.transfer-documentation-notice {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 14px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #d7e3f0;
+  border-radius: 12px;
+  background: #f7faff;
+  color: #526078;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.transfer-documentation-notice-title {
+  color: #173f8f;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.transfer-documentation-notice-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-profile-modal-card {
+  align-self: start;
+}
+
+/* =====================================================
+   PRIVATE COUNSELING NOTES
+===================================================== */
+
+.private-counseling-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.private-counseling-note-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: #273246;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.private-counseling-note-field textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  font-weight: 400;
+}
+
+.private-counseling-note-field textarea[readonly] {
+  background: #f3f5f8;
+  color: #5f6879;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+   RESPONSIVE PROFILE FIXES
+===================================================== */
+
+@media (max-width: 900px) {
+  .transfer-documentation-notice {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 800px) {
+  .private-counseling-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .user-profile-modal-header {
+    gap: 12px;
+  }
+
+  .user-profile-modal-identity {
+    gap: 12px;
+  }
+
+  .user-profile-status-badges,
+  .user-profile-counselor-meta {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .assigned-counselor-badge,
+  .assigned-counselor-department-badge {
+    width: 100%;
+    border-radius: 10px;
+  }
+
+  .transfer-documentation-notice {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .transfer-documentation-notice-title {
+    white-space: normal;
+  }
+}
+
+/* =====================================================
+   FINAL COUNSELING REQUEST MODAL ALIGNMENT FIX
+   Keeps Request Details and Counselor Review as the top
+   two columns, Private Counseling Notes full-width below,
+   and all workflow buttons in one clean footer row.
+===================================================== */
+
+.review-request-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-request-modal-header {
+  flex: 0 0 auto;
+}
+
+.review-request-modal-body {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-content: start;
+  align-items: start;
+}
+
+/* The two top cards stay independent and aligned. */
+.review-request-modal-body > .review-request-modal-card {
+  min-width: 0;
+  align-self: start;
+}
+
+.review-request-update-card {
+  height: auto;
+}
+
+/* Private notes should never be trapped inside the right column. */
+.private-counseling-notes-card {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.private-counseling-notes-card > h3 {
+  margin-bottom: 8px;
+}
+
+.private-counseling-notes-card .notice {
+  max-width: none;
+}
+
+/* Keep the four internal note fields balanced and readable. */
+.private-counseling-notes-grid {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.private-counseling-note-field textarea {
+  min-height: 145px;
+}
+
+/* One footer row for transfer + Close/Save. */
+.review-request-workflow-footer {
+  grid-column: 1 / -1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 2px 0 4px;
+}
+
+.review-request-workflow-footer .transfer-user-button {
+  margin: 0;
+  min-height: 44px;
+}
+
+.review-request-workflow-footer .review-request-modal-actions {
+  margin: 0 0 0 auto;
+}
+
+.review-request-workflow-footer
+.review-request-modal-actions
+.primary-button,
+.review-request-workflow-footer
+.review-request-modal-actions
+.secondary-button {
+  min-width: 150px;
+}
+
+/* Prevent very long helper text from forcing odd widths. */
+.review-field-visibility-note {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Tablet: stack all major cards cleanly. */
+@media (max-width: 1000px) {
+  .review-request-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .private-counseling-notes-card,
+  .review-request-workflow-footer {
+    grid-column: auto;
+  }
+}
+
+/* Mobile: notes and footer buttons become one column. */
+@media (max-width: 700px) {
+  .private-counseling-notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-request-workflow-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .review-request-workflow-footer .transfer-user-button {
+    width: 100%;
+  }
+
+  .review-request-workflow-footer .review-request-modal-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .review-request-workflow-footer
+  .review-request-modal-actions
+  .primary-button,
+  .review-request-workflow-footer
+  .review-request-modal-actions
+  .secondary-button {
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   SUPER ADMIN SAFE TEST-DATA CLEANUP
+===================================================== */
+
+.superadmin-cleanup-zone {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fff7f7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.superadmin-cleanup-zone-full {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 0;
+}
+
+.superadmin-cleanup-zone strong {
+  color: #991b1b;
+}
+
+.superadmin-cleanup-zone p {
+  max-width: 760px;
+  margin: 5px 0 0;
+  color: #7f1d1d;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.superadmin-cleanup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.danger-button {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #b91c1c;
+  border-radius: 10px;
+  background: #b91c1c;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #991b1b;
+}
+
+.danger-button-outline {
+  background: #fff;
+  color: #b91c1c;
+}
+
+.danger-button-outline:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cleanup-protected-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .superadmin-cleanup-zone,
+  .superadmin-cleanup-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .superadmin-cleanup-actions,
+  .superadmin-cleanup-actions .danger-button {
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   FINAL SUPER ADMIN CLEANUP BUTTON ALIGNMENT
+===================================================== */
+
+.superadmin-cleanup-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: stretch;
+  gap: 16px;
+}
+
+.superadmin-cleanup-zone > div:first-child {
+  min-width: 0;
+}
+
+.superadmin-cleanup-zone p {
+  max-width: none;
+}
+
+.superadmin-cleanup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.superadmin-cleanup-delete-button {
+  min-width: 92px;
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.superadmin-cleanup-zone > .superadmin-cleanup-delete-button {
+  justify-self: end;
+}
+
+.review-request-modal-actions {
+  align-items: center;
+}
+
+.review-request-modal-actions .primary-button,
+.review-request-modal-actions .secondary-button {
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  .superadmin-cleanup-zone {
+    grid-template-columns: 1fr;
+  }
+
+  .superadmin-cleanup-zone > .superadmin-cleanup-delete-button,
+  .superadmin-cleanup-actions {
+    justify-self: start;
+  }
+
+  .superadmin-cleanup-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .superadmin-cleanup-actions {
+    width: 100%;
+  }
+
+  .superadmin-cleanup-delete-button {
+    width: 100%;
+  }
+}
+
+/* =====================================================
+   PAGED PSYCHOLOGICAL ASSESSMENT
+   Google-Forms-like section flow
+===================================================== */
+
+.assessment-page-shell {
+  width: 100%;
+  max-width: 950px;
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.assessment-simple-guide.assessment-page-shell {
+  margin-bottom: 18px;
+}
+
+.assessment-sticky-progress.assessment-page-shell {
+  position: sticky;
+  top: 72px;
+  z-index: 30;
+  overflow: hidden;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.10);
+}
+
+.assessment-page-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.assessment-page-progress-heading > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.assessment-page-progress-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #536174;
+  font-size: 13px;
+}
+
+.assessment-page-progress-meta strong {
+  color: #132f73;
+  font-size: 1rem;
+}
+
+.assessment-page-progress-track {
+  display: block;
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ebf2;
+}
+
+.assessment-page-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #173f8f;
+  transition: width 180ms ease;
+}
+
+.assessment-page-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.assessment-page-step {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 7px;
+  border: 1px solid #dbe2ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-page-step.current {
+  border-color: #173f8f;
+  background: #edf3ff;
+  color: #173f8f;
+}
+
+.assessment-page-step.complete {
+  border-color: #b8d9c5;
+  background: #eefaf2;
+  color: #247047;
+}
+
+.assessment-page-step.current.complete {
+  border-color: #173f8f;
+  background: #edf3ff;
+  color: #173f8f;
+}
+
+.assessment-page-step-number {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8edf5;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.assessment-page-step.current .assessment-page-step-number {
+  background: #173f8f;
+  color: #fff;
+}
+
+.assessment-page-step.complete:not(.current) .assessment-page-step-number {
+  background: #2f855a;
+  color: #fff;
+}
+
+.assessment-paged-form {
+  display: block;
+}
+
+.assessment-page-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.assessment-page-indicator strong {
+  color: #173f8f;
+}
+
+.assessment-page-card {
+  width: 100%;
+  max-width: 950px;
+  margin: 0 auto;
+  animation: assessment-page-enter 160ms ease-out;
+}
+
+@keyframes assessment-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.assessment-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e4e8ef;
+}
+
+.assessment-page-actions-end {
+  justify-content: flex-end;
+}
+
+.assessment-page-actions .primary-button,
+.assessment-page-actions .secondary-button {
+  min-width: 150px;
+}
+
+.assessment-page-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 22px;
+}
+
+.assessment-page-review-item {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dbe2ec;
+  border-radius: 12px;
+  background: #f8fafc;
+  text-align: left;
+  color: #334155;
+  cursor: pointer;
+}
+
+.assessment-page-review-item:hover {
+  border-color: #9db5d7;
+  background: #f3f7fd;
+}
+
+.assessment-page-review-item.complete {
+  border-color: #b8d9c5;
+  background: #f2fbf5;
+}
+
+.assessment-page-review-item span,
+.assessment-page-review-item strong,
+.assessment-page-review-item small {
+  display: block;
+}
+
+.assessment-page-review-item span {
+  margin-bottom: 3px;
+  color: #173f8f;
+  font-weight: 800;
+}
+
+.assessment-page-review-item strong {
+  margin-bottom: 3px;
+}
+
+.assessment-page-review-item small {
+  color: #667085;
+}
+
+/* Choice helper remains visible, but without the old "Simple meaning:" label. */
+.assessment-choice-helper {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+@media (max-width: 800px) {
+  .assessment-page-stepper {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-page-step {
+    justify-content: flex-start;
+  }
+
+  .assessment-page-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .assessment-sticky-progress.assessment-page-shell {
+    top: 62px;
+    padding: 14px;
+  }
+
+  .assessment-page-progress-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .assessment-page-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .assessment-page-actions .primary-button,
+  .assessment-page-actions .secondary-button {
+    width: 100%;
+  }
+
+  .assessment-page-actions-end {
+    flex-direction: column;
+  }
+}
+
+/* =====================================================
+   COUNSELING WORKFLOW V2
+   Grouped requests / targeted transfers / session history
+===================================================== */
+
+.counseling-request-list-heading,
+.counseling-request-user-view-header,
+.profile-session-note-heading,
+.profile-recent-session-note-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.counseling-request-list-heading h2,
+.counseling-request-user-view-header h2 {
+  margin-bottom: 5px;
+}
+
+.counseling-request-list-heading p,
+.counseling-request-user-view-header p {
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.counseling-request-user-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.counseling-request-user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.counseling-request-user-main {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.counseling-request-user-main > strong {
+  color: #172033;
+  font-size: 1rem;
+}
+
+.counseling-request-user-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: #667085;
+  font-size: 0.88rem;
+}
+
+.counseling-request-user-card .secondary-button {
+  flex-shrink: 0;
+}
+
+.counseling-request-user-view {
+  border-color: #cddbf0;
+  background: #fbfdff;
+}
+
+.counseling-request-user-view-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #173f8f;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.counseling-request-user-request-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.counseling-request-user-request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.counseling-request-user-request-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.counseling-request-user-request-card small {
+  color: #667085;
+}
+
+.counseling-request-user-request-card .primary-button {
+  flex-shrink: 0;
+}
+
+.counselor-transfer-target-panel {
+  display: grid;
+  gap: 8px;
+  width: min(420px, 100%);
+}
+
+.counselor-transfer-target-panel label {
+  margin: 0;
+}
+
+.counselor-transfer-target-panel select {
+  width: 100%;
+}
+
+.profile-session-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.profile-session-history-button {
+  appearance: none;
+  border: 1px solid #cfd8e6;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.profile-session-history-button:hover {
+  border-color: #7898c8;
+  background: #f3f7fd;
+}
+
+.profile-session-history-button.selected {
+  border-color: #173f8f;
+  background: #edf3ff;
+  color: #173f8f;
+}
+
+.profile-session-note-view {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #dbe4f1;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.profile-session-note-heading {
+  margin-bottom: 14px;
+}
+
+.profile-session-note-heading strong {
+  color: #172033;
+}
+
+.profile-session-note-heading span {
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.profile-session-note-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-session-note-field {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.profile-session-note-field > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #173f8f;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.profile-session-note-field p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.profile-recent-session-note-banner {
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #cfe0f7;
+  border-radius: 12px;
+  background: #eef6ff;
+}
+
+.profile-recent-session-note-banner strong {
+  color: #173f8f;
+}
+
+.profile-recent-session-note-banner span {
+  color: #475569;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .counseling-request-list-heading,
+  .counseling-request-user-view-header,
+  .profile-session-note-heading,
+  .profile-recent-session-note-banner {
+    flex-direction: column;
+  }
+
+  .counseling-request-user-card,
+  .counseling-request-user-request-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .counseling-request-user-card .secondary-button,
+  .counseling-request-user-request-card .primary-button {
+    width: 100%;
+  }
+
+  .profile-session-note-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================
+   USER PROFILE + MONITORING UI POLISH
+   Improves spacing, hierarchy, scanability, and balance.
+===================================================== */
+
+/* ---------- User Profile layout ---------- */
+
+.user-profile-modal-body {
+  gap: 20px;
+  padding: 24px;
+  background: #f6f9fd;
+}
+
+.user-profile-modal-card {
+  border-color: #dbe4ef;
+  box-shadow: 0 4px 14px rgba(25, 55, 95, 0.045);
+}
+
+.profile-account-section {
+  grid-column: 1 / -1;
+}
+
+.profile-account-section .readonly-profile-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-account-section .readonly-profile-item {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.profile-account-section .readonly-profile-item.full {
+  grid-column: span 2;
+}
+
+.profile-schedule-section,
+.profile-assessment-history-section {
+  min-height: 100%;
+}
+
+.profile-counseling-history-section,
+.counseling-notes-card {
+  grid-column: 1 / -1;
+}
+
+.user-profile-section-title {
+  padding-bottom: 13px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.user-profile-section-title h3 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.user-profile-section-title p {
+  max-width: 760px;
+  margin-top: 5px;
+  line-height: 1.55;
+}
+
+.profile-history-list {
+  gap: 12px;
+}
+
+.assessment-profile-history-card {
+  padding: 16px;
+  background: #fbfcfe;
+  border-width: 2px;
+  border-left-width: 6px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.assessment-profile-history-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.09);
+}
+
+/* Priority-colored assessment outlines make separate records easier to scan. */
+.assessment-profile-history-card.assessment-priority-low {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-profile-history-card.assessment-priority-moderate {
+  border-color: #fde68a;
+  border-left-color: #d97706;
+}
+
+.assessment-profile-history-card.assessment-priority-high {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-profile-history-card.assessment-priority-critical {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-profile-history-card.assessment-priority-none,
+.assessment-profile-history-card:not([class*="assessment-priority-"]) {
+  border-color: #cbd5e1;
+  border-left-color: #64748b;
+}
+
+
+/* Standardized severity outline colors for User Profile assessment history. */
+.assessment-profile-history-card.assessment-priority-minimal-none,
+.assessment-profile-history-card.assessment-priority-minimal {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-profile-history-card.assessment-priority-mild {
+  border-color: #bef264;
+  border-left-color: #65a30d;
+}
+
+.assessment-profile-history-card.assessment-priority-moderately-severe {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-profile-history-card.assessment-priority-severe {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-profile-history-card.assessment-priority-extremely-severe {
+  border-color: #ef4444;
+  border-left-color: #991b1b;
+}
+
+.profile-history-card-top {
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9eef5;
+}
+
+.profile-history-card-top > strong {
+  font-size: 14px;
+}
+
+.profile-assessment-priority-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 10px !important;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f2f6fb;
+}
+
+.profile-assessment-priority-row > span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-assessment-priority-row > strong {
+  color: #173f8f;
+  font-size: 13px;
+}
+
+.profile-assessment-score-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.profile-assessment-score-list > span {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #e0e7f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.profile-assessment-remark {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 9px;
+  margin-top: 12px !important;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: #f5f8fc;
+}
+
+.profile-assessment-remark b {
+  color: #334155;
+}
+
+.profile-assessment-remark span {
+  min-width: 0;
+  color: #5d687b;
+  overflow-wrap: anywhere;
+}
+
+.profile-session-history-list {
+  margin-top: 4px;
+  padding: 10px 0 2px;
+}
+
+.profile-session-history-button {
+  min-width: 92px;
+  text-align: center;
+}
+
+.profile-session-note-view {
+  margin-top: 14px;
+  padding: 18px;
+  background: #f7faff;
+}
+
+.profile-session-note-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e1e8f1;
+}
+
+.profile-session-note-grid {
+  margin-top: 14px;
+}
+
+.profile-session-note-field {
+  min-height: 108px;
+}
+
+.profile-session-note-field > span {
+  letter-spacing: 0.01em;
+}
+
+.profile-recent-session-note-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.counseling-notes-card .counselor-notes-grid {
+  gap: 14px;
+}
+
+.counseling-notes-card .counselor-note-field textarea {
+  min-height: 138px;
+  border-color: #d9e2ed;
+  border-radius: 11px;
+  line-height: 1.55;
+}
+
+.counseling-notes-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid #e8edf3;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.counseling-notes-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.counseling-notes-meta strong {
+  color: #334155;
+}
+
+
+/* ---------- User Monitoring layout ---------- */
+
+.monitoring-summary-panel,
+.monitoring-trend-panel,
+.monitoring-history-panel,
+.monitoring-pending-panel,
+.monitoring-notification-banner,
+.monitoring-review-gate,
+.monitoring-empty-panel {
+  width: min(1100px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.monitoring-summary-panel,
+.monitoring-trend-panel,
+.monitoring-history-panel,
+.monitoring-pending-panel {
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(25, 55, 95, 0.04);
+}
+
+.monitoring-summary-panel {
+  padding: 22px;
+}
+
+.monitoring-summary-header {
+  align-items: center;
+}
+
+.monitoring-summary-header > div {
+  min-width: 0;
+}
+
+.monitoring-summary-header h2 {
+  margin-bottom: 6px;
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  line-height: 1.25;
+}
+
+.monitoring-summary-header p {
+  line-height: 1.45;
+}
+
+.monitoring-status-grid {
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.monitoring-status-item {
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 16px;
+  background: #f8fafc;
+}
+
+.monitoring-counselor-note {
+  padding: 14px 16px;
+  border-left-width: 3px;
+  background: #f6f9fe;
+}
+
+.monitoring-counselor-note > strong {
+  color: #172033;
+}
+
+.monitoring-score-privacy-note {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #dce8f7;
+  border-radius: 10px;
+  background: #f4f8fd;
+  color: #536174;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.monitoring-trend-panel {
+  padding: 20px 22px;
+  border-left-width: 4px;
+}
+
+.monitoring-trend-header {
+  align-items: center;
+}
+
+.monitoring-trend-panel > p {
+  margin-top: 10px;
+}
+
+.monitoring-trend-note {
+  padding: 11px 13px;
+  font-size: 12.5px;
+}
+
+.monitoring-history-panel {
+  padding: 22px;
+}
+
+.monitoring-history-heading {
+  align-items: center;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.monitoring-history-heading > div {
+  min-width: 0;
+}
+
+.monitoring-history-heading > svg {
+  flex: 0 0 auto;
+  color: #173f8f;
+}
+
+.monitoring-history-heading h2 {
+  margin: 2px 0 5px;
+  color: #172033;
+  font-size: 1.25rem;
+}
+
+.monitoring-history-heading p {
+  max-width: 760px;
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.monitoring-history-list {
+  gap: 10px;
+}
+
+.monitoring-history-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #e0e7f0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.monitoring-history-item > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.monitoring-history-item > div > strong {
+  color: #273246;
+  font-size: 13.5px;
+}
+
+.monitoring-history-item > div > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #eef3f8;
+  color: #536174;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.monitoring-history-item > .priority {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.monitoring-pending-panel {
+  padding: 20px 22px;
+}
+
+.monitoring-pending-panel h2 {
+  margin-top: 0;
+  color: #172033;
+}
+
+.monitoring-pending-item {
+  background: #fbfcfe;
+}
+
+
+/* ---------- Responsive polish ---------- */
+
+@media (max-width: 1100px) {
+  .profile-account-section .readonly-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-account-section .readonly-profile-item.full {
+    grid-column: 1 / -1;
+  }
+
+  .profile-assessment-score-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-account-section,
+  .profile-counseling-history-section,
+  .counseling-notes-card {
+    grid-column: auto;
+  }
+
+  .profile-account-section .readonly-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .user-profile-modal-body {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .profile-account-section .readonly-profile-grid,
+  .profile-assessment-score-list,
+  .profile-session-note-grid,
+  .monitoring-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-account-section .readonly-profile-item.full {
+    grid-column: auto;
+  }
+
+  .profile-assessment-priority-row,
+  .profile-session-note-heading,
+  .profile-recent-session-note-banner,
+  .monitoring-summary-header,
+  .monitoring-trend-header,
+  .monitoring-history-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-assessment-remark {
+    grid-template-columns: 1fr;
+  }
+
+  .counseling-notes-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .monitoring-summary-panel,
+  .monitoring-trend-panel,
+  .monitoring-history-panel,
+  .monitoring-pending-panel {
+    padding: 16px;
+    border-radius: 13px;
+  }
+
+  .monitoring-history-item {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .monitoring-history-item > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .monitoring-history-item > .priority {
+    justify-self: start;
+  }
+}
+
+/* =====================================================
+   COUNSELOR ASSESSMENT ANSWERS + TERMINATED STATUS LOCK
+===================================================== */
+
+.counseling-terminated-lock-notice {
+  border-left: 4px solid #64748b;
+}
+
+.counseling-terminated-lock-notice strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #334155;
+}
+
+.counseling-terminated-lock-notice p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.assessment-answer-review-card {
+  grid-column: 1 / -1;
+}
+
+.assessment-answer-review {
+  display: grid;
+  gap: 18px;
+}
+
+.assessment-answer-review-heading {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e3e9f1;
+}
+
+.assessment-answer-review-kicker {
+  display: inline-block;
+  margin-bottom: 3px;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.assessment-answer-review-heading h3 {
+  margin: 0 0 5px;
+  color: #172033;
+}
+
+.assessment-answer-review-heading p {
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.assessment-answer-instrument {
+  overflow: hidden;
+  border: 1px solid #dde5ef;
+  border-radius: 13px;
+  background: #fbfcfe;
+}
+
+.assessment-answer-instrument-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  border-bottom: 1px solid #e4eaf2;
+  background: #f3f7fc;
+}
+
+.assessment-answer-instrument-heading h4 {
+  margin: 0;
+  color: #173f8f;
+}
+
+.assessment-answer-instrument-heading span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-answer-list {
+  display: grid;
+}
+
+.assessment-answer-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.8fr);
+  gap: 18px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.assessment-answer-item:last-child {
+  border-bottom: 0;
+}
+
+.assessment-answer-question {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+}
+
+.assessment-answer-question > span {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf2ff;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.assessment-answer-question p {
+  margin: 2px 0 0;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.assessment-answer-response {
+  min-width: 0;
+  align-self: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eef5ff;
+}
+
+.assessment-answer-response small,
+.assessment-answer-response strong {
+  display: block;
+}
+
+.assessment-answer-response small {
+  margin-bottom: 3px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.assessment-answer-response strong {
+  color: #173f8f;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.assessment-answer-difficulty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 15px;
+  border: 1px solid #dce5ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.assessment-answer-difficulty span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.assessment-answer-difficulty strong {
+  color: #334155;
+  text-align: right;
+}
+
+.assessment-answers-unavailable {
+  margin: 0;
+}
+
+
+/* Counselor-only assessment history in User Profile */
+
+.profile-assessment-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.profile-assessment-answer-toggle {
+  min-width: 118px;
+}
+
+.profile-assessment-answers-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e1e8f1;
+}
+
+.profile-assessment-answer-group {
+  overflow: hidden;
+  border: 1px solid #dfe6ef;
+  border-radius: 11px;
+  background: #fbfcfe;
+}
+
+.profile-assessment-answer-group h5 {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5ebf2;
+  background: #f3f7fc;
+  color: #173f8f;
+  font-size: 13px;
+}
+
+.profile-assessment-answer-list {
+  display: grid;
+}
+
+.profile-assessment-answer-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(180px, 0.65fr);
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.profile-assessment-answer-item:last-child {
+  border-bottom: 0;
+}
+
+.profile-assessment-answer-item p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.profile-assessment-answer-item p span {
+  color: #173f8f;
+  font-weight: 800;
+}
+
+.profile-assessment-answer-item strong {
+  align-self: center;
+  color: #173f8f;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.profile-assessment-difficulty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid #dfe6ef;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+
+.profile-assessment-difficulty-row span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-assessment-difficulty-row strong {
+  color: #334155;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .assessment-answer-item,
+  .profile-assessment-answer-item {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-answer-difficulty,
+  .profile-assessment-difficulty-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .assessment-answer-difficulty strong,
+  .profile-assessment-difficulty-row strong {
+    text-align: left;
+  }
+}
+
+/* =====================================================
+   USER PROFILE — STACKED COUNSELOR SECTIONS
+===================================================== */
+
+.user-profile-modal-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.profile-account-section,
+.profile-schedule-section,
+.profile-assessment-history-section,
+.profile-counseling-history-section,
+.counseling-notes-card {
+  width: 100%;
+  min-width: 0;
+  min-height: auto;
+  grid-column: 1 / -1;
+}
+
+.profile-schedule-section,
+.profile-assessment-history-section,
+.profile-counseling-history-section {
+  align-self: start;
+}
+
+.profile-schedule-list,
+.profile-history-list,
+.profile-schedule-card,
+.profile-assessment-history-section .assessment-profile-history-card {
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .user-profile-modal-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-account-section,
+  .profile-schedule-section,
+  .profile-assessment-history-section,
+  .profile-counseling-history-section,
+  .counseling-notes-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-account-section,
+  .profile-schedule-section,
+  .profile-assessment-history-section,
+  .profile-counseling-history-section,
+  .counseling-notes-card {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Cleaner analytics scope card after removing the live/generated line. */
+.analytics-scope-card {
+  justify-content: flex-start !important;
+}
+
+.analytics-scope-card > div {
+  width: 100%;
+}
+
+/* =====================================================
+   ACCOUNT ROLE FILTER + REFERRAL/SCHEDULE POLISH
+===================================================== */
+
+.account-management-filter-panel {
+  margin-bottom: 18px;
+}
+
+.account-role-filter-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 360px);
+  gap: 14px;
+}
+
+.account-role-filter-row label {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.profile-schedule-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.profile-schedule-type-label {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 620px) {
+  .account-role-filter-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================
+   USER PROFILE — COUNSELOR TRANSFER ACTION
+===================================================== */
+
+.user-profile-transfer-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+
+.user-profile-transfer-button {
+  width: fit-content;
+  min-width: 230px;
+}
+
+.user-profile-transfer-action small {
+  color: #667085;
+  line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+  .user-profile-transfer-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-profile-transfer-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* =====================================================
+   USER HOME — MENTAL HEALTH MONITORING SUMMARY
+===================================================== */
+
+.home-monitoring-summary-panel {
+  border: 1px solid #dbe4ef;
+  border-left: 4px solid #173f8f;
+}
+
+.home-monitoring-summary-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.home-monitoring-summary-heading > div {
+  min-width: 0;
+}
+
+.home-monitoring-summary-heading > svg {
+  flex: 0 0 auto;
+  color: #173f8f;
+}
+
+.home-monitoring-kicker {
+  display: inline-block;
+  margin-bottom: 4px;
+  color: #173f8f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-monitoring-summary-heading h2 {
+  margin: 0 0 5px;
+  color: #172033;
+}
+
+.home-monitoring-summary-heading p {
+  max-width: 820px;
+  margin: 0;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.home-monitoring-summary-content {
+  display: grid;
+  gap: 14px;
+}
+
+.home-monitoring-summary-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.home-monitoring-summary-main > div {
+  display: grid;
+  gap: 3px;
+}
+
+.home-monitoring-summary-main > div > span,
+.home-monitoring-summary-grid span,
+.home-monitoring-recommendation > span {
+  color: #667085;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.home-monitoring-summary-main > div > strong {
+  color: #172033;
+  font-size: 18px;
+}
+
+.home-monitoring-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-monitoring-summary-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid #e1e7ef;
+  border-radius: 11px;
+  background: #ffffff;
+}
+
+.home-monitoring-summary-grid strong {
+  color: #334155;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.home-monitoring-recommendation {
+  padding: 13px 14px;
+  border-left: 3px solid #173f8f;
+  border-radius: 10px;
+  background: #f4f8fd;
+}
+
+.home-monitoring-recommendation p {
+  margin: 5px 0 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.home-monitoring-pending-note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff8e8;
+  color: #7c5b16;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.home-monitoring-button {
+  width: fit-content;
+}
+
+.home-monitoring-empty {
+  padding: 18px;
+  border: 1px dashed #cfd9e6;
+  border-radius: 12px;
+  background: #fafcff;
+  color: #667085;
+}
+
+.home-monitoring-empty strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #334155;
+}
+
+.home-monitoring-empty p {
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .home-monitoring-summary-heading,
+  .home-monitoring-summary-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .home-monitoring-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-monitoring-button {
+    width: 100%;
+  }
+}
+
+
+/* =====================================================
+   REFERRALS - COUNSELOR UI
+   ===================================================== */
+
+.referral-assigned-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
+  padding: 18px;
+}
+
+.referral-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.referral-meta-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.referral-meta-item span {
+  display: block;
+  color: #64748b;
+  font-size: 0.76rem;
+  margin-bottom: 4px;
+}
+
+.referral-meta-item strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.referral-private-notes {
+  margin: 18px 0 14px;
+  padding: 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.referral-private-notes-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.referral-private-notes-heading h4 {
+  margin: 0 0 4px;
+  color: #0f172a;
+}
+
+.referral-private-notes-heading small {
+  color: #64748b;
+}
+
+.referral-private-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.referral-private-notes-grid label {
+  margin: 0;
+}
+
+.referral-private-notes-grid textarea {
+  margin-top: 6px;
+  min-height: 112px;
+  resize: vertical;
+}
+
+.referral-note-message {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 820px) {
+  .referral-meta-grid,
+  .referral-private-notes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   SYSTEM-WIDE ASSESSMENT PRIORITY OUTLINES
+   Used on user Home/Monitoring cards, counselor Assessment
+   Cases history, and counselor User Profile assessment cards.
+===================================================== */
+
+.assessment-history-item[class*="assessment-priority-"],
+.monitoring-history-item[class*="assessment-priority-"],
+.monitoring-summary-panel[class*="assessment-priority-"],
+.home-monitoring-summary-panel[class*="assessment-priority-"] {
+  border-style: solid;
+  border-width: 2px;
+  border-left-width: 6px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.assessment-history-item.assessment-priority-low,
+.monitoring-history-item.assessment-priority-low,
+.monitoring-summary-panel.assessment-priority-low,
+.home-monitoring-summary-panel.assessment-priority-low {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-history-item.assessment-priority-moderate,
+.monitoring-history-item.assessment-priority-moderate,
+.monitoring-summary-panel.assessment-priority-moderate,
+.home-monitoring-summary-panel.assessment-priority-moderate {
+  border-color: #fde68a;
+  border-left-color: #d97706;
+}
+
+.assessment-history-item.assessment-priority-high,
+.monitoring-history-item.assessment-priority-high,
+.monitoring-summary-panel.assessment-priority-high,
+.home-monitoring-summary-panel.assessment-priority-high {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-history-item.assessment-priority-critical,
+.monitoring-history-item.assessment-priority-critical,
+.monitoring-summary-panel.assessment-priority-critical,
+.home-monitoring-summary-panel.assessment-priority-critical {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-history-item.assessment-priority-none,
+.monitoring-history-item.assessment-priority-none,
+.monitoring-summary-panel.assessment-priority-none,
+.home-monitoring-summary-panel.assessment-priority-none {
+  border-color: #cbd5e1;
+  border-left-color: #64748b;
+}
+
+
+/* Standardized severity outline colors system-wide. */
+.assessment-history-item.assessment-priority-minimal-none,
+.assessment-history-item.assessment-priority-minimal,
+.monitoring-history-item.assessment-priority-minimal-none,
+.monitoring-history-item.assessment-priority-minimal,
+.monitoring-summary-panel.assessment-priority-minimal-none,
+.monitoring-summary-panel.assessment-priority-minimal,
+.home-monitoring-summary-panel.assessment-priority-minimal-none,
+.home-monitoring-summary-panel.assessment-priority-minimal {
+  border-color: #86efac;
+  border-left-color: #16a34a;
+}
+
+.assessment-history-item.assessment-priority-mild,
+.monitoring-history-item.assessment-priority-mild,
+.monitoring-summary-panel.assessment-priority-mild,
+.home-monitoring-summary-panel.assessment-priority-mild {
+  border-color: #bef264;
+  border-left-color: #65a30d;
+}
+
+.assessment-history-item.assessment-priority-moderately-severe,
+.monitoring-history-item.assessment-priority-moderately-severe,
+.monitoring-summary-panel.assessment-priority-moderately-severe,
+.home-monitoring-summary-panel.assessment-priority-moderately-severe {
+  border-color: #fdba74;
+  border-left-color: #ea580c;
+}
+
+.assessment-history-item.assessment-priority-severe,
+.monitoring-history-item.assessment-priority-severe,
+.monitoring-summary-panel.assessment-priority-severe,
+.home-monitoring-summary-panel.assessment-priority-severe {
+  border-color: #fca5a5;
+  border-left-color: #dc2626;
+}
+
+.assessment-history-item.assessment-priority-extremely-severe,
+.monitoring-history-item.assessment-priority-extremely-severe,
+.monitoring-summary-panel.assessment-priority-extremely-severe,
+.home-monitoring-summary-panel.assessment-priority-extremely-severe {
+  border-color: #ef4444;
+  border-left-color: #991b1b;
+}
+
+.monitoring-history-item[class*="assessment-priority-"]:hover,
+.assessment-history-item[class*="assessment-priority-"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.09);
+}
+
+/* Keep the selected counselor assessment unmistakable while
+   preserving its priority-colored outline. */
+.assessment-history-item.active[class*="assessment-priority-"] {
+  background: #f2f6ff;
+  box-shadow:
+    0 0 0 2px rgba(23, 63, 143, 0.12),
+    0 5px 14px rgba(15, 23, 42, 0.08);
+}
+
+
+/* =====================================================
+   REFERRAL LIST + FULL-SCREEN REFERRAL REVIEW
+===================================================== */
+
+.referral-list-table-wrap {
+  margin-top: 18px;
+}
+
+.referral-list-table td,
+.referral-list-table th {
+  vertical-align: middle;
+}
+
+.referral-list-table td:first-child {
+  min-width: 180px;
+}
+
+.referral-list-table td:nth-child(3) {
+  min-width: 220px;
+}
+
+.referral-list-table td:nth-child(4) {
+  min-width: 150px;
+}
+
+.referral-review-modal {
+  width: min(1320px, calc(100vw - 36px));
+}
+
+.referral-review-modal-body {
+  grid-template-columns:
+    minmax(320px, 0.82fr)
+    minmax(0, 1.18fr);
+}
+
+.referral-review-summary-card,
+.referral-review-management-card {
+  min-width: 0;
+}
+
+.referral-review-summary-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.referral-review-helper-text {
+  display: block;
+  margin: 6px 0;
+}
+
+.referral-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+
+/* =====================================================
+   FULL-SCREEN COUNSELING SESSION HISTORY
+===================================================== */
+
+.counseling-session-history-modal {
+  width: min(1240px, calc(100vw - 36px));
+}
+
+.counseling-session-history-modal-body {
+  grid-template-columns:
+    minmax(300px, 0.72fr)
+    minmax(0, 1.28fr);
+}
+
+.counseling-session-fullscreen-grid {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.counseling-session-fullscreen-grid .profile-session-note-field {
+  min-height: 190px;
+}
+
+@media (max-width: 900px) {
+  .referral-review-modal-body,
+  .counseling-session-history-modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .referral-review-summary-grid,
+  .counseling-session-fullscreen-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+   FINAL REQUESTED UI FIXES - OCT 27, 2026
+===================================================== */
+
+/* Psychological Assessment confidentiality assurance */
+.assessment-confidentiality-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 15px 17px;
+  border: 1px solid #bfdbfe;
+  border-left: 5px solid #173f8f;
+  border-radius: 14px;
+  background: #f0f7ff;
+  color: #334155;
+  box-sizing: border-box;
+}
+
+.assessment-confidentiality-note > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #173f8f;
+}
+
+.assessment-confidentiality-note strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #173f8f;
+  font-size: 14px;
+}
+
+.assessment-confidentiality-note p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Keep Counselor Review aligned with the full-width assessment cards. */
+.assessment-case-update-card {
+  width: 100%;
+  min-width: 0;
+  grid-column: 1 / -1;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.assessment-case-update-card label {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.assessment-case-update-card select,
+.assessment-case-update-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Account Management: Role + College / Office + Program */
+.account-management-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+
+.account-management-filter-grid label,
+.account-management-filter-grid select {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Referral review modal: consistent card and button spacing. */
+.referral-review-modal-body {
+  gap: 20px;
+  align-items: start;
+}
+
+.superadmin-referral-summary-card {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.referral-review-summary-card,
+.referral-review-management-card {
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.referral-review-summary-grid {
+  gap: 14px;
+}
+
+.referral-review-summary-grid .review-request-detail-item {
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.referral-review-summary-grid .review-request-detail-item.full {
+  min-height: auto;
+}
+
+.referral-review-management-card > label {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 16px;
+}
+
+.referral-review-management-card > label textarea,
+.referral-review-management-card > label select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.referral-private-notes {
+  margin: 18px 0 0;
+}
+
+.referral-private-notes > .secondary-button {
+  margin-top: 4px;
+}
+
+.referral-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e5eaf1;
+}
+
+.referral-review-actions .primary-button,
+.referral-review-actions .secondary-button {
+  min-width: 150px;
+}
+
+@media (max-width: 900px) {
+  .account-management-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .superadmin-referral-summary-card {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .assessment-confidentiality-note {
+    padding: 13px 14px;
+  }
+
+  .referral-review-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .referral-review-actions .primary-button,
+  .referral-review-actions .secondary-button {
+    width: 100%;
+  }
+}
+
+/* Reports: remove screen-only height/overflow clipping so every analytics
+   section can continue onto additional printed pages. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html,
+  body,
+  #root,
+  .app-shell,
+  .workspace,
+  .content,
+  .analytics-page {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+  }
+
+  .app-shell {
+    display: block !important;
+  }
+
+  .workspace {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    scrollbar-gutter: auto !important;
+  }
+
+  .content {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .analytics-page {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .sidebar,
+  .topbar,
+  .analytics-print-actions,
+  .no-print {
+    display: none !important;
+  }
+
+  .analytics-print-header {
+    display: block !important;
+  }
+
+  .analytics-section-heading {
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+    margin-top: 16px !important;
+  }
+
+  .analytics-chart-panel,
+  .analytics-scope-card,
+  .stat-card,
+  .feedback-analytics-panel {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+
+  .analytics-chart-panel {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .analytics-chart-list,
+  .analytics-chart-category,
+  .analytics-chart-series,
+  .analytics-chart-row {
+    overflow: visible !important;
+  }
+
+  .analytics-bar-fill,
+  .analytics-legend i,
+  .priority,
+  .status,
+  .stat-card > div {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ======================================================
+   RESTORED FULL-COLOR SUMMARY CARDS - 2026-10-27
+   ====================================================== */
+
+/* Base animation/behavior for dashboard/report summary cards. */
+.stat-card,
+.schedule-summary-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.stat-card:hover,
+.schedule-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+/* General totals */
+.stat-card-primary,
+.schedule-summary-primary {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 1px solid #93c5fd;
+}
+
+.stat-card-primary > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #1d4ed8;
+}
+
+.stat-card-indigo {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  border: 1px solid #a5b4fc;
+}
+
+.stat-card-indigo > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #4338ca;
+}
+
+.stat-card-info {
+  background: linear-gradient(135deg, #cffafe 0%, #bae6fd 100%);
+  border: 1px solid #7dd3fc;
+}
+
+.stat-card-info > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #0369a1;
+}
+
+/* Standardized monitoring severity cards. */
+.stat-card-low {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border: 1px solid #86efac;
+}
+
+.stat-card-low > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #15803d;
+}
+
+.stat-card-mild {
+  background: linear-gradient(135deg, #ecfccb 0%, #d9f99d 100%);
+  border: 1px solid #bef264;
+}
+
+.stat-card-mild > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #4d7c0f;
+}
+
+.stat-card-moderate,
+.schedule-summary-moderate {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fcd34d;
+}
+
+.stat-card-moderate > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #a16207;
+}
+
+.stat-card-moderately-severe {
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+  border: 1px solid #fdba74;
+}
+
+.stat-card-moderately-severe > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #c2410c;
+}
+
+.stat-card-severe {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border: 1px solid #fca5a5;
+}
+
+.stat-card-severe > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #b91c1c;
+}
+
+.stat-card-extreme {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  border: 1px solid #ef4444;
+}
+
+.stat-card-extreme > div {
+  background: rgba(255, 255, 255, 0.66);
+  color: #991b1b;
+}
+
+/* Backward-compatible old tone names if any older component still uses them. */
+.stat-card-critical {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  border: 1px solid #ef4444;
+}
+
+.stat-card-critical > div {
+  background: rgba(255, 255, 255, 0.66);
+  color: #991b1b;
+}
+
+.stat-card-high {
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+  border: 1px solid #fdba74;
+}
+
+.stat-card-high > div {
+  background: rgba(255, 255, 255, 0.62);
+  color: #c2410c;
+}
+
+/* Schedule summary colors retained. */
+.schedule-summary-low {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border: 1px solid #86efac;
+}
+
+.schedule-summary-terminated {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
+}
+
+.schedule-summary-transfer {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  border: 1px solid #d8b4fe;
+}
+
+/* Keep text readable on all colored backgrounds. */
+.stat-card span,
+.stat-card strong {
+  color: #172033;
+}
+
+.stat-card strong {
+  font-weight: 800;
+}
+
+/* Print should stay clean and economical even though screen cards are colored. */
+@media print {
+  .stat-card,
+  .schedule-summary-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .stat-card > div {
+    background: #f1f5f9 !important;
+    color: #172033 !important;
+  }
+}
+
+
+
+/* =====================================================
+   STUDENT AUTO COUNSELOR ASSIGNMENT
+   ===================================================== */
+
+.student-auto-counselor-note {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.student-auto-counselor-note strong {
+  color: #173f8f;
+  font-weight: 800;
+}
+
+.student-auto-counselor-note.warning {
+  border-color: #f5c56b;
+  background: #fff8e8;
+  color: #7a4b00;
+}
+
+
+/* =====================================================
+   COUNSELOR SCHEDULE OVAL SUMMARY / FILTER PILLS
+   ===================================================== */
+
+.schedule-summary-card {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  border-radius: 14px;
+}
+
+.schedule-summary-card > div {
+  margin-bottom: 0 !important;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.schedule-summary-card > strong {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.schedule-filter-pill {
+  min-height: 40px;
+  border-radius: 999px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .schedule-summary-card {
+    min-height: 50px;
+    padding: 9px 14px;
+  }
+}
+
+/* MindTrack student weekly vacant hours: independent of counseling bookings. */
+.student-vacant-panel { grid-column: 1 / -1; }
+/* Keep closed weekday cards at summary height instead of stretching to the open day. */
+.student-vacant-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 16px 0; align-items: start; }
+.student-vacant-day { border: 1px solid #dbe2ec; border-radius: 12px; background: #f8fafc; min-width: 0; }
+.student-vacant-day summary { cursor: pointer; padding: 13px 14px; font-weight: 700; }
+.student-vacant-day summary small { color: #64748b; font-weight: 500; }
+.student-vacant-time-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding: 0 12px 14px; }
+.student-vacant-choice { display: flex; gap: 7px; align-items: center; font-size: .85rem; cursor: pointer; }
+.student-vacant-choice input { width: 16px; height: 16px; flex-shrink: 0; }
+.student-reschedule-availability { margin-top: 10px; }
+.assessment-submission-next-steps ol { margin: 8px 0 14px; padding-left: 22px; }
+.assessment-submission-next-steps li + li { margin-top: 5px; }
+.referral-workflow-note { margin-bottom: 16px; line-height: 1.55; }
+.counselor-dashboard-priority-panel { margin-top: 16px; }
+.counselor-dashboard-priority-panel > p { line-height: 1.55; }
+.counselor-dashboard-actions { margin-top: 16px; }
+
+/* Keep mobile assessment progress informative but small, not a tall stepper. */
+@media (max-width: 620px) {
+  .assessment-sticky-progress.assessment-page-shell { padding: 8px 12px; top: 62px; margin-bottom: 10px; }
+  .assessment-sticky-progress .assessment-page-stepper { display: none; }
+  .assessment-sticky-progress .assessment-page-progress-heading { gap: 5px; margin-bottom: 5px; flex-wrap: nowrap; }
+  .assessment-sticky-progress .assessment-page-progress-heading > div:first-child { gap: 0; min-width: 0; }
+  .assessment-sticky-progress .assessment-page-progress-heading > div:first-child > strong { font-size: .8rem; }
+  .assessment-sticky-progress .assessment-page-progress-heading > div:first-child > small:not(.assessment-draft-status) { display: none; }
+  .assessment-sticky-progress .assessment-draft-status { font-size: .68rem; }
+  .assessment-sticky-progress .assessment-page-progress-meta { width: auto; gap: 7px; white-space: nowrap; font-size: .72rem; }
+  .assessment-sticky-progress .assessment-page-progress-meta strong { font-size: .85rem; }
+  .assessment-sticky-progress .assessment-page-progress-track { height: 5px; }
+  .student-vacant-days { grid-template-columns: 1fr; }
+}
+
+/* MindTrack Nov 2026: Counseling review Edit / Save / Close controls. */
+.review-request-workflow-footer .counseling-review-edit-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: min(100%, 480px);
+  margin-left: auto;
+}
+.review-request-workflow-footer .counseling-review-edit-actions > button {
+  width: 100%; min-width: 0; min-height: 44px; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; white-space: nowrap;
+}
+.review-request-workflow-footer .counseling-review-edit-actions > button:disabled {
+  background: #e2e8f0; border: 1px solid #cbd5e1; color: #64748b;
+  opacity: 1; cursor: not-allowed;
+}
+@media (max-width: 520px) {
+  .review-request-workflow-footer .counseling-review-edit-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%;
+  }
+}
+
+/* Referral slip and self-service referral updates. */
+.referral-slip-intro { color: #64748b; font-size: .9rem; margin-top: 0; }
+.referral-slip-signature { grid-column: 1 / -1; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+.referral-slip-signature-note, .referral-slip-date { color: #64748b; font-size: .83rem; }
+.referral-update-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+.referral-update-count { background: #edf4ff; border: 1px solid #d9e7fb; border-radius: 12px; padding: 12px; display: grid; gap: 4px; }
+.referral-update-count strong { font-size: 1.5rem; color: #16489a; }
+.referral-update-count span { color: #334155; font-size: .82rem; }
+.referral-update-controls { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.referral-update-controls label { flex: 1 1 180px; }
+.referral-update-controls button { min-height: 42px; }
+.referral-update-date { display: block; color: #64748b; margin-top: 6px; }
+.referral-slip-details { margin-top: 12px; border: 1px solid #dbe4f1; border-radius: 12px; padding: 12px; background: #f8fbff; }
+.referral-slip-details h4 { margin: 0 0 10px; }
+.referral-slip-details-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.referral-slip-details-grid .review-request-detail-item { min-width: 0; overflow-wrap: anywhere; }
+.referral-slip-status { color: #475569; font-size: .9rem; }
+@media (max-width: 600px) { .referral-slip-details-grid { grid-template-columns: 1fr; } }
+
+/* Public registration privacy acknowledgment. */
+.registration-privacy-consent { border-top: 1px solid #e4e8ef; padding-top: 22px; text-align: left; }
+.registration-privacy-consent a { color: #16489a; text-decoration: underline; font-weight: 700; }
+.registration-privacy-check { display: flex; align-items: flex-start; gap: 12px; margin: 12px 0; cursor: pointer; line-height: 1.55; }
+.registration-privacy-check input { width: 19px; height: 19px; flex-shrink: 0; margin-top: 3px; }
+.registration-privacy-hint { font-size: .83rem; color: #64748b; }
+.privacy-notice-card { width: min(820px, 100%); text-align: left; }
+.privacy-notice-card .auth-logo-image, .privacy-notice-card > h1, .privacy-notice-card > p:first-of-type { text-align: center; }
+.privacy-notice-card section { margin: 20px 0; line-height: 1.6; }
+.privacy-notice-card section h2 { font-size: 1.1rem; color: #173f8f; margin: 0 0 6px; }
+
+/* MindTrack Nov 2026: scoped PSU Referral Slip + My Referral Updates layout.
+   UI-only. Keep referral submission, statuses, and Supabase permissions unchanged. */
+.referral-page-grid {
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr);
+  align-items: start;
+  gap: 20px;
+}
+.referral-page-grid > .panel {
+  min-width: 0;
+  margin-top: 0;
+  padding: clamp(18px, 2vw, 26px);
+}
+.referral-slip-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.referral-slip-form > h2,
+.referral-updates-panel > h2 {
+  margin: 0;
+  color: #19253a;
+  font-size: clamp(1.2rem, 1.6vw, 1.45rem);
+  line-height: 1.3;
+  letter-spacing: -.015em;
+  overflow-wrap: anywhere;
+}
+.referral-slip-form > .referral-slip-intro {
+  margin: -9px 0 2px;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+.referral-slip-form label,
+.referral-update-controls label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  margin: 0;
+  min-width: 0;
+  color: #26364c;
+  font-size: .9rem;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.referral-slip-form label > input,
+.referral-slip-form label > select,
+.referral-slip-form label > textarea,
+.referral-update-controls label > select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  color: #18283d;
+  font-family: inherit;
+  font-size: .94rem;
+  font-weight: 400;
+  line-height: 1.45;
+  border-radius: 10px;
+}
+.referral-slip-form label > input,
+.referral-slip-form label > select,
+.referral-update-controls label > select {
+  height: 46px;
+  min-height: 46px;
+}
+.referral-slip-form label > textarea {
+  min-height: 96px;
+  max-width: 100%;
+}
+.referral-slip-form label > :is(input, select, textarea):disabled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.referral-slip-form .referral-slip-signature {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 2px;
+  padding-top: 16px;
+}
+.referral-slip-form .referral-slip-date,
+.referral-slip-form .referral-slip-signature-note {
+  margin: 0;
+  color: #53647b;
+  font-size: .84rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.referral-slip-form > .referral-submit-button,
+.referral-update-controls > .referral-refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 46px;
+  min-height: 46px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: .93rem;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+.referral-slip-form > .referral-submit-button {
+  margin-top: 4px;
+}
+.referral-updates-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.referral-updates-panel > .referral-updates-intro {
+  margin: -5px 0 0;
+  color: #53647b;
+  font-size: .9rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.referral-updates-panel > .referral-update-summary {
+  margin: 0;
+  gap: 10px;
+}
+.referral-updates-panel .referral-update-count {
+  min-width: 0;
+  min-height: 88px;
+  padding: 12px 8px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+.referral-updates-panel .referral-update-count strong {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.referral-updates-panel .referral-update-count span {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.referral-updates-panel > .referral-update-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin: 0;
+}
+.referral-update-controls label {
+  flex: none;
+}
+.referral-updates-panel .referral-update-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+}
+.referral-updates-panel .referral-update-card > strong {
+  min-width: 0;
+  color: #17253c;
+  font-size: .96rem;
+  overflow-wrap: anywhere;
+}
+.referral-updates-panel .referral-update-card > .status {
+  float: none;
+  justify-self: end;
+  white-space: nowrap;
+}
+.referral-updates-panel .referral-update-card > p,
+.referral-updates-panel .referral-update-card > small,
+.referral-updates-panel .referral-update-card > .referral-slip-toggle,
+.referral-updates-panel .referral-update-card > .referral-slip-details,
+.referral-updates-panel .referral-update-card > .referral-slip-status {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.referral-updates-panel .referral-update-card > small {
+  color: #64748b;
+}
+.referral-updates-panel .referral-update-card > .referral-slip-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border: 1px solid #b7c9e9;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #173f8f;
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.referral-updates-panel .referral-update-card > .referral-slip-toggle:hover {
+  background: #e2efff;
+}
+.referral-updates-panel .referral-update-card > .referral-slip-toggle:focus-visible {
+  outline: 3px solid #93b4ee;
+  outline-offset: 2px;
+}
+@media (max-width: 1200px) {
+  .referral-page-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 620px) {
+  .referral-page-grid { gap: 14px; }
+  .referral-page-grid > .panel { padding: 18px; }
+  .referral-updates-panel > .referral-update-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .referral-updates-panel .referral-update-count { padding: 10px 5px; }
+  .referral-updates-panel .referral-update-count span { font-size: .75rem; }
+}
+/* End scoped PSU Referral Slip UI alignment. */
+
+
+/* =====================================================
+   MINDTRACK SUPER ADMIN ASSESSMENT REVIEW SPACING
+   Scoped to the Super Admin psychological assessment modal.
+   Other assessment/counseling screens remain unchanged.
+===================================================== */
+.assessment-history-admin-modal .review-request-modal-header {
+  min-height: 0;
+  padding: 18px 24px;
+  gap: 16px;
+}
+
+.assessment-history-admin-modal .review-request-modal-subtitle {
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.assessment-history-admin-modal .assessment-history-review-body {
+  padding: 16px 18px 20px;
+  gap: 16px;
+  align-content: start;
+}
+
+/* Avoid a blank grid row when Super Admin has no counselor-only answer card. */
+.assessment-history-admin-modal .assessment-user-history-card {
+  grid-row: auto;
+}
+
+.assessment-history-admin-modal .review-request-modal-card {
+  padding: 18px 20px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card {
+  padding: 20px 22px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card h3 {
+  margin: 0 0 6px;
+}
+
+.assessment-history-admin-modal .assessment-review-record-note {
+  margin: 0 0 18px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card label {
+  display: block;
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card select,
+.assessment-history-admin-modal .assessment-case-update-card textarea {
+  display: block;
+  margin-top: 7px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card select {
+  min-height: 44px;
+  padding: 10px 13px;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card textarea {
+  height: 138px;
+  min-height: 138px;
+  padding: 12px 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.assessment-history-admin-modal .assessment-case-update-card .review-request-modal-actions {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #e5eaf1;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .assessment-history-admin-modal .review-request-modal-header {
+    padding: 16px;
+  }
+
+  .assessment-history-admin-modal .assessment-history-review-body {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .assessment-history-admin-modal .assessment-case-update-card {
+    padding: 16px;
+  }
+}

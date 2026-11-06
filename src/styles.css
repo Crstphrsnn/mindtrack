@@ -8721,3 +8721,120 @@ th {
     width: 100%;
   }
 }
+
+/* Phase 10 UI alignment: Student Monitoring only.
+   Align the page heading, chart, summary and history to one content column. */
+.content:has(.monitoring-summary-panel),
+.content:has(.monitoring-review-gate),
+.content:has(.monitoring-empty-panel) {
+  --monitoring-column-width: 1100px;
+}
+
+.content:has(.monitoring-summary-panel) > .page-title,
+.content:has(.monitoring-review-gate) > .page-title,
+.content:has(.monitoring-empty-panel) > .page-title,
+.content:has(.monitoring-summary-panel) > .panel[aria-label="Reviewed monitoring history"] {
+  width: min(var(--monitoring-column-width), 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.content:has(.monitoring-summary-panel) > .page-title,
+.content:has(.monitoring-review-gate) > .page-title,
+.content:has(.monitoring-empty-panel) > .page-title {
+  margin-bottom: 22px;
+}
+
+.content:has(.monitoring-summary-panel) > .page-title h1,
+.content:has(.monitoring-review-gate) > .page-title h1,
+.content:has(.monitoring-empty-panel) > .page-title h1 {
+  line-height: 1.2;
+}
+
+.content:has(.monitoring-summary-panel) > .page-title p,
+.content:has(.monitoring-review-gate) > .page-title p,
+.content:has(.monitoring-empty-panel) > .page-title p {
+  max-width: 850px;
+  margin-bottom: 0;
+  line-height: 1.55;
+}
+
+.content:has(.monitoring-summary-panel) > .panel[aria-label="Reviewed monitoring history"] {
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 4px 14px rgba(25,55,95,.04);
+}
+
+.content:has(.monitoring-summary-panel) > .panel[aria-label="Reviewed monitoring history"] > h2 {
+  margin-top: 0;
+}
+
+.content:has(.monitoring-summary-panel) > .panel[aria-label="Reviewed monitoring history"] > p {
+  line-height: 1.55;
+}
+
+.content:has(.monitoring-summary-panel) .phase9-severity-item {
+  grid-template-columns: minmax(145px, 1fr) minmax(150px, 2.2fr) minmax(120px, .85fr);
+  gap: 16px;
+}
+
+.content:has(.monitoring-summary-panel) .phase9-severity-item strong {
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  .content:has(.monitoring-summary-panel) > .panel[aria-label="Reviewed monitoring history"] {
+    padding: 16px;
+    border-radius: 13px;
+  }
+  .content:has(.monitoring-summary-panel) .phase9-severity-item {
+    grid-template-columns: minmax(0, 1fr) minmax(100px, 1fr);
+    gap: 8px 12px;
+  }
+  .content:has(.monitoring-summary-panel) .phase9-severity-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* Phase 11: Assigned Referral modal alignment.
+   The referral summary, PSU slip and counselor review each span the full
+   available width. This prevents a narrow left column and blank right side. */
+.referral-review-modal .referral-review-modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: stretch;
+  gap: 16px;
+  padding: clamp(14px, 2vw, 24px);
+}
+.referral-review-modal .referral-review-modal-body > .review-request-modal-card {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+}
+.referral-review-modal .referral-review-management-card > label,
+.referral-review-modal .referral-review-management-card > label :is(select, textarea) {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.referral-review-modal .referral-review-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 640px) {
+  .referral-review-modal .referral-review-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .referral-review-modal .referral-review-modal-body { padding: 12px; }
+}
+
+/* Referral review edit mode and full-width action fields */
+.referral-review-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+.referral-review-heading h3 { margin:0; }
+.referral-review-modal .referral-review-management-card { width:100%; max-width:none; }
+.referral-review-modal .referral-review-management-card > label { display:block; margin-bottom:14px; }

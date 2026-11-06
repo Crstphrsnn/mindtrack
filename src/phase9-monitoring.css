@@ -1,0 +1,14 @@
+.phase9-severity-history { display: grid; gap: 14px; margin: 20px 0; }
+.phase9-severity-item { display: grid; grid-template-columns: minmax(120px, 1.2fr) minmax(110px, 2fr) minmax(115px, 1fr); gap: 12px; align-items: center; font-size: .9rem; }
+.phase9-severity-date { overflow-wrap: anywhere; }
+.phase9-severity-track { background: var(--border-color, #e6e9ee); border-radius: 999px; height: 13px; overflow: hidden; }
+.phase9-severity-fill { background: #4d789e; border-radius: inherit; height: 100%; }
+.phase9-severity-item strong { font-size: .86rem; }
+.phase9-history-note { font-size: .86rem; opacity: .8; }
+@media(max-width: 650px) { .phase9-severity-item { grid-template-columns: 1fr 1fr; } .phase9-severity-track { grid-column: 1 / -1; grid-row: 2; } }
+
+/* Phase 9C counselor score comparison */
+.phase9-comparison-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin:14px 0; }
+.phase9-comparison-metric { display:flex; flex-direction:column; gap:7px; padding:14px; border:1px solid #dce4eb; border-radius:12px; }
+.phase9-comparison-metric span { font-size:1.1rem; font-weight:700; }
+.phase9-comparison-metric small { line-height:1.45; }

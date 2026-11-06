@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import PrivacyNotice from "./pages/auth/PrivacyNotice";
+import PrivacyEntryModal from "./components/PrivacyEntryModal";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import EmailConfirmation from "./pages/auth/EmailConfirmation";
@@ -57,6 +58,8 @@ import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import CounselorTransfers from "./pages/counselor/CounselorTransfers";
 import StudentVacantTime from "./components/StudentVacantTime";
+import { bookFollowupSession, listCaseSessions } from "./services/followupSessionService";
+import { getSessionPrivateNotes, saveSessionPrivateNotes, saveSessionRemarks, updateFollowupSession, bookFollowupFromSession } from "./services/sessionService";
 import { getStudentVacantSlots } from "./services/studentAvailabilityService";
 import { isStudentVacantAt } from "./utils/studentAvailability.mjs";
 import { useReportsAnalytics } from "./hooks/useReportsAnalytics";
@@ -65,6 +68,7 @@ import Home from "./components/Home";
 import UserProfileFullScreen from "./components/UserProfileFullScreen";
 import "./counseling-calendar.css";
 import "./staff-feature-access.css";
+import "./phase9-monitoring.css";
 
 import {
   submitReferral,
@@ -480,8 +484,6 @@ function Dashboard() {
     )
   ) {
 
-    const severe = departmentCases.filter(row => row.priority === "Severe").length;
-    const extremelySevere = departmentCases.filter(row => row.priority === "Extremely Severe").length;
     // Count assigned appointments only, including accepted cross-college transfers.
     const appointmentRows = isSuperAdmin ? consultations : assignedDashboardConsultations;
     const pendingAssessmentCount = departmentCases.filter(row =>
@@ -511,15 +513,10 @@ function Dashboard() {
         </div>
 
         <section className="panel counselor-dashboard-priority-panel">
-          <h2>Case monitoring overview</h2>
-          <p>
-            {departmentCases.length} assessment records are visible to your role.
-            Of these, {severe} have Severe and {extremelySevere} have Extremely Severe
-            monitoring labels. These are record counts, not unique students or diagnoses.
-            Review the latest assessment and individual circumstances before taking action.
-          </p>
+          <h2>Quick actions</h2>
+          <p>Manage assessment reviews, counseling requests, appointments, and referrals.</p>
           <div className="action-grid counselor-dashboard-actions">
-            <ActionLink href="/cases" title="Review assessment cases" text="Open pending reviews and monitoring details." icon={ClipboardList} />
+            <ActionLink href="/cases" title="Review assessment cases" text="Open assessments and complete pending reviews." icon={ClipboardList} />
             <ActionLink href="/counseling-requests" title="Manage counseling requests" text="Review requests and proposed reschedules." icon={MessageCircle} />
             <ActionLink href="/schedule" title="View counselor schedule" text="See today's sessions and upcoming appointments." icon={Calendar} />
             <ActionLink href="/referrals" title="Review referrals" text="Follow up received referrals and record status changes." icon={UserPlus} />
@@ -5907,6 +5904,7 @@ function ReferralSlipDetails({ referralId }) {
     ["Address", slip.address], ["Parent / Guardian", slip.parentGuardian],
     ["Nature of Problem", slip.natureOfProblem],
     ["Recommendation", slip.recommendation],
+    ["Action Taken (by referrer)", slip.actionTaken],
     ["Printed Name", slip.signatureName],
     ["Position", slip.position], ["Date", slip.submittedAt ? formatRecordDateTime(slip.submittedAt) : "Not recorded"]
   ];
@@ -5957,7 +5955,8 @@ function Referrals() {
   const referralStatusOptions = [
     "Received",
     "Contacted",
-    "Completed"
+    "Completed",
+    "Did not show up"
   ];
 
 
@@ -5984,6 +5983,8 @@ function Referrals() {
     setReferralStatusDrafts
   ] = useState({});
 
+
+  const [referralEditingId, setReferralEditingId] = useState("");
 
   const [
     referralRemarksDrafts,
@@ -6089,7 +6090,8 @@ function Referrals() {
       parentGuardian: "",
       recommendation: "",
       signatureName: user.name || "",
-      position: ""
+      position: "",
+      actionTaken: ""
 
     });
 
@@ -6286,7 +6288,8 @@ function Referrals() {
         parentGuardian: "",
         recommendation: "",
         signatureName: user.name || "",
-        position: ""
+        position: "",
+        actionTaken: ""
 
       });
 
@@ -6378,6 +6381,9 @@ function Referrals() {
     }
 
 
+    // Action Taken belongs to the teaching/non-teaching referrer slip, not counselor review.
+    const nextAction = String(row.actionTaken ?? "").trim();
+
     const statusChanged =
       nextStatus !==
       String(
@@ -6422,7 +6428,7 @@ function Referrals() {
 
       // Atomic Supabase RPC updates the referral and notifies the referrer
       // only when the status actually changes.
-      await updateReferral(row.id, nextStatus, nextRemarks);
+      await updateReferral(row.id, nextStatus, nextRemarks, nextAction);
 
 
       setReferralStatusDrafts(
@@ -6434,6 +6440,8 @@ function Referrals() {
         })
       );
 
+
+      setReferralEditingId("");
 
       setReferralRemarksDrafts(
         current => ({
@@ -7363,9 +7371,13 @@ function Referrals() {
 
                 <section className="review-request-modal-card referral-review-management-card">
 
-                  <h3>
-                    Referral Review
-                  </h3>
+                  <div className="referral-review-heading">
+                    <h3>Referral Review</h3>
+                    {referralEditingId !== selectedCounselorReferral.id && (
+                      <button type="button" className="secondary-button"
+                        onClick={() => setReferralEditingId(selectedCounselorReferral.id)}>Edit</button>
+                    )}
+                  </div>
 
 
                   <label>
@@ -7380,10 +7392,7 @@ function Referrals() {
                           selectedCounselorReferral.status
                         )
                       }
-                      disabled={
-                        savingReferralId ===
-                        selectedCounselorReferral.id
-                      }
+                      disabled={referralEditingId !== selectedCounselorReferral.id || savingReferralId === selectedCounselorReferral.id}
                       onChange={
                         event =>
                           setReferralStatusDrafts(
@@ -7431,10 +7440,7 @@ function Referrals() {
                         selectedCounselorReferral.counselorRemarks ??
                         ""
                       }
-                      disabled={
-                        savingReferralId ===
-                        selectedCounselorReferral.id
-                      }
+                      disabled={referralEditingId !== selectedCounselorReferral.id || savingReferralId === selectedCounselorReferral.id}
                       onChange={
                         event =>
                           setReferralRemarksDrafts(
@@ -7460,19 +7466,20 @@ function Referrals() {
                   />
 
 
-                  <div className="referral-review-actions">
+                  {referralEditingId === selectedCounselorReferral.id && <div className="referral-review-actions">
 
                     <button
                       type="button"
                       className="secondary-button"
                       onClick={
-                        () =>
-                          setSelectedReferralId(
-                            ""
-                          )
+                        () => {
+                          setReferralEditingId("");
+                          setReferralStatusDrafts(current => ({...current, [selectedCounselorReferral.id]: normalizedReferralStatus(selectedCounselorReferral.status)}));
+                          setReferralRemarksDrafts(current => ({...current, [selectedCounselorReferral.id]: selectedCounselorReferral.counselorRemarks || ""}));
+                        }
                       }
                     >
-                      Close
+                      Cancel
                     </button>
 
 
@@ -7498,7 +7505,7 @@ function Referrals() {
                       }
                     </button>
 
-                  </div>
+                  </div>}
 
                 </section>
 
@@ -7867,9 +7874,15 @@ function Referrals() {
               onChange={e => setForm({ ...form, recommendation: e.target.value })}
               placeholder="Recommended guidance action or follow-up, if any." />
           </label>
+          <label>
+            Action Taken
+            <textarea rows="3" maxLength={3000} value={form.actionTaken || ""}
+              onChange={e => setForm({ ...form, actionTaken: e.target.value })}
+              placeholder="Record any initial action already taken, if applicable." />
+          </label>
           <div className="referral-slip-signature">
             <label>
-              Printed Name
+              Signature over Printed Name
               <input required maxLength={150} value={form.signatureName}
                 onChange={e => setForm({ ...form, signatureName: e.target.value })} />
             </label>
@@ -10213,6 +10226,16 @@ function UserMonitoringContent({
       previous
     );
 
+  // Phase 9: user-safe, counselor-reviewed monitoring history.
+  // Never query or render raw assessment scores/answers on this page.
+  const reviewedSeverityHistory = reviewedAssessments
+    .filter(row => priorityRank(row.priority) > 0)
+    .slice(0, 8)
+    .reverse();
+
+  const comparableHistoryCount = reviewedSeverityHistory.length;
+
+
 
   const notificationAssessment =
     requestedAssessmentId
@@ -10500,6 +10523,43 @@ function UserMonitoringContent({
 
               </section>
 
+
+              <section className="panel" aria-label="Reviewed monitoring history">
+                <h2>Reviewed Monitoring History</h2>
+                <p>
+                  This chart shows up to eight counselor-reviewed monitoring
+                  severity labels in chronological order. It does not display
+                  questionnaire scores, answers, or a clinical diagnosis.
+                </p>
+                {comparableHistoryCount < 2 ? (
+                  <div className="notice">
+                    At least two reviewed records with recognized severity labels
+                    are needed to show a history comparison.
+                  </div>
+                ) : (
+                  <div className="phase9-severity-history" role="list" aria-label="Monitoring severity by assessment date">
+                    {reviewedSeverityHistory.map((row, index) => (
+                      <div className="phase9-severity-item" role="listitem" key={row.assessmentId || row.id || index}>
+                        <span className="phase9-severity-date">
+                          {formatRecordDateTime(row.createdAt)}
+                        </span>
+                        <div className="phase9-severity-track" aria-hidden="true">
+                          <div
+                            className="phase9-severity-fill"
+                            style={{ width: `${(priorityRank(row.priority) / 6) * 100}%` }}
+                          />
+                        </div>
+                        <strong>{row.priority}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="phase9-history-note">
+                  Severity labels are ordinal categories, not equal-interval
+                  measurements. Changes in screening results do not establish
+                  a diagnosis or replace a counselor's evaluation.
+                </p>
+              </section>
 
               <section
                 id={
@@ -10883,6 +10943,74 @@ function StaffReferralHistory({ user }) {
   );
 }
 
+// Phase 7B: session history uses the existing authorized, student-safe RPC.
+// Never request private counseling notes from the student interface.
+function StudentCounselingSessionHistory({ consultationId, consultation }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    listCaseSessions(consultationId)
+      .then(data => { if (active) setSessions(Array.isArray(data) ? data : []); })
+      .catch(err => { if (active) setError(err?.message || "Unable to load counseling sessions."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [consultationId, refresh]);
+
+  return (
+    <div style={{ marginTop: 14, borderTop: "1px solid #dce4f1", paddingTop: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <strong>Counseling Session History</strong>
+        <button type="button" className="secondary-button" style={{ padding: "6px 12px", borderRadius: 9 }}
+          onClick={() => setRefresh(value => value + 1)} disabled={loading}>Refresh</button>
+      </div>
+      {loading ? <p>Loading sessions...</p> : error ? (
+        <p role="alert" className="notice">Session history unavailable: {error}</p>
+      ) : (
+        <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+          <div style={{ border: "1px solid #dce4f1", borderRadius: 10, padding: 12 }}>
+            <strong>Session 1 — Initial Counseling</strong>
+            <p style={{ margin: "6px 0" }}>
+              {consultation?.date || "Date not set"} · {consultation?.time || "Time not set"}
+            </p>
+            <p style={{ margin: "6px 0" }}><strong>Recorded case status:</strong> {consultation?.status || "Not set"}</p>
+            {consultation?.counselorRemarks ? (
+              <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: "8px 0 0" }}>
+                <strong>Counselor Remarks / Instructions:</strong> {consultation.counselorRemarks}
+              </p>
+            ) : null}
+          </div>
+          {sessions.map(session => (
+            <div key={session.id} style={{ border: "1px solid #dce4f1", borderRadius: 10, padding: 12 }}>
+              <strong>Session {session.sessionNumber}</strong>
+              <p style={{ margin: "6px 0" }}>
+                {session.date || "Date not set"} · {session.time || "Time not set"}
+              </p>
+              <p style={{ margin: "6px 0" }}><strong>Status:</strong> {({
+                scheduled: "Scheduled for counseling",
+                completed: "Completed",
+                cancelled: "Cancelled",
+                no_show: "No show"
+              })[session.status] || session.status || "Not set"}</p>
+              {session.counselorRemarks ? (
+                <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: "8px 0 0" }}>
+                  <strong>Counselor Remarks / Instructions:</strong> {session.counselorRemarks}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+      <small style={{ display: "block", marginTop: 8 }}>Private counseling notes are not shown here.</small>
+    </div>
+  );
+}
+
 function StudentHistory({ user }) {
 
 
@@ -11200,6 +11328,8 @@ function StudentHistory({ user }) {
 
                       </p>
 
+                      <StudentCounselingSessionHistory consultationId={row.id} consultation={row} />
+
                     </article>
 
                   )
@@ -11219,6 +11349,10 @@ function StudentHistory({ user }) {
 // ======================================================
 
 function Cases() {
+
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [assessmentResultsOnly, setAssessmentResultsOnly] = useState(false);
 
   const { user } =
     useAuth();
@@ -11499,7 +11633,7 @@ function Cases() {
   const [
     statusDraft,
     setStatusDraft
-  ] = useState("For review");
+  ] = useState("");
 
 
   const [
@@ -11517,11 +11651,9 @@ function Cases() {
 
 
   const assessmentStatuses = [
-    "For review",
     "Counseling is recommended",
-    "Follow up is recommended",
     "Counseling is optional",
-    "Approved",
+    "Counseling can be availed voluntarily",
     "Concluded"
   ];
 
@@ -11534,9 +11666,13 @@ function Cases() {
     }
 
     if (currentStatus === "Approved") {
-      return ["Approved", "Concluded"];
+      // Legacy approved records can still be concluded, but Approved
+      // cannot be chosen as a new review status.
+      return ["Concluded"];
     }
 
+    // Keep legacy statuses visible when reviewing historical cases.
+    // Historical statuses are readable, but not selectable for new reviews.
     return assessmentStatuses;
   }
 
@@ -11570,13 +11706,9 @@ function Cases() {
       );
 
 
-    setStatusDraft(
-      assessmentStatuses.includes(
-        normalizedStatus
-      )
-        ? normalizedStatus
-        : "For review"
-    );
+    // Require an explicit selection for each editable assessment.
+    // Completed records remain locked to their existing terminal status.
+    setStatusDraft(normalizedStatus === "Concluded" ? "Concluded" : "");
 
 
     setRemarksDraft(
@@ -11602,8 +11734,24 @@ function Cases() {
   }
 
 
+  // Phase 8B: Open the existing, fully detailed assessment review
+  // directly from a counseling request. The assessment RPC, not the
+  // navigation state, remains the source of authorization.
+  useEffect(() => {
+    const requestedOwner = location.state?.assessmentOwnerId;
+    if (!requestedOwner || assessmentRows.loading || assessmentRows.error) return;
+    const matching = accountCaseRows.find(row => row.ownerId === requestedOwner);
+    if (matching) {
+      setAssessmentResultsOnly(true);
+      selectAssessmentAccount(matching);
+    }
+    // Clear one-shot navigation state so subsequent visits do not reopen it.
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state?.assessmentOwnerId, assessmentRows.loading, assessmentRows.error, accountCaseRows.length]);
+
   function closeAssessmentReview() {
 
+    setAssessmentResultsOnly(false);
     setSelected(null);
     setSelectedOwnerKey("");
   }
@@ -11671,6 +11819,11 @@ function Cases() {
       return;
     }
 
+
+    if (!statusDraft) {
+      alert("Please select a status before saving the assessment case.");
+      return;
+    }
 
     if (
       !allowedAssessmentStatuses(
@@ -12501,7 +12654,9 @@ function Cases() {
                       : "s"
                   }
                   {" "}
-                  recorded for this account. Select an assessment below to review its item-level answers, scoring summary, details, and review status.
+                  recorded for this account. {assessmentResultsOnly
+                    ? "Select an assessment to view scores, tests answered, and recorded question responses. This view is read-only."
+                    : "Select an assessment below to review its item-level answers, scoring summary, details, and review status."}
                 </p>
 
               </div>
@@ -12654,6 +12809,64 @@ function Cases() {
 
               </section>
 
+
+              {/* Phase 9C: compare only matching instruments across consecutive assessments. */}
+              {(() => {
+                const currentIndex = selectedHistory.findIndex(item => item.id === selected.id);
+                const previous = currentIndex >= 0 ? selectedHistory[currentIndex + 1] : null;
+                const current = selected.instrumentResults;
+                const prior = previous?.instrumentResults;
+                if (!previous || !current || !prior) return (
+                  <section className="review-request-modal-card phase9-comparison-card">
+                    <h3>Assessment Score Comparison</h3>
+                    <p className="phase9-history-note">{!previous
+                      ? "No earlier assessment is available for comparison."
+                      : "Comparable itemized scores are unavailable for one of these assessments."}</p>
+                  </section>
+                );
+                const metrics = [
+                  {label: "WHO-5 Well-Being", path: ["who5", "percentageScore"], max: 100, higherBetter: true},
+                  {label: "PHQ-9 Depression", path: ["phq9", "totalScore"], max: 27, higherBetter: false},
+                  {label: "GAD-7 Anxiety", path: ["gad7", "totalScore"], max: 21, higherBetter: false},
+                  {label: "DASS-21 Depression", path: ["dass21", "depression", "adjustedScore"], max: 42, higherBetter: false},
+                  {label: "DASS-21 Anxiety", path: ["dass21", "anxiety", "adjustedScore"], max: 42, higherBetter: false},
+                  {label: "DASS-21 Stress", path: ["dass21", "stress", "adjustedScore"], max: 42, higherBetter: false}
+                ];
+                const readNumber = (obj, path) => {
+                  const value = path.reduce((acc, key) => acc?.[key], obj);
+                  return typeof value === "number" && Number.isFinite(value) ? value : null;
+                };
+                const comparable = metrics.map(metric => ({
+                  ...metric,
+                  before: readNumber(prior, metric.path),
+                  after: readNumber(current, metric.path)
+                })).filter(metric => metric.before !== null && metric.after !== null);
+                return (
+                  <section className="review-request-modal-card phase9-comparison-card">
+                    <h3>Assessment Score Comparison</h3>
+                    <p className="phase9-history-note">Previous: {formatRecordDateTime(previous.createdAt)} · Selected: {formatRecordDateTime(selected.createdAt)}. Each instrument is compared separately; these screening results are not diagnoses.</p>
+                    {comparable.length ? (
+                      <div className="phase9-comparison-grid">
+                        {comparable.map(metric => {
+                          const delta = metric.after - metric.before;
+                          const direction = delta === 0 ? "No score change" :
+                            (delta > 0 ? "Increased" : "Decreased");
+                          const trend = delta === 0 ? "Unchanged" :
+                            ((delta > 0) === metric.higherBetter ? "Favorable direction" : "Unfavorable direction");
+                          return (
+                            <div className="phase9-comparison-metric" key={metric.label}>
+                              <strong>{metric.label}</strong>
+                              <span>{metric.before}/{metric.max} → {metric.after}/{metric.max}</span>
+                              <small>{direction} by {Math.abs(delta)} point{Math.abs(delta) === 1 ? "" : "s"} · {trend}</small>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : <p className="phase9-history-note">No matching instrument scores are available for these two assessments.</p>}
+                    <p className="phase9-history-note">Changes in scores alone do not establish clinical improvement or deterioration. Review the dates, answers, and clinical context.</p>
+                  </section>
+                );
+              })()}
 
               <section className="review-request-modal-card assessment-selected-detail-card">
 
@@ -13146,6 +13359,13 @@ function Cases() {
               )}
 
 
+              {assessmentResultsOnly ? (
+                <div className="review-request-modal-actions" style={{ justifyContent: "flex-end" }}>
+                  <button type="button" className="secondary-button" onClick={closeAssessmentReview}>
+                    Close
+                  </button>
+                </div>
+              ) : (
               <section className="review-request-modal-card review-request-update-card assessment-case-update-card">
 
                 <h3>
@@ -13187,9 +13407,10 @@ function Cases() {
 
                   >
 
+                    <option value="" disabled>Select status</option>
                     {allowedAssessmentStatuses(
                       selected.status
-                    ).map(
+                    ).filter(status => status !== "Approved").map(
                       status => (
 
                         <option
@@ -13285,7 +13506,7 @@ function Cases() {
                     className="primary-button"
 
                     disabled={
-                      savingCase
+                      savingCase || !statusDraft
                     }
 
                     onClick={
@@ -13305,6 +13526,7 @@ function Cases() {
                 </div>
 
               </section>
+              )}
 
             </div>
 
@@ -13824,6 +14046,158 @@ function CounselingRequestsManagement() {
   const [selected, setSelected] =
     useState(null);
 
+  // Separate session history; never infer follow-ups from the consultation's session number.
+  const [caseSessions, setCaseSessions] = useState([]);
+  const [caseSessionsLoading, setCaseSessionsLoading] = useState(false);
+  const [caseSessionsError, setCaseSessionsError] = useState("");
+  const [caseSessionsRefresh, setCaseSessionsRefresh] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setCaseSessions([]);
+    setCaseSessionsError("");
+    if (!selected?.id || user.role !== "counselor" || requestIsReadOnly(selected)) {
+      setCaseSessionsLoading(false);
+      return () => { active = false; };
+    }
+    setCaseSessionsLoading(true);
+    listCaseSessions(selected.id)
+      .then(rows => { if (active) setCaseSessions(Array.isArray(rows) ? rows : []); })
+      .catch(error => { if (active) setCaseSessionsError(error?.message || "Could not load sessions."); })
+      .finally(() => { if (active) setCaseSessionsLoading(false); });
+    return () => { active = false; };
+  }, [selected?.id, selected?.ownerId, user.role, user.id, caseSessionsRefresh]);
+
+
+  // Phase 6C: only the highest-numbered session remains editable.
+  // Session 1 is the legacy consultation, so it is locked as soon as a follow-up exists.
+  const latestFollowupNumber = Math.max(0, ...caseSessions.map(item => Number(item.sessionNumber) || 0));
+  const originalSessionLocked = caseSessions.length > 0;
+  useEffect(() => {
+    if (originalSessionLocked || caseSessionsLoading || caseSessionsError) setReviewEditing(false);
+  }, [originalSessionLocked, caseSessionsLoading, caseSessionsError]);
+
+  // Notes for an individual follow-up session; separate from legacy case notes.
+  const [activeFollowupSessionId, setActiveFollowupSessionId] = useState("");
+  const activeFollowupIsLatest = Boolean(activeFollowupSessionId) &&
+    caseSessions.some(item => item.id === activeFollowupSessionId && Number(item.sessionNumber) === latestFollowupNumber);
+  useEffect(() => {
+    if (activeFollowupSessionId && !activeFollowupIsLatest) setFollowupNotesMode("view");
+  }, [activeFollowupSessionId, activeFollowupIsLatest]);
+  const [followupNotes, setFollowupNotes] = useState({caseHistory:"",sessionSummary:"",observation:"",recommendations:""});
+  const [followupNotesLoading, setFollowupNotesLoading] = useState(false);
+  const [followupNotesSaving, setFollowupNotesSaving] = useState(false);
+  const [followupRemarks, setFollowupRemarks] = useState("");
+  const [followupRemarksDirty, setFollowupRemarksDirty] = useState(false);
+  const [followupNotesMode, setFollowupNotesMode] = useState("view");
+  const [followupStatus, setFollowupStatus] = useState("");
+  const [followupDate, setFollowupDate] = useState("");
+  const [followupTime, setFollowupTime] = useState("");
+  const [followupStatusDirty, setFollowupStatusDirty] = useState(false);
+  const [followupVacantSlots, setFollowupVacantSlots] = useState([]);
+  const [followupVacantError, setFollowupVacantError] = useState("");
+  const [followupVacantLoading, setFollowupVacantLoading] = useState(false);
+  useEffect(() => {
+    const session = caseSessions.find(s => s.id === activeFollowupSessionId);
+    setFollowupStatus(session?.status === "scheduled" ? "Scheduled for counseling" : session?.status || "");
+    setFollowupDate(""); setFollowupTime(""); setFollowupStatusDirty(false);
+  }, [activeFollowupSessionId, caseSessionsRefresh]);
+  useEffect(() => {
+    let active = true;
+    setFollowupVacantSlots([]); setFollowupVacantError("");
+    if (!activeFollowupSessionId || !["Rescheduled", "Follow-up Counseling"].includes(followupStatus) || !selected?.ownerId) return () => { active=false; };
+    setFollowupVacantLoading(true);
+    getStudentVacantSlots(selected.ownerId)
+      .then(slots => { if (active) setFollowupVacantSlots(slots); })
+      .catch(err => { if (active) setFollowupVacantError(err?.message || "Cannot load vacant hours"); })
+      .finally(() => { if (active) setFollowupVacantLoading(false); });
+    return () => { active=false; };
+  }, [activeFollowupSessionId, followupStatus, selected?.ownerId]);
+  const [followupNotesDirty, setFollowupNotesDirty] = useState(false);
+  const [followupNotesError, setFollowupNotesError] = useState("");
+  const [followupNotesMessage, setFollowupNotesMessage] = useState("");
+  useEffect(() => {
+    let active = true;
+    setFollowupNotes({caseHistory:"",sessionSummary:"",observation:"",recommendations:""});
+    setFollowupNotesDirty(false);
+    setFollowupRemarksDirty(false);
+    setFollowupRemarks(caseSessions.find(s => s.id === activeFollowupSessionId)?.counselorRemarks || "");
+    setFollowupNotesError("");
+    setFollowupNotesMessage("");
+    if (!activeFollowupSessionId || user.role !== "counselor" || !selected || requestIsReadOnly(selected) ||
+        !caseSessions.some(s => s.id === activeFollowupSessionId)) {
+      setFollowupNotesLoading(false);
+      return () => { active = false; };
+    }
+    setFollowupNotesLoading(true);
+    getSessionPrivateNotes(activeFollowupSessionId)
+      .then(notes => { if (active) setFollowupNotes({
+        caseHistory: notes?.caseHistory || "", sessionSummary: notes?.sessionSummary || "",
+        observation: notes?.observation || "", recommendations: notes?.recommendations || ""
+      }); })
+      .catch(err => { if (active) setFollowupNotesError(err?.message || "Unable to load session notes."); })
+      .finally(() => { if (active) setFollowupNotesLoading(false); });
+    return () => { active = false; };
+  }, [activeFollowupSessionId, selected?.id, selected?.assignedCounselorId, user.id, user.role, caseSessionsRefresh]);
+
+  async function saveFollowupNotes() {
+    if (!activeFollowupSessionId || !selected || followupNotesSaving || followupNotesLoading ||
+        user.role !== "counselor" || requestIsReadOnly(selected)) return;
+    if (!activeFollowupIsLatest || caseSessionsLoading || caseSessionsError) {
+      setFollowupNotesError("This is a previous session. Only the latest session can be edited.");
+      setFollowupNotesMode("view");
+      return;
+    }
+    setFollowupNotesSaving(true);
+    setFollowupNotesError("");
+    setFollowupNotesMessage("");
+    try {
+      if (followupStatusDirty) {
+        if (!followupStatus) throw new Error("Choose a session status.");
+        if (["Rescheduled", "Follow-up Counseling"].includes(followupStatus)) {
+          if (!followupDate || !followupTime) throw new Error("Choose a new date and vacant time.");
+          if (followupVacantLoading || followupVacantError) throw new Error("Student availability could not be verified.");
+          if (followupVacantSlots.length && !isStudentVacantAt(followupVacantSlots, followupDate, followupTime))
+            throw new Error("Choose a time within the student's saved vacant hours.");
+        }
+        if (followupStatus === "Follow-up Counseling") {
+          const currentSession = caseSessions.find(s => s.id === activeFollowupSessionId);
+          if (!currentSession || currentSession.sessionNumber !== Math.max(...caseSessions.map(s => Number(s.sessionNumber) || 0)))
+            throw new Error("Only the latest session can create a new follow-up.");
+          if (!followupDate || !followupTime) throw new Error("Choose the next session's date and vacant time.");
+          if (followupVacantLoading || followupVacantError) throw new Error("Student availability could not be verified.");
+          if (!COUNSELING_TIME_SLOTS.includes(followupTime) ||
+              (followupVacantSlots.length && !isStudentVacantAt(followupVacantSlots, followupDate, followupTime)))
+            throw new Error("Choose a valid time within the student's saved vacant hours.");
+          if (isPastCounselingDate(followupDate) || isWeekendCounselingDate(followupDate) || counselingHolidayName(followupDate))
+            throw new Error("Choose a future available weekday that is not a holiday.");
+          const latestVacant = await getStudentVacantSlots(selected.ownerId);
+          if (latestVacant.length && !isStudentVacantAt(latestVacant, followupDate, followupTime))
+            throw new Error("The student's vacant hours changed. Please select another time.");
+          const match = followupTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+          if (!match) throw new Error("Invalid counseling time.");
+          const hour24 = (Number(match[1]) % 12) + (match[3].toUpperCase() === "PM" ? 12 : 0);
+          const dbTime = `${String(hour24).padStart(2, "0")}:${match[2]}:00`;
+          // Atomic RPC: marks the source session for follow-up and books the next session.
+          // If booking fails, neither operation is committed.
+          await bookFollowupFromSession(activeFollowupSessionId, followupDate, dbTime);
+        } else {
+          await updateFollowupSession(activeFollowupSessionId, followupStatus,
+            followupStatus === "Rescheduled" ? followupDate : null,
+            followupStatus === "Rescheduled" ? followupTime : null);
+        }
+      }
+      if (followupNotesDirty) await saveSessionPrivateNotes(activeFollowupSessionId, followupNotes);
+      if (followupRemarksDirty) await saveSessionRemarks(activeFollowupSessionId, followupRemarks);
+      setFollowupNotesDirty(false);
+      setFollowupRemarksDirty(false);
+      setFollowupStatusDirty(false);
+      setCaseSessionsRefresh(v => v + 1);
+      setFollowupNotesMessage(followupStatus === "Follow-up Counseling" ? "Next session booked. Session history refreshed." : "Session changes saved securely.");
+    } catch (err) {
+      setFollowupNotesError(err?.message || "Unable to save session notes.");
+    } finally { setFollowupNotesSaving(false); }
+  }
+
   // A request opens in read-only mode. Editing is an explicit action.
   const [reviewEditing, setReviewEditing] = useState(false);
 
@@ -13847,7 +14221,7 @@ function CounselingRequestsManagement() {
 
   useEffect(() => {
     let active = true;
-    if (!selected?.ownerId || statusDraft !== "Rescheduled") {
+    if (!selected?.ownerId || !["Rescheduled", "Follow-up Counseling"].includes(statusDraft)) {
       setStudentVacantSlots([]);
       setStudentVacantError("");
       setStudentVacantLoading(false);
@@ -13863,8 +14237,8 @@ function CounselingRequestsManagement() {
   }, [selected?.ownerId, statusDraft]);
 
   useEffect(() => {
-    setRescheduleDate(selected?.date || "");
-    setRescheduleTime(selected?.time || "");
+    setRescheduleDate("");
+    setRescheduleTime("");
   }, [selected?.id]);
 
   const [
@@ -13966,7 +14340,7 @@ function CounselingRequestsManagement() {
   function closeRequestReview() {
     if (saving) return;
     const currentStatus = normalizeCounselingRequestStatus(selected?.status);
-    const hasChanges = privateNotesDirty ||
+    const hasChanges = followupNotesDirty || followupRemarksDirty || privateNotesDirty ||
       (reviewEditing && selected && (
         statusDraft !== currentStatus ||
         remarksDraft !== (selected.counselorRemarks || "") ||
@@ -13987,6 +14361,7 @@ function CounselingRequestsManagement() {
 
 
     setSelected(null);
+    setActiveFollowupSessionId("");
     setReviewEditing(false);
 
     setTransferTargetCounselorId("");
@@ -14191,6 +14566,7 @@ function CounselingRequestsManagement() {
         "For review",
         "Scheduled for counseling",
         "Rescheduled",
+        "Follow-up Counseling",
         "Follow up Counseling is recommended",
         "Counseling is optional",
         "For referral",
@@ -14215,17 +14591,8 @@ function CounselingRequestsManagement() {
       setReviewEditing(false);
 
 
-      setStatusDraft(
-        allowedReviewStatuses.includes(
-          normalizeCounselingRequestStatus(
-            target.status
-          )
-        )
-          ? normalizeCounselingRequestStatus(
-              target.status
-            )
-          : "For review"
-      );
+      setStatusDraft("");
+      setActiveFollowupSessionId("");
 
 
       setRemarksDraft(
@@ -14274,6 +14641,7 @@ function CounselingRequestsManagement() {
       "For review",
       "Scheduled for counseling",
       "Rescheduled",
+      "Follow-up Counseling",
       "Follow up Counseling is recommended",
       "Counseling is optional",
       "For referral",
@@ -14281,17 +14649,9 @@ function CounselingRequestsManagement() {
     ];
 
 
-    setStatusDraft(
-      allowedReviewStatuses.includes(
-        normalizeCounselingRequestStatus(
-          row.status
-        )
-      )
-        ? normalizeCounselingRequestStatus(
-            row.status
-          )
-        : "For review"
-    );
+    // The saved status remains visible in the case header; review action starts unselected.
+    setStatusDraft("");
+    setActiveFollowupSessionId("");
 
     setRemarksDraft(
       row.counselorRemarks ||
@@ -14368,6 +14728,10 @@ function CounselingRequestsManagement() {
 
   async function saveRequestUpdate() {
     if (!selected || saving || !reviewEditing || privateNotesLoading) return;
+    if (originalSessionLocked) {
+      alert("Session 1 is locked because a newer session exists. Use the latest session in Session History.");
+      return;
+    }
     if (requestIsReadOnly(selected)) {
       alert("Only the currently assigned counselor can update this request.");
       return;
@@ -14376,25 +14740,30 @@ function CounselingRequestsManagement() {
       alert("A terminated counseling request cannot be reopened.");
       return;
     }
+    if (!statusDraft && remarksDraft.trim() !== String(selected.counselorRemarks || "").trim()) {
+      alert("Select status before updating counselor remarks.");
+      return;
+    }
     const requestChanges =
-      statusDraft !== normalizeCounselingRequestStatus(selected.status) ||
+      (Boolean(statusDraft) && statusDraft !== normalizeCounselingRequestStatus(selected.status)) ||
       remarksDraft.trim() !== String(selected.counselorRemarks || "").trim() ||
       (statusDraft === "Rescheduled" && (rescheduleDate !== selected.date || rescheduleTime !== selected.time));
-    if (statusDraft === "Rescheduled" && requestChanges) {
+    const bookingFollowup = statusDraft === "Follow-up Counseling";
+    if ((statusDraft === "Rescheduled" && requestChanges) || bookingFollowup) {
       if (!rescheduleDate || !COUNSELING_TIME_SLOTS.includes(rescheduleTime)) {
-        alert("Choose a valid new date and time for rescheduling.");
+        alert("Choose a valid vacant date and time.");
         return;
       }
       if (isPastCounselingDate(rescheduleDate) || isWeekendCounselingDate(rescheduleDate) || counselingHolidayName(rescheduleDate)) {
         alert("Choose a future available weekday that is not a holiday.");
         return;
       }
-      if (selected.date === rescheduleDate && selected.time === rescheduleTime) {
+      if (!bookingFollowup && selected.date === rescheduleDate && selected.time === rescheduleTime) {
         alert("Choose a different date or time to reschedule.");
         return;
       }
       if (studentVacantLoading || studentVacantError) {
-        alert("Student vacant time could not be checked. Try again before rescheduling.");
+        alert("Student vacant time could not be checked. Try again before saving.");
         return;
       }
       if (studentVacantSlots.length > 0 && !isStudentVacantAt(studentVacantSlots, rescheduleDate, rescheduleTime)) {
@@ -14439,7 +14808,19 @@ function CounselingRequestsManagement() {
         setPrivateNotesMessage("Private counseling notes saved and verified in Supabase.");
       }
 
-      if (requestChanges) {
+      if (bookingFollowup) {
+        // This RPC creates a separate session; never update the original
+        // consultation's date/time or write an unsupported status to its RPC.
+        const [hourPart, minutePart, meridiem] = rescheduleTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)?.slice(1) || [];
+        if (!hourPart) throw new Error("Invalid counseling time.");
+        const hour24 = (Number(hourPart) % 12) + (meridiem.toUpperCase() === "PM" ? 12 : 0);
+        const dbTime = `${String(hour24).padStart(2, "0")}:${minutePart}:00`;
+        await bookFollowupSession(selected.id, rescheduleDate, dbTime);
+        setCaseSessionsRefresh(v => v + 1);
+        // The existing consultation RPC does not accept Follow-up Counseling.
+        // Leave the case status intact; the new session is stored separately.
+        setStatusDraft("");
+      } else if (requestChanges) {
         const sessionNumber = await updateCounselingRequest(
           selected.id, statusDraft, remarksDraft,
           statusDraft === "Rescheduled"
@@ -14458,8 +14839,9 @@ function CounselingRequestsManagement() {
       }
       // Do not report success until both Supabase operations complete.
       setReviewEditing(false);
-      if (requestChanges || privateNotesSavedThisAttempt) {
-        alert(privateNotesSavedThisAttempt
+      setStatusDraft("");
+      if (requestChanges || privateNotesSavedThisAttempt || bookingFollowup) {
+        alert(bookingFollowup ? "Follow-up session booked successfully. The original counseling request remains unchanged." : privateNotesSavedThisAttempt
           ? "Counseling changes and private notes saved successfully."
           : "Counseling request updated successfully.");
       }
@@ -14996,6 +15378,18 @@ function CounselingRequestsManagement() {
 
 
               <div className="review-request-modal-header-actions">
+                {selected.ownerId && assessmentRows.some(a => a.ownerId === selected.ownerId) && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => navigate("/cases", {
+                      state: { assessmentOwnerId: selected.ownerId }
+                    })}
+                  >
+                    View Assessment Results
+                  </button>
+                )}
+
 
 
 
@@ -15154,6 +15548,45 @@ function CounselingRequestsManagement() {
                   </div>
 
 
+                  {user.role === "counselor" && !requestIsReadOnly(selected) && (
+                    <div className="review-request-detail-item full" style={{ display: "block" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <strong>Counseling Session History</strong>
+                        <button type="button" className="secondary-button" style={{padding:"8px 14px",borderRadius:10}} onClick={() => setCaseSessionsRefresh(v => v + 1)} disabled={caseSessionsLoading}>
+                          Refresh Sessions
+                        </button>
+                      </div>
+                      <div style={{ padding: 10, border: "1px solid #dbe3ef", borderRadius: 8, marginTop: 10 }}>
+                        <strong>Session 1 — Initial Counseling</strong>
+                        <div>{selected.scheduledDate || selected.date || "Date pending"} · {selected.scheduledTime || selected.time || "Time pending"}</div>
+                        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                          {originalSessionLocked ? "Read-only — newer session exists. Review the original counseling details and private notes below." : "Current initial session — use the original Counselor Review below to edit."}
+                        </div>
+                      </div>
+                      {caseSessionsLoading ? <p>Loading sessions...</p> : caseSessionsError ? (
+                        <p role="alert">{caseSessionsError}</p>
+                      ) : caseSessions.length ? (
+                        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                          {caseSessions.map(session => (
+                            <div key={session.id} style={{ padding: 10, border: "1px solid #dbe3ef", borderRadius: 8 }}>
+                              <strong>Session {session.sessionNumber}</strong>
+                              <div>{session.date || "Date pending"} · {session.time || "Time pending"}</div>
+                              <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
+                                <button type="button" className="secondary-button" style={{padding:"8px 14px",borderRadius:10}} disabled={followupNotesSaving}
+                                  onClick={() => {setFollowupNotesMode("view");setActiveFollowupSessionId(session.id);}}>View</button>
+                                <button type="button" className="primary-button" style={{padding:"8px 14px",borderRadius:10}} disabled={followupNotesSaving || caseSessionsLoading || Boolean(caseSessionsError) || Number(session.sessionNumber) !== latestFollowupNumber || requestIsReadOnly(selected)}
+                                  title={Number(session.sessionNumber) !== latestFollowupNumber ? "Previous session is locked" : "Edit latest session"}
+                                  onClick={() => {setFollowupNotesMode("edit");setActiveFollowupSessionId(session.id);}}>Edit</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ marginTop: 8 }}>No separate follow-up sessions recorded yet. The original consultation is retained above.</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="review-request-detail-item full">
 
                     <span>
@@ -15240,10 +15673,7 @@ function CounselingRequestsManagement() {
                     }
 
                   >
-
-                    <option>
-                      For review
-                    </option>
+                    <option value="" disabled>Select status</option>
 
                     <option>
                       Scheduled for counseling
@@ -15254,11 +15684,7 @@ function CounselingRequestsManagement() {
                     </option>
 
                     <option>
-                      Follow up Counseling is recommended
-                    </option>
-
-                    <option>
-                      Counseling is optional
+                      Follow-up Counseling
                     </option>
 
                     <option>
@@ -15284,9 +15710,9 @@ function CounselingRequestsManagement() {
                 </label>
 
 
-                {statusDraft === "Rescheduled" && (
+                {["Rescheduled", "Follow-up Counseling"].includes(statusDraft) && (
                   <fieldset className="counseling-reschedule-fields" disabled={!reviewEditing || requestIsReadOnly(selected)}>
-                    <p><strong>New appointment schedule</strong></p>
+                    <p><strong>{statusDraft === "Follow-up Counseling" ? "New follow-up session schedule" : "New appointment schedule"}</strong></p>
                     <label>New date</label>
                     <CounselingDatePicker
                       value={rescheduleDate}
@@ -15303,7 +15729,7 @@ function CounselingRequestsManagement() {
                         disabled={requestIsReadOnly(selected) || studentVacantLoading || Boolean(studentVacantError)}
                         required
                       >
-                        <option value="">Choose new time</option>
+                        <option value="">Choose available time</option>
                         {COUNSELING_TIME_SLOTS.map(time => (
                           <option
                             key={time}
@@ -15731,7 +16157,7 @@ function CounselingRequestsManagement() {
                   <button
                     type="button"
                     className="primary-button"
-                    disabled={reviewEditing || saving || privateNotesLoading || requestIsReadOnly(selected)}
+                    disabled={reviewEditing || saving || privateNotesLoading || originalSessionLocked || caseSessionsLoading || Boolean(caseSessionsError) || requestIsReadOnly(selected)}
                     onClick={() => setReviewEditing(true)}
                   >
                     Edit
@@ -15739,7 +16165,7 @@ function CounselingRequestsManagement() {
                   <button
                     type="button"
                     className="primary-button"
-                    disabled={!reviewEditing || saving || privateNotesLoading || requestIsReadOnly(selected)}
+                    disabled={!reviewEditing || saving || privateNotesLoading || originalSessionLocked || caseSessionsLoading || Boolean(caseSessionsError) || requestIsReadOnly(selected)}
                     onClick={saveRequestUpdate}
                   >
                     {saving ? "Saving..." : "Save"}
@@ -15759,6 +16185,83 @@ function CounselingRequestsManagement() {
             </div>
 
           </section>
+
+          {user.role === "counselor" && activeFollowupSessionId &&
+            caseSessions.some(item => item.id === activeFollowupSessionId) && (
+            <div role="presentation" onMouseDown={event => {
+              if (event.target === event.currentTarget && !followupNotesSaving && !followupNotesDirty && !followupRemarksDirty && !followupStatusDirty) setActiveFollowupSessionId("");
+            }} style={{position:"fixed",inset:0,zIndex:11000,background:"rgba(12,24,48,.68)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+              <section role="dialog" aria-modal="true" aria-label="Counseling session details"
+                style={{background:"white",color:"#17243b",width:"min(760px,100%)",maxHeight:"90vh",overflowY:"auto",borderRadius:16,padding:24,boxShadow:"0 20px 70px #0005"}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"start"}}>
+                  <div>
+                    <h2 style={{margin:0}}>Session {caseSessions.find(item=>item.id===activeFollowupSessionId)?.sessionNumber}</h2>
+                    <p style={{marginTop:6}}>
+                      {caseSessions.find(item=>item.id===activeFollowupSessionId)?.date} · {caseSessions.find(item=>item.id===activeFollowupSessionId)?.time}
+                    </p>
+                  </div>
+                  <button type="button" className="secondary-button" style={{borderRadius:10,padding:"9px 15px"}} onClick={() => {
+                    if ((followupNotesDirty || followupRemarksDirty || followupStatusDirty) && !window.confirm("Discard unsaved session changes?")) return;
+                    setActiveFollowupSessionId("");
+                  }} disabled={followupNotesSaving}>Close</button>
+                </div>
+                <div style={{display:"flex",gap:8,marginBottom:16}}>
+                  <button type="button" className={followupNotesMode === "view" ? "primary-button" : "secondary-button"} style={{borderRadius:10,padding:"9px 16px"}} onClick={()=>setFollowupNotesMode("view")} disabled={followupNotesSaving}>View Notes</button>
+                  <button type="button" className={followupNotesMode === "edit" ? "primary-button" : "secondary-button"} style={{borderRadius:10,padding:"9px 16px"}} onClick={()=>setFollowupNotesMode("edit")} disabled={followupNotesSaving || !activeFollowupIsLatest || caseSessionsLoading || Boolean(caseSessionsError) || requestIsReadOnly(selected)}>Edit Session</button>
+                </div>
+                {!activeFollowupIsLatest && <p role="status" style={{background:"#f1f5f9",padding:10,borderRadius:8}}>Previous session — read-only. Only the latest counseling session can be edited.</p>}
+                {followupNotesLoading ? <p>Loading session notes...</p> : (
+                  <div style={{display:"grid",gap:14}}>
+                    <div style={{padding:"14px",background:"#f0f5fc",borderRadius:12,border:"1px solid #dbe6f6",display:"grid",gap:10}}>
+                      <label style={{display:"grid",gap:6,fontWeight:600}}>Session Status
+                        <select value={followupStatus} disabled={followupNotesMode!=="edit" || followupNotesSaving}
+                          onChange={e=>{setFollowupStatus(e.target.value);setFollowupStatusDirty(true);setFollowupNotesMessage("");}}
+                          style={{padding:10,borderRadius:9,border:"1px solid #cbd5e1"}}>
+                          <option value="">Select status</option>
+                          {['Scheduled for counseling','Rescheduled','Follow-up Counseling','For referral','Terminated'].map(s=><option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </label>
+                      {["Rescheduled", "Follow-up Counseling"].includes(followupStatus) && followupNotesMode === "edit" && <div style={{display:"grid",gap:8}}>
+                        <strong>{followupStatus === "Follow-up Counseling" ? "Next follow-up session schedule" : "New session schedule"}</strong>
+                        <CounselingDatePicker value={followupDate} onChange={date=>{setFollowupDate(date);setFollowupTime("");}} />
+                        <select value={followupTime} disabled={followupVacantLoading || Boolean(followupVacantError)}
+                          onChange={e=>setFollowupTime(e.target.value)} style={{padding:10,borderRadius:9}}>
+                          <option value="">Choose vacant time</option>
+                          {COUNSELING_TIME_SLOTS.map(time=><option key={time} value={time}
+                            disabled={followupVacantSlots.length>0 && !isStudentVacantAt(followupVacantSlots,followupDate,time)}>{time}</option>)}
+                        </select>
+                        <p style={{margin:0,fontSize:12}}>{followupVacantLoading ? "Checking student availability..." : followupVacantError || (followupVacantSlots.length ? "Only the student's saved vacant hours are selectable." : "No saved vacant hours. Confirm with the student.")}</p>
+                      </div>}
+                      {followupStatus === "Follow-up Counseling" && <p style={{margin:0,fontSize:13}}>
+                        Saving will book the next counseling session with the selected vacant schedule. Only the latest session may create another follow-up.
+                      </p>}
+                    </div>
+                    <label style={{display:"grid",gap:6}}>Counselor Remarks / Instructions (student-visible)
+                      <textarea rows={3} maxLength={20000} value={followupRemarks}
+                        disabled={followupNotesMode!=="edit" || followupNotesSaving}
+                        onChange={e=>{setFollowupRemarks(e.target.value);setFollowupRemarksDirty(true);setFollowupNotesMessage("");}} />
+                    </label>
+                    <h3 style={{margin:"8px 0 0"}}>Private Counseling Notes</h3>
+                    <p style={{margin:0,fontSize:13}}>Confidential — currently assigned Guidance Counselor only.</p>
+                    {[["caseHistory","Case History"],["sessionSummary","Session Summary"],
+                      ["observation","Counselor Observation"],["recommendations","Recommendations"]].map(([key,label])=>(
+                      <label key={key} style={{display:"grid",gap:6}}>{label}
+                        <textarea rows={3} maxLength={20000} value={followupNotes[key]}
+                          disabled={followupNotesMode!=="edit" || followupNotesSaving}
+                          onChange={e=>{setFollowupNotes(v=>({...v,[key]:e.target.value}));setFollowupNotesDirty(true);setFollowupNotesMessage("");}} />
+                      </label>
+                    ))}
+                    {followupNotesError && <p role="alert" style={{color:"#b42318"}}>{followupNotesError}</p>}
+                    {followupNotesMessage && <p role="status">{followupNotesMessage}</p>}
+                    {followupNotesMode==="edit" && <button type="button" className="primary-button" style={{padding:"11px 18px",borderRadius:10}} onClick={saveFollowupNotes}
+                      disabled={followupNotesSaving || followupNotesLoading || (!followupNotesDirty && !followupRemarksDirty && !followupStatusDirty)}>
+                      {followupNotesSaving ? "Saving..." : "Save Session Changes"}
+                    </button>}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
 
         </div>
 
@@ -20400,13 +20903,14 @@ export default function App() {
         path="/"
 
         element={
-          <Home />
+          <PrivacyEntryModal><Home /></PrivacyEntryModal>
         }
 
       />
 
 
       <Route path="/privacy-notice" element={<PrivacyNotice />} />
+      <Route path="/privacy-policy" element={<PrivacyNotice />} />
 
       {/* PUBLIC LOGIN */}
 

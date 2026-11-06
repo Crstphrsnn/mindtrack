@@ -38,6 +38,7 @@ export async function submitReferral(form, user) {
       parentGuardian: form?.personType === "Student" ? String(form?.parentGuardian || "").trim() : "",
       natureOfProblem: String(form?.reason || "").trim(),
       recommendation: String(form?.recommendation || "").trim(),
+      actionTaken: String(form?.actionTaken || "").trim(),
       signatureName: String(form?.signatureName || "").trim(),
       position: String(form?.position || "").trim(),
       referrerRole: String(user?.role || "")
@@ -59,12 +60,13 @@ export async function getReferralSlip(referralId) {
   return rpc("mindtrack_get_referral_slip", { p_referral_id: referralId });
 }
 
-export async function updateReferral(id, status, remarks) {
+export async function updateReferral(id, status, remarks, actionTaken = "") {
   if (!id) throw new Error("Select a referral before saving.");
-  const confirmed = await rpc("mindtrack_update_referral", {
+  const confirmed = await rpc("mindtrack_update_referral_with_action", {
     p_referral_id: id,
     p_status: String(status || ""),
-    p_remarks: String(remarks || "")
+    p_remarks: String(remarks || ""),
+    p_action_taken: String(actionTaken || "")
   });
   if (confirmed !== true) throw new Error("Supabase did not confirm the referral update.");
   refreshReferralViews();

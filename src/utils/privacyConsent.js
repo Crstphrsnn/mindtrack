@@ -1,2 +1,2 @@
-// Keep this in sync with the version printed on the public Privacy Notice.
-export const PRIVACY_NOTICE_VERSION = "2026-11-04";
+// Keep this version synchronized with the public Privacy Policy and consent audit.
+export const PRIVACY_NOTICE_VERSION = "2026-11-06";

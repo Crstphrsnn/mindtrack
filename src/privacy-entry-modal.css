@@ -1,0 +1,19 @@
+/* Responsive public landing privacy policy dialog */
+.mt-entry-overlay{position:fixed;inset:0;z-index:99999;background:rgba(10,19,55,.64);display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto}
+.mt-entry-dialog{width:min(100%,440px);max-height:calc(100dvh - 36px);overflow-y:auto;background:#fff;color:#17223c;border-radius:26px;box-shadow:0 20px 70px rgba(0,0,0,.26);padding:34px 28px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.mt-entry-shield{width:66px;height:66px;border-radius:20px;background:#eaf0ff;color:#163f92;display:grid;place-items:center;font-size:42px;font-weight:bold}
+.mt-entry-dialog h2{margin:4px 0 0;font-size:clamp(24px,5vw,31px);line-height:1.15}
+.mt-entry-dialog p{margin:2px 0 10px;font-size:15px;line-height:1.7;color:#4b556b}
+.mt-entry-accept{width:100%;border:0;border-radius:40px;background:#183d91;color:white;padding:15px 16px;font-size:16px;font-weight:700;cursor:pointer}
+.mt-entry-accept:hover,.mt-entry-accept:focus-visible{background:#0b286d}
+.mt-entry-policy{font-size:15px;font-weight:700;color:#173b86;text-decoration:underline;text-underline-offset:3px}
+.mt-entry-dialog small{font-size:11px;line-height:1.5;color:#65718a}
+@media(max-width:420px){.mt-entry-dialog{padding:28px 20px;border-radius:23px}}
+
+/* MindTrack PSU blue and gold popup controls */
+.mt-entry-shield{background:#fff;border-radius:50%;overflow:hidden;border:2px solid #d4a62b;padding:3px}
+.mt-entry-shield img{width:100%;height:100%;object-fit:contain;border-radius:50%;display:block}
+.mt-entry-accept{border:2px solid #d4a62b;transition:background-color .15s ease,border-color .15s ease}
+.mt-entry-accept:hover,.mt-entry-accept:focus-visible{border-color:#f0c453}
+.mt-entry-policy{display:block;box-sizing:border-box;width:100%;border:2px solid #d4a62b;border-radius:40px;padding:12px 14px;background:#fff;color:#173b86;text-decoration:none;transition:background-color .15s ease,color .15s ease}
+.mt-entry-policy:hover,.mt-entry-policy:focus-visible,.mt-entry-policy:active{background:#173b86;color:#fff;outline-offset:3px}
