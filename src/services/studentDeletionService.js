@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 
 /** Only the database can authorize this operation; client checks are UI-only. */
-export async function deleteTestStudentAccount(studentId, reason, confirmation) {
+export async function deleteTestStudentAccount(studentId, reason, confirmation, role = "student") {
   if (!/^[0-9a-f-]{36}$/i.test(String(studentId || ""))) {
     throw new Error("Invalid student account ID.");
   }
@@ -12,7 +12,8 @@ export async function deleteTestStudentAccount(studentId, reason, confirmation) 
   if (cleanReason.length < 10 || cleanReason.length > 500) {
     throw new Error("Provide a reason between 10 and 500 characters.");
   }
-  const { data, error } = await supabase.rpc("mindtrack_admin_delete_test_student", {
+  const staff = ["teaching", "non_teaching"].includes(String(role).toLowerCase());
+  const { data, error } = await supabase.rpc(staff ? "mindtrack_admin_delete_test_staff" : "mindtrack_admin_delete_test_student", {
     p_student_id: studentId,
     p_confirmation: confirmation,
     p_reason: cleanReason

@@ -79,3 +79,14 @@ export async function deleteAssessmentCase(assessmentId) {
 
   return data === true;
 }
+
+export async function updateAssessmentCaseRemarks({ assessmentId, remarks = "" }) {
+  if (!assessmentId) throw new Error("Assessment ID is missing.");
+  const { data, error } = await supabase.rpc("mindtrack_update_assessment_case_remarks", {
+    p_assessment_id: assessmentId,
+    p_remarks: String(remarks ?? "")
+  });
+  if (error) throw new Error(error.message || "Unable to update assessment remarks.");
+  announceAssessmentChange();
+  return data;
+}

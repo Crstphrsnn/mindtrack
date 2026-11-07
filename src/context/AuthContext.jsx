@@ -1585,83 +1585,15 @@ export function AuthProvider({
 
 
 
-    if (
-
-      !cleanContactPersonName
-
-    ) {
-
-
-
-      throw new Error(
-
-        "Contact person name is required."
-
-      );
-
-
-
+    if (role === "student") {
+      if (!cleanContactPersonName) throw new Error("Contact person name is required.");
+      if (!/^\d{11}$/.test(cleanContactPersonPhone)) throw new Error(PH_MOBILE_FORMAT_ERROR);
+      if (areSamePhilippineMobileNumbers(cleanPhoneNumber, cleanContactPersonPhone)) {
+        throw new Error("Your emergency contact number must be different from your personal phone number.");
+      }
     }
 
 
-
-
-
-    if (
-
-      !/^\d{11}$/.test(
-
-        cleanContactPersonPhone
-
-      )
-
-    ) {
-
-
-
-      throw new Error(
-
-        PH_MOBILE_FORMAT_ERROR
-
-      );
-
-
-
-    }
-
-
-
-
-
-    if (areSamePhilippineMobileNumbers(cleanPhoneNumber, cleanContactPersonPhone)) {
-      throw new Error("Your emergency contact number must be different from your personal phone number.");
-    }
-
-    if (
-
-      [
-
-        "teaching",
-
-        "non_teaching",
-
-      ].includes(role) &&
-
-      !cleanAssignedCounselorId
-
-    ) {
-
-
-
-      throw new Error(
-
-        "Please select a Guidance Counselor."
-
-      );
-
-
-
-    }
 
 
 

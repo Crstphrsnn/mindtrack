@@ -20,7 +20,7 @@ import {
   areSamePhilippineMobileNumbers
 } from "./utils/philippineMobile";
 
-import { updateAssessmentCase } from "./services/assessmentCaseService";
+import { updateAssessmentCase, updateAssessmentCaseRemarks } from "./services/assessmentCaseService";
 
 import {
   useRows,
@@ -985,7 +985,10 @@ function Assessment() {
       assessmentLock &&
       ![
         "Eligible",
-        "Concluded"
+        "Concluded",
+        "Counseling is recommended",
+        "Counseling is optional",
+        "Counseling can be availed voluntarily"
       ].includes(
         assessmentLock.status
       )
@@ -9241,11 +9244,11 @@ function UserProfilesContent({
   const [deletingStudentId, setDeletingStudentId] = useState(null);
 
   async function confirmDeleteTestStudent(account) {
-    if (!isSuperAdmin || account?.role !== "student" || !account?.id || deletingStudentId) return;
+    if (!isSuperAdmin || !["student", "teaching", "non_teaching"].includes(String(account?.role || "").toLowerCase()) || !account?.id || deletingStudentId) return;
     const confirmation = window.prompt(
       `PERMANENTLY DELETE ACCOUNT: ${account.name || account.id}\n\n` +
-      "This removes the student's Auth account, assessments, consultations, and linked records. " +
-      "This cannot be undone. Only proceed for a disposable TEST account.\n\n" +
+      "This permanently removes the account and may delete linked data. " +
+      "This cannot be undone. Only proceed for an authorized disposable TEST account.\n\n" +
       "Type DELETE ACCOUNT to continue:"
     );
     if (confirmation !== "DELETE ACCOUNT") return;
@@ -9254,7 +9257,7 @@ function UserProfilesContent({
     if (!window.confirm(`FINAL CONFIRMATION: Permanently delete ${account.name || account.id}?`)) return;
     setDeletingStudentId(account.id);
     try {
-      await deleteTestStudentAccount(account.id, reason, confirmation);
+      await deleteTestStudentAccount(account.id, reason, confirmation, account.role);
       setSelected(null);
       alert("Account permanently deleted. The user list will refresh.");
     } catch (error) {
@@ -9596,7 +9599,7 @@ function UserProfilesContent({
                                 >
                                   View Profile
                                 </button>
-                                {isSuperAdmin && account.role === "student" && (
+                                {isSuperAdmin && ["student", "teaching", "non_teaching"].includes(String(account.role || "").toLowerCase()) && (
                                   <button
                                     type="button"
                                     className="text-button admin-user-profile-delete-action"
@@ -11686,33 +11689,22 @@ function Cases() {
     setSavingCase
   ] = useState(false);
 
+  const [editingFinalizedRemarks, setEditingFinalizedRemarks] = useState(false);
+
 
 
 
   const assessmentStatuses = [
     "Counseling is recommended",
     "Counseling is optional",
-    "Counseling can be availed voluntarily",
-    "Concluded"
+    "Counseling can be availed voluntarily"
   ];
 
 
-  function allowedAssessmentStatuses(
-    currentStatus
-  ) {
-    if (currentStatus === "Concluded") {
-      return ["Concluded"];
-    }
-
-    if (currentStatus === "Approved") {
-      // Legacy approved records can still be concluded, but Approved
-      // cannot be chosen as a new review status.
-      return ["Concluded"];
-    }
-
-    // Keep legacy statuses visible when reviewing historical cases.
-    // Historical statuses are readable, but not selectable for new reviews.
-    return assessmentStatuses;
+  function allowedAssessmentStatuses(currentStatus) {
+    return assessmentCaseStatusLabel(currentStatus) === "For review"
+      ? assessmentStatuses
+      : [];
   }
 
 
@@ -11737,7 +11729,7 @@ function Cases() {
   ) {
 
     setSelected(row);
-
+    setEditingFinalizedRemarks(false);
 
     const normalizedStatus =
       assessmentCaseStatusLabel(
@@ -11747,7 +11739,7 @@ function Cases() {
 
     // Require an explicit selection for each editable assessment.
     // Completed records remain locked to their existing terminal status.
-    setStatusDraft(normalizedStatus === "Concluded" ? "Concluded" : "");
+    setStatusDraft(normalizedStatus === "For review" ? "" : normalizedStatus);
 
 
     setRemarksDraft(
@@ -11859,6 +11851,11 @@ function Cases() {
     }
 
 
+    if (assessmentCaseStatusLabel(selected.status) !== "For review") {
+      alert("This assessment case has already been finalized. Its status cannot be changed.");
+      return;
+    }
+
     if (!statusDraft) {
       alert("Please select a status before saving the assessment case.");
       return;
@@ -11950,6 +11947,23 @@ function Cases() {
 
     } finally {
 
+      setSavingCase(false);
+    }
+  }
+
+
+  async function saveFinalizedAssessmentRemarks() {
+    if (!selected || assessmentCaseStatusLabel(selected.status) === "For review") return;
+    try {
+      setSavingCase(true);
+      await updateAssessmentCaseRemarks({ assessmentId: selected.id, remarks: remarksDraft });
+      setSelected(current => current ? { ...current, counselorRemarks: remarksDraft } : current);
+      setEditingFinalizedRemarks(false);
+      alert("Counselor remarks updated successfully. The finalized status was not changed.");
+    } catch (err) {
+      console.error("Assessment remarks update error:", err);
+      alert(err?.message || "Unable to update counselor remarks.");
+    } finally {
       setSavingCase(false);
     }
   }
@@ -13432,10 +13446,8 @@ function Cases() {
                   Status
 
                   <select
-
-                    value={
-                      statusDraft
-                    }
+                    disabled={assessmentCaseStatusLabel(selected.status) !== "For review"}
+                    value={assessmentCaseStatusLabel(selected.status) === "For review" ? statusDraft : assessmentCaseStatusLabel(selected.status)}
 
                     onChange={
                       event =>
@@ -13447,9 +13459,10 @@ function Cases() {
                   >
 
                     <option value="" disabled>Select status</option>
-                    {allowedAssessmentStatuses(
-                      selected.status
-                    ).filter(status => status !== "Approved").map(
+                    {(assessmentCaseStatusLabel(selected.status) === "For review"
+                      ? allowedAssessmentStatuses(selected.status).filter(status => status !== "Approved")
+                      : [assessmentCaseStatusLabel(selected.status)]
+                    ).map(
                       status => (
 
                         <option
@@ -13478,7 +13491,7 @@ function Cases() {
                   }
 
                   <textarea
-
+                    disabled={savingCase || (assessmentCaseStatusLabel(selected.status) !== "For review" && !editingFinalizedRemarks)}
                     rows={isSuperAdmin ? 5 : 9}
 
                     value={
@@ -13499,19 +13512,19 @@ function Cases() {
                 </label>
 
 
-                {selected.status ===
-                  "Concluded" && (
+                {assessmentCaseStatusLabel(selected.status) !==
+                  "For review" && (
 
                   <div className="notice">
 
                     <strong>
-                      Assessment concluded
+                      Assessment case finalized
                     </strong>
 
                     <p style={{ marginBottom: 0 }}>
-                      Once the student's assessment eligibility status is
-                      Concluded, they may start a new assessment without a
-                      waiting period. Only one assessment may be active at a time.
+                      This case status is final and cannot be edited. The student
+                      may submit a new assessment without a waiting period.
+                      Only one assessment may be active at a time.
                     </p>
 
                   </div>
@@ -13538,6 +13551,24 @@ function Cases() {
                   </button>
 
 
+                  {assessmentCaseStatusLabel(selected.status) !== "For review" && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={savingCase}
+                      onClick={() => {
+                        if (editingFinalizedRemarks) {
+                          setRemarksDraft(selected.counselorRemarks || "");
+                          setEditingFinalizedRemarks(false);
+                        } else {
+                          setEditingFinalizedRemarks(true);
+                        }
+                      }}
+                    >
+                      {editingFinalizedRemarks ? "Cancel edit" : "Edit remarks"}
+                    </button>
+                  )}
+
                   <button
 
                     type="button"
@@ -13545,11 +13576,11 @@ function Cases() {
                     className="primary-button"
 
                     disabled={
-                      savingCase || !statusDraft
+                      savingCase || (assessmentCaseStatusLabel(selected.status) === "For review" ? !statusDraft : (!editingFinalizedRemarks || remarksDraft === (selected.counselorRemarks || "")))
                     }
 
                     onClick={
-                      saveAssessmentUpdate
+                      assessmentCaseStatusLabel(selected.status) === "For review" ? saveAssessmentUpdate : saveFinalizedAssessmentRemarks
                     }
 
                   >
@@ -13557,7 +13588,7 @@ function Cases() {
                     {
                       savingCase
                         ? "Saving..."
-                        : "Save case update"
+                        : assessmentCaseStatusLabel(selected.status) === "For review" ? "Save case update" : "Save remarks"
                     }
 
                   </button>
@@ -14084,6 +14115,8 @@ function CounselingRequestsManagement() {
 
   const [selected, setSelected] =
     useState(null);
+  const [showInitialSessionDetails, setShowInitialSessionDetails] = useState(false);
+  useEffect(() => { setShowInitialSessionDetails(false); }, [selected?.id]);
 
   // Separate session history; never infer follow-ups from the consultation's session number.
   const [caseSessions, setCaseSessions] = useState([]);
@@ -14117,11 +14150,13 @@ function CounselingRequestsManagement() {
 
   // Notes for an individual follow-up session; separate from legacy case notes.
   const [activeFollowupSessionId, setActiveFollowupSessionId] = useState("");
+  const activeFollowupRecord = caseSessions.find(item => item.id === activeFollowupSessionId);
+  const activeFollowupTerminated = activeFollowupRecord?.status?.trim().toLowerCase() === "terminated";
   const activeFollowupIsLatest = Boolean(activeFollowupSessionId) &&
     caseSessions.some(item => item.id === activeFollowupSessionId && Number(item.sessionNumber) === latestFollowupNumber);
   useEffect(() => {
-    if (activeFollowupSessionId && !activeFollowupIsLatest) setFollowupNotesMode("view");
-  }, [activeFollowupSessionId, activeFollowupIsLatest]);
+    if (activeFollowupSessionId && (!activeFollowupIsLatest || activeFollowupTerminated)) setFollowupNotesMode("view");
+  }, [activeFollowupSessionId, activeFollowupIsLatest, activeFollowupTerminated]);
   const [followupNotes, setFollowupNotes] = useState({caseHistory:"",sessionSummary:"",observation:"",recommendations:""});
   const [followupNotesLoading, setFollowupNotesLoading] = useState(false);
   const [followupNotesSaving, setFollowupNotesSaving] = useState(false);
@@ -14181,7 +14216,7 @@ function CounselingRequestsManagement() {
   async function saveFollowupNotes() {
     if (!activeFollowupSessionId || !selected || followupNotesSaving || followupNotesLoading ||
         user.role !== "counselor" || requestIsReadOnly(selected)) return;
-    if (!activeFollowupIsLatest || caseSessionsLoading || caseSessionsError) {
+    if (!activeFollowupIsLatest || activeFollowupTerminated || caseSessionsLoading || caseSessionsError) {
       setFollowupNotesError("This is a previous session. Only the latest session can be edited.");
       setFollowupNotesMode("view");
       return;
@@ -14190,6 +14225,9 @@ function CounselingRequestsManagement() {
     setFollowupNotesError("");
     setFollowupNotesMessage("");
     try {
+      // Save documentation before closing the session. Terminated sessions are immutable.
+      if (followupNotesDirty) await saveSessionPrivateNotes(activeFollowupSessionId, followupNotes);
+      if (followupRemarksDirty) await saveSessionRemarks(activeFollowupSessionId, followupRemarks);
       if (followupStatusDirty) {
         if (!followupStatus) throw new Error("Choose a session status.");
         if (["Rescheduled", "Follow-up Counseling"].includes(followupStatus)) {
@@ -14225,8 +14263,6 @@ function CounselingRequestsManagement() {
             followupStatus === "Rescheduled" ? followupTime : null);
         }
       }
-      if (followupNotesDirty) await saveSessionPrivateNotes(activeFollowupSessionId, followupNotes);
-      if (followupRemarksDirty) await saveSessionRemarks(activeFollowupSessionId, followupRemarks);
       setFollowupNotesDirty(false);
       setFollowupRemarksDirty(false);
       setFollowupStatusDirty(false);
@@ -15455,8 +15491,60 @@ function CounselingRequestsManagement() {
             </header>
 
 
-            <div className="review-request-modal-body">
+            <div className={`review-request-modal-body ${caseSessions.length > 0 && user.role === "counselor" && !showInitialSessionDetails ? "mindtrack-session-overview" : ""}`}>
 
+              {caseSessions.length > 0 && user.role === "counselor" && (
+                <div className="mindtrack-session-intro">
+                  <div><strong>Counseling sessions</strong><p>Select a session to review its details and counseling notes.</p></div>
+                  <span>{caseSessions.length + 1} sessions</span>
+                </div>
+              )}
+                                {user.role === "counselor" && !requestIsReadOnly(selected) && (
+                    <section className="review-request-modal-card mindtrack-session-history" style={{gridColumn:"1 / -1"}}>
+                      <div className="mindtrack-session-history-header">
+                        <strong>Counseling Session History</strong>
+                        <button type="button" className="secondary-button" style={{padding:"8px 14px",borderRadius:10}} onClick={() => setCaseSessionsRefresh(v => v + 1)} disabled={caseSessionsLoading}>
+                          Refresh Sessions
+                        </button>
+                      </div>
+                      <div className="mindtrack-session-card">
+                        <div className="mindtrack-session-card-top"><strong>Session 1 — Initial Counseling</strong><span>Historical record</span></div>
+                        <div>{selected.scheduledDate || selected.date || "Date pending"} · {selected.scheduledTime || selected.time || "Time pending"}</div>
+                        <div style={{marginTop:8}}>
+                          <button type="button" className="secondary-button" onClick={() => setShowInitialSessionDetails(value => !value)}>
+                            {showInitialSessionDetails ? "Hide Session 1 Details" : "View Session 1"}
+                          </button>
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                          {originalSessionLocked ? "Read-only — click View Session 1 to review saved details and notes." : "Current initial session — use the original Counselor Review below to edit."}
+                        </div>
+                      </div>
+                      {caseSessionsLoading ? <p>Loading sessions...</p> : caseSessionsError ? (
+                        <p role="alert">{caseSessionsError}</p>
+                      ) : caseSessions.length ? (
+                        <div className="mindtrack-followup-grid">
+                          {caseSessions.map(session => (
+                            <div key={session.id} className="mindtrack-session-card">
+                              <div className="mindtrack-session-card-top"><strong>Session {session.sessionNumber}</strong><span>{session.status || "Scheduled"}</span></div>
+                              <div>{session.date || "Date pending"} · {session.time || "Time pending"}</div>
+                              <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
+                                <button type="button" className="secondary-button" style={{padding:"8px 14px",borderRadius:10}} disabled={followupNotesSaving}
+                                  onClick={() => {setFollowupNotesMode("view");setActiveFollowupSessionId(session.id);}}>View</button>
+                                <button type="button" className="primary-button" style={{padding:"8px 14px",borderRadius:10}} disabled={followupNotesSaving || caseSessionsLoading || Boolean(caseSessionsError) || Number(session.sessionNumber) !== latestFollowupNumber || session.status?.trim().toLowerCase() === "terminated" || requestIsReadOnly(selected)}
+                                  title={Number(session.sessionNumber) !== latestFollowupNumber ? "Previous session is locked" : "Edit latest session"}
+                                  onClick={() => {setFollowupNotesMode("edit");setActiveFollowupSessionId(session.id);}}>Edit</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ marginTop: 8 }}>No separate follow-up sessions recorded yet. The original consultation is retained above.</p>
+                      )}
+                    </section>
+                  )}
+
+              {(user.role !== "counselor" || caseSessions.length === 0 || showInitialSessionDetails) && (
+                <>
               <section className="review-request-modal-card">
 
                 <h3>
@@ -15587,45 +15675,6 @@ function CounselingRequestsManagement() {
                   </div>
 
 
-                  {user.role === "counselor" && !requestIsReadOnly(selected) && (
-                    <div className="review-request-detail-item full" style={{ display: "block" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <strong>Counseling Session History</strong>
-                        <button type="button" className="secondary-button" style={{padding:"8px 14px",borderRadius:10}} onClick={() => setCaseSessionsRefresh(v => v + 1)} disabled={caseSessionsLoading}>
-                          Refresh Sessions
-                        </button>
-                      </div>
-                      <div style={{ padding: 10, border: "1px solid #dbe3ef", borderRadius: 8, marginTop: 10 }}>
-                        <strong>Session 1 — Initial Counseling</strong>
-                        <div>{selected.scheduledDate || selected.date || "Date pending"} · {selected.scheduledTime || selected.time || "Time pending"}</div>
-                        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                          {originalSessionLocked ? "Read-only — newer session exists. Review the original counseling details and private notes below." : "Current initial session — use the original Counselor Review below to edit."}
-                        </div>
-                      </div>
-                      {caseSessionsLoading ? <p>Loading sessions...</p> : caseSessionsError ? (
-                        <p role="alert">{caseSessionsError}</p>
-                      ) : caseSessions.length ? (
-                        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                          {caseSessions.map(session => (
-                            <div key={session.id} style={{ padding: 10, border: "1px solid #dbe3ef", borderRadius: 8 }}>
-                              <strong>Session {session.sessionNumber}</strong>
-                              <div>{session.date || "Date pending"} · {session.time || "Time pending"}</div>
-                              <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
-                                <button type="button" className="secondary-button" style={{padding:"8px 14px",borderRadius:10}} disabled={followupNotesSaving}
-                                  onClick={() => {setFollowupNotesMode("view");setActiveFollowupSessionId(session.id);}}>View</button>
-                                <button type="button" className="primary-button" style={{padding:"8px 14px",borderRadius:10}} disabled={followupNotesSaving || caseSessionsLoading || Boolean(caseSessionsError) || Number(session.sessionNumber) !== latestFollowupNumber || requestIsReadOnly(selected)}
-                                  title={Number(session.sessionNumber) !== latestFollowupNumber ? "Previous session is locked" : "Edit latest session"}
-                                  onClick={() => {setFollowupNotesMode("edit");setActiveFollowupSessionId(session.id);}}>Edit</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ marginTop: 8 }}>No separate follow-up sessions recorded yet. The original consultation is retained above.</p>
-                      )}
-                    </div>
-                  )}
-
                   <div className="review-request-detail-item full">
 
                     <span>
@@ -15640,6 +15689,10 @@ function CounselingRequestsManagement() {
                     </strong>
 
                   </div>
+
+
+
+
 
                 </div>
 
@@ -15690,7 +15743,7 @@ function CounselingRequestsManagement() {
                   <select
 
                     value={
-                      statusDraft
+                      statusDraft || normalizeCounselingRequestStatus(selected?.status) || ""
                     }
 
                     disabled={
@@ -15713,6 +15766,14 @@ function CounselingRequestsManagement() {
 
                   >
                     <option value="" disabled>Select status</option>
+                    {normalizeCounselingRequestStatus(selected?.status) &&
+                      !["Scheduled for counseling", "Rescheduled", "Follow-up Counseling", "For referral", "Terminated"].includes(
+                        normalizeCounselingRequestStatus(selected?.status)
+                      ) && (
+                        <option value={normalizeCounselingRequestStatus(selected?.status)}>
+                          {normalizeCounselingRequestStatus(selected?.status)}
+                        </option>
+                      )}
 
                     <option>
                       Scheduled for counseling
@@ -16058,7 +16119,14 @@ function CounselingRequestsManagement() {
               )}
 
 
-              <div className="review-request-workflow-footer">
+                </>
+              )}
+
+              {caseSessions.length > 0 && user.role === "counselor" && !showInitialSessionDetails ? (
+                <div className="mindtrack-overview-actions">
+                  <button type="button" className="secondary-button" onClick={closeRequestReview}>Close</button>
+                </div>
+              ) : <div className="review-request-workflow-footer">
 
                 {canRequestTransfer(
                   selected
@@ -16197,7 +16265,10 @@ function CounselingRequestsManagement() {
                     type="button"
                     className="primary-button"
                     disabled={reviewEditing || saving || privateNotesLoading || originalSessionLocked || caseSessionsLoading || Boolean(caseSessionsError) || requestIsReadOnly(selected)}
-                    onClick={() => setReviewEditing(true)}
+                    onClick={() => {
+                      setStatusDraft(normalizeCounselingRequestStatus(selected?.status) || "");
+                      setReviewEditing(true);
+                    }}
                   >
                     Edit
                   </button>
@@ -16219,7 +16290,7 @@ function CounselingRequestsManagement() {
                   </button>
                 </div>
 
-              </div>
+              </div>}
 
             </div>
 
@@ -16239,21 +16310,19 @@ function CounselingRequestsManagement() {
                       {caseSessions.find(item=>item.id===activeFollowupSessionId)?.date} · {caseSessions.find(item=>item.id===activeFollowupSessionId)?.time}
                     </p>
                   </div>
-                  <button type="button" className="secondary-button" style={{borderRadius:10,padding:"9px 15px"}} onClick={() => {
-                    if ((followupNotesDirty || followupRemarksDirty || followupStatusDirty) && !window.confirm("Discard unsaved session changes?")) return;
-                    setActiveFollowupSessionId("");
-                  }} disabled={followupNotesSaving}>Close</button>
+
                 </div>
                 <div style={{display:"flex",gap:8,marginBottom:16}}>
                   <button type="button" className={followupNotesMode === "view" ? "primary-button" : "secondary-button"} style={{borderRadius:10,padding:"9px 16px"}} onClick={()=>setFollowupNotesMode("view")} disabled={followupNotesSaving}>View Notes</button>
-                  <button type="button" className={followupNotesMode === "edit" ? "primary-button" : "secondary-button"} style={{borderRadius:10,padding:"9px 16px"}} onClick={()=>setFollowupNotesMode("edit")} disabled={followupNotesSaving || !activeFollowupIsLatest || caseSessionsLoading || Boolean(caseSessionsError) || requestIsReadOnly(selected)}>Edit Session</button>
+                  <button type="button" className={followupNotesMode === "edit" ? "primary-button" : "secondary-button"} style={{borderRadius:10,padding:"9px 16px"}} onClick={()=>setFollowupNotesMode("edit")} disabled={followupNotesSaving || !activeFollowupIsLatest || caseSessionsLoading || Boolean(caseSessionsError) || activeFollowupTerminated || requestIsReadOnly(selected)}>Edit Session</button>
                 </div>
+                {activeFollowupTerminated && <p role="status" style={{background:"#f1f5f9",padding:10,borderRadius:8}}>Terminated session — status, remarks and private notes are read-only.</p>}
                 {!activeFollowupIsLatest && <p role="status" style={{background:"#f1f5f9",padding:10,borderRadius:8}}>Previous session — read-only. Only the latest counseling session can be edited.</p>}
                 {followupNotesLoading ? <p>Loading session notes...</p> : (
                   <div style={{display:"grid",gap:14}}>
                     <div style={{padding:"14px",background:"#f0f5fc",borderRadius:12,border:"1px solid #dbe6f6",display:"grid",gap:10}}>
                       <label style={{display:"grid",gap:6,fontWeight:600}}>Session Status
-                        <select value={followupStatus} disabled={followupNotesMode!=="edit" || followupNotesSaving}
+                        <select value={followupStatus} disabled={followupNotesMode!=="edit" || followupNotesSaving || activeFollowupTerminated}
                           onChange={e=>{setFollowupStatus(e.target.value);setFollowupStatusDirty(true);setFollowupNotesMessage("");}}
                           style={{padding:10,borderRadius:9,border:"1px solid #cbd5e1"}}>
                           <option value="">Select status</option>
@@ -16277,7 +16346,7 @@ function CounselingRequestsManagement() {
                     </div>
                     <label style={{display:"grid",gap:6}}>Counselor Remarks / Instructions (student-visible)
                       <textarea rows={3} maxLength={20000} value={followupRemarks}
-                        disabled={followupNotesMode!=="edit" || followupNotesSaving}
+                        disabled={followupNotesMode!=="edit" || followupNotesSaving || activeFollowupTerminated}
                         onChange={e=>{setFollowupRemarks(e.target.value);setFollowupRemarksDirty(true);setFollowupNotesMessage("");}} />
                     </label>
                     <h3 style={{margin:"8px 0 0"}}>Private Counseling Notes</h3>
@@ -16286,16 +16355,22 @@ function CounselingRequestsManagement() {
                       ["observation","Counselor Observation"],["recommendations","Recommendations"]].map(([key,label])=>(
                       <label key={key} style={{display:"grid",gap:6}}>{label}
                         <textarea rows={3} maxLength={20000} value={followupNotes[key]}
-                          disabled={followupNotesMode!=="edit" || followupNotesSaving}
+                          disabled={followupNotesMode!=="edit" || followupNotesSaving || activeFollowupTerminated}
                           onChange={e=>{setFollowupNotes(v=>({...v,[key]:e.target.value}));setFollowupNotesDirty(true);setFollowupNotesMessage("");}} />
                       </label>
                     ))}
                     {followupNotesError && <p role="alert" style={{color:"#b42318"}}>{followupNotesError}</p>}
                     {followupNotesMessage && <p role="status">{followupNotesMessage}</p>}
-                    {followupNotesMode==="edit" && <button type="button" className="primary-button" style={{padding:"11px 18px",borderRadius:10}} onClick={saveFollowupNotes}
-                      disabled={followupNotesSaving || followupNotesLoading || (!followupNotesDirty && !followupRemarksDirty && !followupStatusDirty)}>
-                      {followupNotesSaving ? "Saving..." : "Save Session Changes"}
-                    </button>}
+                    <div style={{display:"flex",justifyContent:"flex-end",gap:10,flexWrap:"wrap",marginTop:6}}>
+                      <button type="button" className="secondary-button" style={{padding:"10px 20px",borderRadius:10}} disabled={followupNotesSaving} onClick={() => {
+                        if ((followupNotesDirty || followupRemarksDirty || followupStatusDirty) && !window.confirm("Discard unsaved session changes?")) return;
+                        setActiveFollowupSessionId("");
+                      }}>Close</button>
+                      {followupNotesMode==="edit" && !activeFollowupTerminated && <button type="button" className="primary-button" style={{padding:"10px 20px",borderRadius:10}} onClick={saveFollowupNotes}
+                        disabled={followupNotesSaving || followupNotesLoading || (!followupNotesDirty && !followupRemarksDirty && !followupStatusDirty)}>
+                        {followupNotesSaving ? "Saving..." : "Save"}
+                      </button>}
+                    </div>
                   </div>
                 )}
               </section>

@@ -777,13 +777,7 @@ export default function Register() {
       return;
     }
 
-    const choosesPreferredCounselor =
-      [
-        "teaching",
-        "non_teaching"
-      ].includes(
-        form.role
-      );
+    const choosesPreferredCounselor = false;
 
 
     let registrationDepartment =
@@ -923,98 +917,6 @@ export default function Register() {
         return;
       }
 
-    } else if (
-      choosesPreferredCounselor
-    ) {
-
-      if (
-        counselorDirectoryRows.loading
-      ) {
-
-        setError(
-          "Please wait while the counselor list is loading."
-        );
-
-        return;
-      }
-
-
-      if (
-        counselorDirectoryRows.error
-      ) {
-
-        setError(
-          "Unable to load the Guidance Counselor list. Please refresh the page or contact the Super Admin."
-        );
-
-        return;
-      }
-
-
-      if (
-        !form.preferredCounselorId ||
-        !selectedRegistrationCounselor
-      ) {
-
-        setError(
-          "Please select your preferred Guidance Counselor."
-        );
-
-        return;
-      }
-
-
-      if (
-        selectedRegistrationCounselor.active !==
-        true
-      ) {
-
-        setError(
-          "The selected Guidance Counselor is not currently available. Please select another counselor."
-        );
-
-        return;
-      }
-
-
-      selectedCounselorId =
-        String(
-          selectedRegistrationCounselor.counselorId ||
-          selectedRegistrationCounselor.id ||
-          ""
-        ).trim();
-
-
-      selectedCounselorName =
-        String(
-          selectedRegistrationCounselor.name ||
-          ""
-        ).trim();
-
-
-      selectedCounselorDepartment =
-        String(
-          selectedRegistrationCounselor.department ||
-          ""
-        ).trim();
-
-
-      if (
-        !selectedCounselorId ||
-        !selectedCounselorName ||
-        !selectedCounselorDepartment
-      ) {
-
-        setError(
-          "The selected Guidance Counselor does not have a valid counselor-directory record."
-        );
-
-        return;
-      }
-
-
-      registrationDepartment =
-        selectedCounselorDepartment;
     }
 
 
@@ -1063,30 +965,13 @@ export default function Register() {
       return;
     }
 
-    if (!form.contactPersonName.trim()) {
-      setError(
-        "Please enter your contact person's name."
-      );
-      return;
+    if (form.role === "student") {
+      if (!form.contactPersonName.trim()) { setError("Please enter your contact person's name."); return; }
+      if (!normalizePhilippineMobile(form.contactPersonPhone)) { setError(PH_MOBILE_FORMAT_ERROR); return; }
+      if (areSamePhilippineMobileNumbers(form.phoneNumber, form.contactPersonPhone)) {
+        setError("Your emergency contact number must be different from your personal phone number."); return;
+      }
     }
-
-    if (!form.contactPersonPhone.trim()) {
-      setError(
-        "Please enter your contact person's phone number."
-      );
-      return;
-    }
-
-    if (!normalizePhilippineMobile(form.contactPersonPhone)) {
-      setError(PH_MOBILE_FORMAT_ERROR);
-      return;
-    }
-
-    if (areSamePhilippineMobileNumbers(form.phoneNumber, form.contactPersonPhone)) {
-      setError("Your emergency contact number must be different from your personal phone number.");
-      return;
-    }
-
     if (!form.regionCode) {
       setError(
         "Please select your region."
@@ -1212,9 +1097,9 @@ export default function Register() {
         facebookAccount:
           form.facebookAccount,
         contactPersonName:
-          form.contactPersonName,
+          form.role === "student" ? form.contactPersonName : "",
         contactPersonPhone:
-          form.contactPersonPhone,
+          form.role === "student" ? form.contactPersonPhone : "",
         privacyConsent: { accepted: privacyAccepted, version: PRIVACY_NOTICE_VERSION }
       });
 
@@ -1575,142 +1460,6 @@ export default function Register() {
                 </label>
 
               )}
-
-
-              {
-                [
-                  "teaching",
-                  "non_teaching"
-                ].includes(
-                  form.role
-                ) && (
-
-                  <label>
-                    Preferred Guidance Counselor
-                    <span
-                      className="required-asterisk"
-                      aria-hidden="true"
-                    >
-                      *
-                    </span>
-
-                    <select
-                      name="preferredCounselorId"
-                      value={
-                        form.preferredCounselorId
-                      }
-                      onChange={
-                        change
-                      }
-                      disabled={
-                        counselorDirectoryRows.loading
-                      }
-                      required
-                    >
-
-                      <option
-                        value=""
-                        disabled
-                      >
-                        {
-                          counselorDirectoryRows.loading
-                            ? "Loading counselors..."
-                            : "Select preferred counselor"
-                        }
-                      </option>
-
-                      {
-                        activeRegistrationCounselors.map(
-                          counselor => {
-
-                            const counselorId =
-                              String(
-                                counselor.counselorId ||
-                                counselor.id
-                              );
-
-
-                            return (
-
-                              <option
-                                key={
-                                  counselorId
-                                }
-                                value={
-                                  counselorId
-                                }
-                              >
-                                {
-                                  counselor.name
-                                }
-                                {" — "}
-                                {
-                                  counselor.department
-                                }
-                              </option>
-
-                            );
-                          }
-                        )
-                      }
-
-                    </select>
-
-
-                    {
-                      selectedRegistrationCounselor &&
-                      (
-
-                        <span
-                          className="optional-text"
-                          style={{
-                            display:
-                              "block",
-
-                            marginTop:
-                              "6px"
-                          }}
-                        >
-                          College / Office:
-                          {" "}
-                          {
-                            selectedRegistrationCounselor.department
-                          }
-                        </span>
-
-                      )
-                    }
-
-
-                    {
-                      counselorDirectoryRows.error &&
-                      (
-
-                        <span
-                          style={{
-                            display:
-                              "block",
-
-                            marginTop:
-                              "6px",
-
-                            color:
-                              "#b91c1c",
-
-                            fontSize:
-                              "0.82rem"
-                          }}
-                        >
-                          Unable to load available counselors.
-                        </span>
-
-                      )
-                    }
-
-                  </label>
-
-                )
-              }
 
 
               {form.role === "student" && (
@@ -2152,6 +1901,7 @@ export default function Register() {
           </section>
 
 
+          {form.role === "student" && (
           <section className="registration-section mt-reg-section" id="mt-reg-emergency">
             <div className="mt-reg-section-head">
               <div>
@@ -2218,6 +1968,7 @@ export default function Register() {
           </section>
 
 
+          )}
           <section className="registration-section mt-reg-section" id="mt-reg-security">
             <div className="mt-reg-section-head">
               <div>

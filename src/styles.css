@@ -8862,3 +8862,91 @@ th {
 .admin-user-profile-actions .admin-user-profile-delete-action {
   color: #b42318;
 }
+
+/* Counseling case: compact, session-first overview */
+.review-request-modal:has(.mindtrack-session-overview) {
+  height: auto;
+  max-height: min(90vh, 850px);
+  width: min(980px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+}
+.review-request-modal .mindtrack-session-overview {
+  height: auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+.mindtrack-session-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 2px;
+}
+.mindtrack-session-intro strong {font-size: 19px;color:#172b4d}
+.mindtrack-session-intro p {margin: 5px 0 0;color:#64748b;font-size:13px}
+.mindtrack-session-intro > span {
+  background:#e8f0ff;color:#1c4d89;padding:7px 12px;
+  border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;
+}
+.review-request-modal-card.mindtrack-session-history {padding:20px;border-radius:14px}
+.mindtrack-session-history-header {display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.mindtrack-session-history-header > strong {font-size:16px}
+.mindtrack-followup-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.mindtrack-session-card {border:1px solid #dce5f1;border-radius:12px;background:#f8fbff;padding:16px;min-width:0}
+.mindtrack-session-card-top {display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.mindtrack-session-card-top strong {color:#172b4d;font-size:14px}
+.mindtrack-session-card-top span {background:#e7edf8;color:#31517a;padding:5px 9px;border-radius:999px;font-size:11px;white-space:nowrap}
+.mindtrack-session-card .secondary-button,.mindtrack-session-card .primary-button {font-size:12px}
+.mindtrack-overview-actions {display:flex;justify-content:flex-end;padding:0 2px 2px}
+@media (max-width:700px) {
+ .review-request-modal .mindtrack-session-overview {padding:14px}
+ .mindtrack-followup-grid {grid-template-columns:1fr}
+ .mindtrack-session-history-header {align-items:flex-start;flex-wrap:wrap}
+ .mindtrack-session-card-top {flex-wrap:wrap}
+}
+
+/* Keep the overview Close action pinned to the right edge of the modal. */
+.review-request-modal .mindtrack-session-overview > .mindtrack-overview-actions {
+  display: flex;
+  flex: 0 0 auto;
+  width: 100%;
+  align-self: stretch;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  margin-left: auto;
+  padding: 0 2px 2px;
+}
+
+/* Stretch the overview content to use the full available modal width. */
+.review-request-modal .mindtrack-session-overview {
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+}
+.review-request-modal .mindtrack-session-overview > .mindtrack-session-intro,
+.review-request-modal .mindtrack-session-overview > .mindtrack-session-history {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+  align-self: stretch;
+  flex: 0 0 auto;
+}
+.review-request-modal .mindtrack-session-overview .mindtrack-session-history > .mindtrack-session-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+.review-request-modal .mindtrack-session-overview .mindtrack-followup-grid {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  box-sizing: border-box;
+}
+.review-request-modal .mindtrack-session-overview .mindtrack-followup-grid > .mindtrack-session-card {
+  width: 100%;
+  box-sizing: border-box;
+}
