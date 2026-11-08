@@ -314,9 +314,8 @@ export default function CounselorTransfers() {
                   <textarea id="transfer-reason" rows={3} minLength={3} maxLength={1000} required
                     value={transferReason} onChange={event => setTransferReason(event.target.value)}
                     disabled={transferSubmitting}
-                    placeholder="Example: Requesting a counselor reassignment due to scheduling availability." />
+                    placeholder="Please provide a brief explanation for the transfer request." />
                   <div className="mt-transfer-field-help">
-                    <small>Do not include confidential assessment scores or screening answers.</small>
                     <small>{transferReason.length}/1000</small>
                   </div>
                 </div>

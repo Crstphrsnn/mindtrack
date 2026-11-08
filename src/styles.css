@@ -8950,3 +8950,108 @@ th {
   width: 100%;
   box-sizing: border-box;
 }
+
+
+/* Read-only counseling history notes, grouped by the individual session. */
+.mindtrack-history-notes-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+.mindtrack-history-notes-panel h4 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: #1d3556;
+}
+.mindtrack-history-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.mindtrack-history-note-field {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e0e8f2;
+  border-radius: 10px;
+  background: #fff;
+}
+.mindtrack-history-note-field span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #506581;
+  margin-bottom: 8px;
+}
+.mindtrack-history-note-field p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+  color: #24344c;
+}
+@media (max-width: 680px) {
+  .mindtrack-history-notes-grid { grid-template-columns: 1fr; }
+}
+
+/* Full-width information card in Previous Counseling Requests history modal. */
+.counseling-session-history-modal-body > .counseling-session-history-summary {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.counseling-session-history-modal-body > .counseling-session-history-summary .referral-review-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .counseling-session-history-modal-body > .counseling-session-history-summary .referral-review-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .counseling-session-history-modal-body > .counseling-session-history-summary .referral-review-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Keep the counseling history toggle beside the student name, not beside the expanded request list. */
+.counseling-request-user-card {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.counseling-request-user-card > button[aria-expanded] {
+  margin-left: auto;
+  align-self: center;
+}
+.counseling-request-user-card > div[style*="flex-basis"] {
+  flex: 0 0 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+@media (max-width: 560px) {
+  .counseling-request-user-card { flex-wrap: wrap; }
+  .counseling-request-user-card > button[aria-expanded] { margin-left: 0; }
+}
+
+/* Separate, full-screen counseling history view */
+.mindtrack-history-screen-backdrop{position:fixed;inset:0;z-index:900;background:#eaf2fc;overflow-y:auto}
+.mindtrack-history-screen{max-width:1200px;margin:0 auto;min-height:100vh;padding:28px 28px 60px;box-sizing:border-box}
+.mindtrack-history-screen-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:24px 28px;background:#fff;border:1px solid #dbe4f1;border-radius:16px;margin-bottom:20px}
+.mindtrack-history-screen-header h2{margin:5px 0 6px;color:#17243c}
+.mindtrack-history-screen-header p{margin:0;color:#65738c}
+.mindtrack-history-eyebrow{font-size:12px;font-weight:800;letter-spacing:.07em;color:#174b83}
+.mindtrack-history-screen-body{background:#fff;border:1px solid #dbe4f1;border-radius:16px;padding:24px 28px}
+.mindtrack-history-screen-count{font-weight:700;margin-bottom:16px;color:#324866}
+.mindtrack-history-screen-request{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #dbe4f1;border-radius:12px;padding:18px;margin-bottom:12px;background:#f8fbff}
+.mindtrack-history-screen-request p{margin:6px 0 0;color:#63738d;font-size:13px}
+@media(max-width:650px){.mindtrack-history-screen{padding:12px}.mindtrack-history-screen-header,.mindtrack-history-screen-request{flex-direction:column;align-items:stretch}.mindtrack-history-screen-header,.mindtrack-history-screen-body{padding:18px}}
+
+/* Counseling history is a centered popup, not a routed page. */
+.mindtrack-history-screen-backdrop { background:rgba(11,23,50,.58)!important; display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; }
+.mindtrack-history-screen { min-height:0!important; max-height:90vh; overflow-y:auto; width:min(1100px,100%); margin:0; border-radius:18px; background:#f2f7fd; }
+@media(max-width:640px){.mindtrack-history-screen-backdrop{padding:10px}.mindtrack-history-screen{max-height:95vh;padding:12px!important}.mindtrack-history-screen-header,.mindtrack-history-screen-body{padding:16px!important}}

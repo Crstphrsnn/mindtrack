@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { getMindTrackProfileBundle } from "../services/profileService";
+import { listCaseSessions, getSessionPrivateNotes } from "../services/sessionService";
 
 import {
   dass21Choices,
@@ -445,6 +446,14 @@ export default function UserProfileFullScreen({
   } = useMindTrackProfileBundle(profile);
 
   const [selectedHistorySessionId, setSelectedHistorySessionId] = useState("");
+  const [historySessions, setHistorySessions] = useState([]);
+  const [historySessionsLoading, setHistorySessionsLoading] = useState(false);
+  const [historySessionsError, setHistorySessionsError] = useState("");
+  const [selectedHistoryFollowupId, setSelectedHistoryFollowupId] = useState("");
+  const [historyFollowupNotes, setHistoryFollowupNotes] = useState(null);
+  const [historyFollowupNotesLoading, setHistoryFollowupNotesLoading] = useState(false);
+  const [historyFollowupNotesError, setHistoryFollowupNotesError] = useState("");
+
   const [selectedAssessmentHistoryId, setSelectedAssessmentHistoryId] = useState("");
   const [profileTransferTargetId, setProfileTransferTargetId] = useState("");
   const [caseHistoryDraft, setCaseHistoryDraft] = useState("");
@@ -950,51 +959,8 @@ export default function UserProfileFullScreen({
               ) ===
               "Terminated"
           )
-          .sort(
-            (
-              first,
-              second
-            ) => {
-
-              const firstSessionNumber =
-                Number(
-                  first.sessionNumber ||
-                  0
-                ) ||
-                0;
-
-
-              const secondSessionNumber =
-                Number(
-                  second.sessionNumber ||
-                  0
-                ) ||
-                0;
-
-
-              if (
-                firstSessionNumber &&
-                secondSessionNumber &&
-                firstSessionNumber !==
-                  secondSessionNumber
-              ) {
-
-                return (
-                  secondSessionNumber -
-                  firstSessionNumber
-                );
-              }
-
-
-              return (
-                consultationSortValue(
-                  second
-                ) -
-                consultationSortValue(
-                  first
-                )
-              );
-            }
+          .sort((first, second) =>
+            consultationSortValue(second) - consultationSortValue(first)
           ),
       [
         consultations
@@ -1157,6 +1123,38 @@ export default function UserProfileFullScreen({
     ) ||
     null;
 
+
+  // Load follow-ups only for the selected request, never by student name.
+  useEffect(() => {
+    let active = true;
+    setHistorySessions([]);
+    setHistorySessionsError("");
+    setSelectedHistoryFollowupId("");
+    if (!selectedHistorySessionId) { setHistorySessionsLoading(false); return () => { active = false; }; }
+    setHistorySessionsLoading(true);
+    listCaseSessions(selectedHistorySessionId)
+      .then(rows => { if (active) setHistorySessions(Array.isArray(rows) ? rows : []); })
+      .catch(error => { if (active) setHistorySessionsError(error?.message || "Unable to load counseling sessions."); })
+      .finally(() => { if (active) setHistorySessionsLoading(false); });
+    return () => { active = false; };
+  }, [selectedHistorySessionId]);
+
+  useEffect(() => {
+    let active = true;
+    setHistoryFollowupNotes(null);
+    setHistoryFollowupNotesError("");
+    if (!selectedHistoryFollowupId) { setHistoryFollowupNotesLoading(false); return () => { active = false; }; }
+    setHistoryFollowupNotesLoading(true);
+    getSessionPrivateNotes(selectedHistoryFollowupId)
+      .then(notes => { if (active) setHistoryFollowupNotes(notes || {}); })
+      .catch(error => { if (active) setHistoryFollowupNotesError(error?.message || "Unable to load private notes."); })
+      .finally(() => { if (active) setHistoryFollowupNotesLoading(false); });
+    return () => { active = false; };
+  }, [selectedHistoryFollowupId]);
+
+  const selectedHistoryRequestNumber = selectedHistorySession
+    ? terminatedSessions.length - terminatedSessions.findIndex(row => row.id === selectedHistorySession.id)
+    : null;
 
   const selectedHistoryNote =
     selectedHistorySession
@@ -1963,11 +1961,11 @@ export default function UserProfileFullScreen({
               <div>
 
                 <h3>
-                  Counseling Request History
+                  Previous Counseling Requests
                 </h3>
 
                 <p>
-                  Terminated counseling sessions are shown from most recent to oldest. Select a session number to view that session's private counseling notes.
+                  Completed counseling requests are shown from most recent to oldest. Select a request to view its concern and saved counseling records.
                 </p>
 
               </div>
@@ -1984,7 +1982,7 @@ export default function UserProfileFullScreen({
               ? (
 
                 <div className="user-profile-empty">
-                  No terminated counseling sessions yet.
+                  No previous terminated counseling requests yet.
                 </div>
 
               )
@@ -2001,15 +1999,7 @@ export default function UserProfileFullScreen({
                         index
                       ) => {
 
-                        const sessionNumber =
-                          Number(
-                            row.sessionNumber ||
-                            0
-                          ) ||
-                          (
-                            terminatedSessions.length -
-                            index
-                          );
+                        const requestNumber = terminatedSessions.length - index;
 
 
                         return (
@@ -2032,9 +2022,9 @@ export default function UserProfileFullScreen({
                                 )
                             }
                           >
-                            Session
+                            Request
                             {" "}
-                            {sessionNumber}
+                            {requestNumber}
                           </button>
 
                         );
@@ -2054,176 +2044,7 @@ export default function UserProfileFullScreen({
           </section>
 
 
-          <section className="user-profile-modal-card counseling-notes-card">
 
-            {sessionNotesError && (
-              <div className="error-box">
-                {sessionNotesError}
-              </div>
-            )}
-
-
-            <div className="user-profile-section-title">
-
-              <div>
-
-                <h3>
-                  Counselor Notes
-                </h3>
-
-                <p>
-                  These notes come from the user's most recent counseling session with saved private notes. Use Counseling Request History above to open notes from earlier terminated sessions.
-                </p>
-
-              </div>
-
-              <FileText
-                size={24}
-              />
-
-            </div>
-
-
-            {notesLoading
-
-              ? (
-
-                <div className="user-profile-empty">
-                  Loading counselor notes...
-                </div>
-
-              )
-
-              : !latestSessionNote
-
-                ? (
-
-                  <div className="user-profile-empty">
-                    No private counseling notes are available from a completed counseling session yet.
-                  </div>
-
-                )
-
-                : (
-
-                  <>
-
-                    <div className="profile-recent-session-note-banner">
-
-                      <strong>
-                        Most recent counseling session
-                      </strong>
-
-                      <span>
-                        Session
-                        {" "}
-                        {
-                          latestSessionForNote
-                            ?.sessionNumber ||
-                          "—"
-                        }
-                      </span>
-
-                    </div>
-
-
-                    <div className="counselor-notes-grid">
-
-                      <label className="counselor-note-field">
-                        <span>
-                          Case History
-                        </span>
-
-                        <textarea
-                          rows="6"
-                          value={
-                            caseHistoryDraft
-                          }
-                          readOnly
-                        />
-                      </label>
-
-
-                      <label className="counselor-note-field">
-                        <span>
-                          Summary of Counseling Session
-                        </span>
-
-                        <textarea
-                          rows="6"
-                          value={
-                            sessionSummaryDraft
-                          }
-                          readOnly
-                        />
-                      </label>
-
-
-                      <label className="counselor-note-field">
-                        <span>
-                          Counselor's Observation
-                        </span>
-
-                        <textarea
-                          rows="6"
-                          value={
-                            observationDraft
-                          }
-                          readOnly
-                        />
-                      </label>
-
-
-                      <label className="counselor-note-field">
-                        <span>
-                          Recommended Actions
-                        </span>
-
-                        <textarea
-                          rows="6"
-                          value={
-                            recommendationsDraft
-                          }
-                          readOnly
-                        />
-                      </label>
-
-                    </div>
-
-
-                    <div className="counseling-notes-meta">
-
-                      <span>
-                        Last documented by:
-                        {" "}
-                        <strong>
-                          {
-                            latestSessionNote.updatedByName ||
-                            assignedCounselorLabel
-                          }
-                        </strong>
-                      </span>
-
-                      <span>
-                        Last updated:
-                        {" "}
-                        <strong>
-                          {
-                            formatTimestamp(
-                              latestSessionNote.updatedAt
-                            )
-                          }
-                        </strong>
-                      </span>
-
-                    </div>
-
-                  </>
-
-                )
-            }
-
-          </section>
 
         </div>
 
@@ -2255,10 +2076,7 @@ export default function UserProfileFullScreen({
             role="dialog"
             aria-modal="true"
             aria-label={
-              `Counseling notes for session ${
-                selectedHistorySession.sessionNumber ||
-                "—"
-              }`
+              `Counseling request ${selectedHistoryRequestNumber}`
             }
           >
 
@@ -2267,18 +2085,13 @@ export default function UserProfileFullScreen({
               <div>
 
                 <p className="review-request-modal-eyebrow">
-                  Counseling Request History
+                  Previous Counseling Requests
                 </p>
 
                 <div className="review-request-modal-title-row">
 
                   <h2>
-                    Session
-                    {" "}
-                    {
-                      selectedHistorySession.sessionNumber ||
-                      "—"
-                    }
+                    Request {selectedHistoryRequestNumber}
                   </h2>
 
                   <span className="status">
@@ -2322,22 +2135,15 @@ export default function UserProfileFullScreen({
               <section className="review-request-modal-card counseling-session-history-summary">
 
                 <h3>
-                  Session Information
+                  Counseling Request Information
                 </h3>
 
 
                 <div className="referral-review-summary-grid">
 
                   <div className="review-request-detail-item">
-                    <span>Session</span>
-                    <strong>
-                      Session
-                      {" "}
-                      {
-                        selectedHistorySession.sessionNumber ||
-                        "—"
-                      }
-                    </strong>
+                    <span>Request</span>
+                    <strong>Request {selectedHistoryRequestNumber}</strong>
                   </div>
 
                   <div className="review-request-detail-item">
@@ -2397,84 +2203,72 @@ export default function UserProfileFullScreen({
               </section>
 
 
-              <section className="review-request-modal-card counseling-session-history-notes">
-
-                <h3>
-                  Private Counseling Notes
-                </h3>
-
-
-                {selectedHistoryNote
-
-                  ? (
-
-                    <div className="profile-session-note-grid counseling-session-fullscreen-grid">
-
-                      <div className="profile-session-note-field">
-                        <span>
-                          Case History
-                        </span>
-                        <p>
-                          {
-                            selectedHistoryNote.caseHistory ||
-                            "No case history recorded for this session."
-                          }
-                        </p>
+              <section className="review-request-modal-card" style={{gridColumn:"1 / -1"}}>
+                <h3>Counseling Session History</h3>
+                <p style={{color:"#667085",marginBottom:12}}>Session 1 is the initial meeting. Sessions 2 onward are follow-up meetings for this request only. Historical records are read-only.</p>
+                {historySessionsLoading && <p>Loading sessions...</p>}
+                {historySessionsError && <p role="alert" style={{color:"#b42318"}}>{historySessionsError}</p>}
+                <div style={{display:"grid",gap:10}}>
+                  <div style={{border:"1px solid #d8e2ef",borderRadius:12,padding:14}}>
+                    <strong>Session 1 — Initial Counseling</strong>
+                    <p>{formatDate(selectedHistorySession.date)} · {selectedHistorySession.time || "Time not provided"}</p>
+                    <p>Status: {selectedHistorySession.status || "Not provided"}</p>
+                    <p>Counselor remarks: {selectedHistorySession.counselorRemarks || "No remarks saved."}</p>
+                    {selectedHistoryNote && (
+                      <div className="mindtrack-history-notes-panel">
+                        <h4>Session 1 — Private Counseling Notes</h4>
+                        <div className="mindtrack-history-notes-grid">
+                          {[
+                            ["Case History", selectedHistoryNote.caseHistory],
+                            ["Session Summary", selectedHistoryNote.counselingSessionSummary],
+                            ["Counselor Observation", selectedHistoryNote.counselorObservation],
+                            ["Recommendations", selectedHistoryNote.recommendedActions]
+                          ].map(([label, value]) => (
+                            <div className="mindtrack-history-note-field" key={label}>
+                              <span>{label}</span>
+                              <p>{value || "No notes saved."}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-
-
-                      <div className="profile-session-note-field">
-                        <span>
-                          Summary of Counseling Session
-                        </span>
-                        <p>
-                          {
-                            selectedHistoryNote.counselingSessionSummary ||
-                            "No counseling session summary recorded."
-                          }
-                        </p>
-                      </div>
-
-
-                      <div className="profile-session-note-field">
-                        <span>
-                          Counselor's Observation
-                        </span>
-                        <p>
-                          {
-                            selectedHistoryNote.counselorObservation ||
-                            "No counselor observation recorded."
-                          }
-                        </p>
-                      </div>
-
-
-                      <div className="profile-session-note-field">
-                        <span>
-                          Recommended Actions
-                        </span>
-                        <p>
-                          {
-                            selectedHistoryNote.recommendedActions ||
-                            "No recommended actions recorded."
-                          }
-                        </p>
-                      </div>
-
+                    )}
+                  </div>
+                  {[...historySessions].sort((a,b)=>Number(a.sessionNumber)-Number(b.sessionNumber)).map(session => (
+                    <div key={session.id} style={{border:"1px solid #d8e2ef",borderRadius:12,padding:14}}>
+                      <strong>Session {session.sessionNumber} — Follow-up Counseling</strong>
+                      <p>{formatDate(session.scheduledDate || session.date)} · {session.scheduledTime || session.time || "Time not provided"}</p>
+                      <p>Status: {session.status || "Not provided"}</p>
+                      <p>Counselor remarks: {session.counselorRemarks || "No remarks saved."}</p>
+                      <button type="button" className="secondary-button" onClick={() => setSelectedHistoryFollowupId(old => old === session.id ? "" : session.id)}>
+                        {selectedHistoryFollowupId === session.id ? "Hide session notes" : "View session notes"}
+                      </button>
+                      {selectedHistoryFollowupId === session.id && (
+                        <div className="mindtrack-history-notes-panel">
+                          <h4>Private Counseling Notes</h4>
+                          {historyFollowupNotesLoading && <p>Loading private notes...</p>}
+                          {historyFollowupNotesError && <p role="alert" style={{color:"#b42318"}}>{historyFollowupNotesError}</p>}
+                          {historyFollowupNotes && (
+                            <div className="mindtrack-history-notes-grid">
+                              {[
+                                ["Case History", historyFollowupNotes.caseHistory],
+                                ["Session Summary", historyFollowupNotes.sessionSummary],
+                                ["Counselor Observation", historyFollowupNotes.observation],
+                                ["Recommendations", historyFollowupNotes.recommendations]
+                              ].map(([label,value]) => (
+                                <div className="mindtrack-history-note-field" key={label}>
+                                  <span>{label}</span>
+                                  <p>{value || "No notes saved."}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-
-                  )
-
-                  : (
-
-                    <div className="user-profile-empty">
-                      No private counseling notes were saved for this session.
-                    </div>
-
-                  )
-                }
-
+                  ))}
+                </div>
               </section>
+
 
             </div>
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import PrivacyNotice from "./pages/auth/PrivacyNotice";
@@ -1656,30 +1657,6 @@ function Assessment() {
         </h1>
 
 
-        <div
-          className={
-            `${priorityClassName(
-              saved.priority
-            )} big`
-          }
-        >
-          {saved.priority}
-          {" "}
-          monitoring severity
-        </div>
-
-
-        <div className="notice">
-
-          Your assessment was submitted successfully.
-          Individual WHO-5, PHQ-9, GAD-7, and DASS-21 scores
-          are intentionally not displayed on this page.
-          The detailed item-level screening answers are shown
-          only to the assigned Guidance Counselor for review.
-
-        </div>
-
-
         <section className="notice assessment-submission-next-steps" aria-label="What happens after submission">
           <strong>What happens next?</strong>
           <ol>
@@ -1689,23 +1666,6 @@ function Assessment() {
           </ol>
           <button type="button" className="secondary-button" onClick={() => navigate("/monitoring")}>Open Monitoring</button>
         </section>
-
-        <p className="assessment-monitoring-recommendation">
-          {saved.recommendation}
-        </p>
-
-
-        <div className="notice">
-
-          WHO-5, PHQ-9, GAD-7, and DASS-21 are screening tools.
-          These results do not provide a medical diagnosis.
-          The monitoring severity label follows the standardized
-          severity labels in the scoring guide. WHO-5 is shown using
-          its suggested well-being cut-off because the guide does not
-          define Mild, Moderate, or Severe categories for WHO-5.
-
-        </div>
-
 
         {saved.safetyFlag && (
 
@@ -4898,10 +4858,8 @@ function Consultations() {
                         request is marked
                         {" "}
                         <strong>
-                          Terminated
+                          Terminated.
                         </strong>
-                        {" "}
-                        or is cancelled.
 
                       </div>
 
@@ -11395,6 +11353,7 @@ function Cases() {
   const location = useLocation();
   const navigate = useNavigate();
   const [assessmentResultsOnly, setAssessmentResultsOnly] = useState(false);
+  const assessmentReturnRef = useRef(null);
 
   const { user } =
     useAuth();
@@ -11773,6 +11732,7 @@ function Cases() {
     if (!requestedOwner || assessmentRows.loading || assessmentRows.error) return;
     const matching = accountCaseRows.find(row => row.ownerId === requestedOwner);
     if (matching) {
+      assessmentReturnRef.current = location.state?.returnToCounseling || null;
       setAssessmentResultsOnly(true);
       selectAssessmentAccount(matching);
     }
@@ -11781,10 +11741,17 @@ function Cases() {
   }, [location.state?.assessmentOwnerId, assessmentRows.loading, assessmentRows.error, accountCaseRows.length]);
 
   function closeAssessmentReview() {
-
+    const returnContext = assessmentReturnRef.current;
+    assessmentReturnRef.current = null;
     setAssessmentResultsOnly(false);
     setSelected(null);
     setSelectedOwnerKey("");
+    if (returnContext?.requestId) {
+      navigate("/counseling-requests", {
+        replace: true,
+        state: { requestId: returnContext.requestId, requestNavigationKey: `assessment-return-${returnContext.requestId}` }
+      });
+    }
   }
 
 
@@ -13851,6 +13818,7 @@ function CounselingRequestsManagement() {
     );
 
 
+  const [expandedCounselingHistoryStudent, setExpandedCounselingHistoryStudent] = useState(null);
   const [
     collegeFilter,
     setCollegeFilter
@@ -14144,6 +14112,12 @@ function CounselingRequestsManagement() {
   // Session 1 is the legacy consultation, so it is locked as soon as a follow-up exists.
   const latestFollowupNumber = Math.max(0, ...caseSessions.map(item => Number(item.sessionNumber) || 0));
   const originalSessionLocked = caseSessions.length > 0;
+  // The original request can retain a legacy Pending approval status even after follow-ups.
+  // Derive the counselor-facing case label from verified session records, without changing stored history.
+  const selectedCounselingDisplayStatus = selected && caseSessions.length > 0 && !counselingRequestIsTerminal(selected.status)
+    ? (caseSessions.some(session => String(session.status || "").toLowerCase() === "terminated")
+        ? "Terminated" : "Follow-up Counseling")
+    : normalizeCounselingRequestStatus(selected?.status) || "Pending approval";
   useEffect(() => {
     if (originalSessionLocked || caseSessionsLoading || caseSessionsError) setReviewEditing(false);
   }, [originalSessionLocked, caseSessionsLoading, caseSessionsError]);
@@ -14267,7 +14241,13 @@ function CounselingRequestsManagement() {
       setFollowupRemarksDirty(false);
       setFollowupStatusDirty(false);
       setCaseSessionsRefresh(v => v + 1);
-      setFollowupNotesMessage(followupStatus === "Follow-up Counseling" ? "Next session booked. Session history refreshed." : "Session changes saved securely.");
+      if (followupStatus === "Follow-up Counseling") {
+        // The source session is historical immediately after booking; close its editor.
+        setActiveFollowupSessionId("");
+        setFollowupNotesMode("view");
+      } else {
+        setFollowupNotesMessage("Session changes saved securely.");
+      }
     } catch (err) {
       setFollowupNotesError(err?.message || "Unable to save session notes.");
     } finally { setFollowupNotesSaving(false); }
@@ -15311,70 +15291,109 @@ function CounselingRequestsManagement() {
       </section>
 
 
-      {/* A request may have a counselor decision or a session number,
-          which removes it from the action queue above. Keep the full
-          accessible history visible so counselors can still find it. */}
-      <section className="panel counseling-request-list-panel" style={{ marginTop: 20 }}>
-        <div className="counseling-request-list-heading">
-          <div>
-            <h2>All Counseling Requests</h2>
-            <p>
-              View pending, reviewed, optional, scheduled, rescheduled,
-              and terminated requests. These records remain available
-              even when they no longer need action in the queue above.
-            </p>
-          </div>
-          <span className="counselor-filter-count">
-            {filteredRequestRows.length} total
-          </span>
-        </div>
-
-        {filteredRequestRows.length === 0 ? (
-          <Empty
-            text="No counseling requests are visible for this counselor. If a student has submitted one, verify the assigned counselor in Supabase."
-          />
-        ) : (
-          <div className="counseling-request-user-grid">
-            {[...filteredRequestRows]
-              .sort(newestRecordFirst)
-              .map(row => (
-                <article
-                  className="counseling-request-user-card"
-                  key={row.id}
-                >
+      {/* Group active requests by student; keep terminated requests in separate history. */}
+      {(() => {
+        const activeRows = filteredRequestRows.filter(row => !counselingRequestIsTerminal(row.status));
+        const historicalRows = filteredRequestRows.filter(row => counselingRequestIsTerminal(row.status));
+        const byStudent = new Map();
+        [...activeRows].sort(newestRecordFirst).forEach(row => {
+          const key = row.ownerId || row.ownerName || row.id;
+          if (!byStudent.has(key)) byStudent.set(key, row);
+        });
+        return <>
+          <section className="panel counseling-request-list-panel" style={{marginTop:20}}>
+            <div className="counseling-request-list-heading">
+              <div><h2>Active Counseling Requests</h2>
+                <p>One profile per student. Open a profile to view the latest active request and its counseling sessions.</p></div>
+              <span className="counselor-filter-count">{byStudent.size} students</span>
+            </div>
+            {byStudent.size === 0 ? <Empty text="No active counseling requests." /> :
+              <div className="counseling-request-user-grid">
+                {[...byStudent.values()].map(row => <article className="counseling-request-user-card" key={row.ownerId || row.id}>
                   <div className="counseling-request-user-main">
                     <strong>{row.ownerName || "User"}</strong>
                     <div className="counseling-request-user-meta">
-                      <span>
-                        {normalizeCounselingRequestStatus(row.status) || "Pending approval"}
-                      </span>
-                      {row.category && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span>{row.category}</span>
-                        </>
-                      )}
-                      {row.date && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span>{row.date}</span>
-                        </>
-                      )}
+                      <span>{normalizeCounselingRequestStatus(row.status) || "Pending approval"}</span>
+                      {row.category && <><span aria-hidden="true">·</span><span>{row.category}</span></>}
+                      {row.date && <><span aria-hidden="true">·</span><span>{row.date}</span></>}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => selectRequest(row)}
-                  >
-                    View request
-                  </button>
-                </article>
-              ))}
-          </div>
-        )}
-      </section>
+                  <button type="button" className="secondary-button" onClick={() => selectRequest(row)}>View profile</button>
+                </article>)}
+              </div>}
+          </section>
+          <section className="panel counseling-request-list-panel" style={{marginTop:20}}>
+            <div className="counseling-request-list-heading">
+              <div><h2>Counseling History</h2>
+                <p>Terminated counseling requests remain available as historical records.</p></div>
+              <span className="counselor-filter-count">{historicalRows.length} records</span>
+            </div>
+            {historicalRows.length === 0 ? <Empty text="No terminated counseling requests." /> :
+              <div className="counseling-request-user-grid">
+                {(() => {
+                  const groups = new Map();
+                  [...historicalRows].sort(newestRecordFirst).forEach(row => {
+                    const key = row.ownerId || row.ownerName || row.id;
+                    if (!groups.has(key)) groups.set(key, { key, name: row.ownerName || "User", rows: [] });
+                    groups.get(key).rows.push(row);
+                  });
+                  return [...groups.values()].map(group => (
+                    <article className="counseling-request-user-card" key={group.key}>
+                      <div className="counseling-request-user-main">
+                        <strong>{group.name}</strong>
+                        <div className="counseling-request-user-meta">
+                          <span>{group.rows.length} terminated counseling {group.rows.length === 1 ? "request" : "requests"}</span>
+                          <span aria-hidden="true">·</span>
+                          <span>Latest: {group.rows[0]?.date || "Date unavailable"}</span>
+                        </div>
+                      </div>
+                      <button type="button" className="secondary-button"
+                        onClick={() => { setSelected(null); setExpandedCounselingHistoryStudent(group.key); }}>
+                        View history
+                      </button>
+                    </article>
+                  ));
+                })()}
+              </div>}
+          </section>
+        </>;
+      })()}
 
+      {expandedCounselingHistoryStudent != null && !selected && (() => {
+        const studentRequests = filteredRequestRows.filter(row => counselingRequestIsTerminal(row.status))
+          .filter(row => (row.ownerId || row.ownerName || row.id) === expandedCounselingHistoryStudent)
+          .sort(newestRecordFirst);
+        const studentName = studentRequests[0]?.ownerName || "Student";
+        return createPortal(
+          <div className="mindtrack-history-screen-backdrop" role="dialog" aria-modal="true" aria-label={`Counseling history for ${studentName}`} style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(11, 23, 50, 0.58)",overflowY:"auto",display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}} onMouseDown={(event) => { if (event.target === event.currentTarget) setExpandedCounselingHistoryStudent(null); }}>
+            <section className="mindtrack-history-screen" style={{width:"min(1100px, 100%)",maxHeight:"min(90vh, 900px)",overflowY:"auto",background:"#f2f7fd",borderRadius:18,padding:"20px",boxSizing:"border-box",boxShadow:"0 22px 80px rgba(0,0,0,.28)"}}>
+              <header className="mindtrack-history-screen-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:20,padding:"24px 28px",background:"#fff",border:"1px solid #dbe4f1",borderRadius:16,marginBottom:20}}>
+                <div>
+                  <span className="mindtrack-history-eyebrow">COUNSELING HISTORY</span>
+                  <h2>{studentName}</h2>
+                  <p>Previous counseling requests — latest first. Historical records are read-only.</p>
+                </div>
+                <button type="button" className="secondary-button" onClick={() => setExpandedCounselingHistoryStudent(null)}>
+                  Close History
+                </button>
+              </header>
+              <div className="mindtrack-history-screen-body" style={{background:"#fff",border:"1px solid #dbe4f1",borderRadius:16,padding:"24px 28px"}}>
+                <div className="mindtrack-history-screen-count">{studentRequests.length} previous {studentRequests.length === 1 ? "request" : "requests"}</div>
+                {studentRequests.map((row, index) => (
+                  <article key={row.id} className="mindtrack-history-screen-request" style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16,border:"1px solid #dbe4f1",borderRadius:12,padding:18,marginBottom:12,background:"#f8fbff"}}>
+                    <div>
+                      <strong>Request {studentRequests.length - index} — {row.category || "Counseling request"}</strong>
+                      <p>{row.date || "Date unavailable"} · {normalizeCounselingRequestStatus(row.status)}</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => selectRequest(row)}>View request</button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>,
+          document.body
+        );
+      })()}
 
       {selected && (
 
@@ -15435,10 +15454,7 @@ function CounselingRequestsManagement() {
 
                   <span className="status">
                     {
-                      normalizeCounselingRequestStatus(
-                        selected.status
-                      ) ||
-                      "Pending approval"
+                      selectedCounselingDisplayStatus
                     }
                   </span>
 
@@ -15458,7 +15474,10 @@ function CounselingRequestsManagement() {
                     type="button"
                     className="secondary-button"
                     onClick={() => navigate("/cases", {
-                      state: { assessmentOwnerId: selected.ownerId }
+                      state: {
+                        assessmentOwnerId: selected.ownerId,
+                        returnToCounseling: { requestId: selected.id }
+                      }
                     })}
                   >
                     View Assessment Results
@@ -15743,7 +15762,7 @@ function CounselingRequestsManagement() {
                   <select
 
                     value={
-                      statusDraft || normalizeCounselingRequestStatus(selected?.status) || ""
+                      statusDraft || selectedCounselingDisplayStatus || ""
                     }
 
                     disabled={
@@ -15766,13 +15785,9 @@ function CounselingRequestsManagement() {
 
                   >
                     <option value="" disabled>Select status</option>
-                    {normalizeCounselingRequestStatus(selected?.status) &&
-                      !["Scheduled for counseling", "Rescheduled", "Follow-up Counseling", "For referral", "Terminated"].includes(
-                        normalizeCounselingRequestStatus(selected?.status)
-                      ) && (
-                        <option value={normalizeCounselingRequestStatus(selected?.status)}>
-                          {normalizeCounselingRequestStatus(selected?.status)}
-                        </option>
+                    {selectedCounselingDisplayStatus &&
+                      !["Scheduled for counseling", "Rescheduled", "Follow-up Counseling", "For referral", "Terminated"].includes(selectedCounselingDisplayStatus) && (
+                        <option value={selectedCounselingDisplayStatus}>{selectedCounselingDisplayStatus}</option>
                       )}
 
                     <option>
