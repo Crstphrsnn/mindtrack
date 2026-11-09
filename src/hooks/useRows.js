@@ -599,6 +599,12 @@ export function useRows(
             }
           });
 
+        // Fallback when Realtime publication/network is unavailable.
+        // Fetch only through the existing student-authorized RPC.
+        const monitoringInterval = window.setInterval(() => {
+          if (document.visibilityState === "visible") refreshMonitoring();
+        }, 45000);
+
         // Keep the page in sync after local saves and when a browser
         // resumes from a sleeping or disconnected tab.
         function refreshOnVisibility() {
@@ -627,6 +633,7 @@ export function useRows(
 
         return () => {
           active = false;
+          window.clearInterval(monitoringInterval);
           void supabase.removeChannel(channel);
 
           if (typeof window !== "undefined") {
@@ -1118,6 +1125,11 @@ export function useRows(
           if (active) void loadCounselingRows();
         }
         refreshCounseling();
+        // Cross-device fallback: local window events do not reach other browsers.
+        // Continue using existing role-restricted RPCs for all reads.
+        const counselingInterval = window.setInterval(() => {
+          if (document.visibilityState === "visible") refreshCounseling();
+        }, 30000);
         const tableName = name === "consultations" ? "consultations"
           : name === "counselingScheduleSlots" ? "counseling_schedule_slots"
           : name === "transferRequests" ? "transfer_requests" : "counselor_assignments";
@@ -1142,6 +1154,7 @@ export function useRows(
         return () => {
           active = false;
           requestVersion += 1;
+          window.clearInterval(counselingInterval);
           void supabase.removeChannel(channel);
           if (typeof window !== "undefined") {
             window.removeEventListener("mindtrack:counseling-changed", refreshCounseling);

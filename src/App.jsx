@@ -11054,6 +11054,24 @@ function StudentCounselingSessionHistory({ consultationId, consultation }) {
     return () => { active = false; };
   }, [consultationId, refresh]);
 
+  // Refresh follow-up sessions across devices, including newly created sessions.
+  // Only the existing student-safe listCaseSessions RPC is used.
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") setRefresh(value => value + 1);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 30000);
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("mindtrack:counseling-changed", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener("mindtrack:counseling-changed", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, []);
+
   return (
     <div style={{ marginTop: 14, borderTop: "1px solid #dce4f1", paddingTop: 12 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
