@@ -1259,11 +1259,11 @@ export function AuthProvider({
 
     const cleanDepartment =
 
-      String(
+      role === "student"
 
-        department || ""
+        ? String(department || "").trim()
 
-      ).trim();
+        : "";
 
 
 
@@ -1449,7 +1449,7 @@ export function AuthProvider({
 
 
 
-    if (!cleanDepartment) {
+    if (role === "student" && !cleanDepartment) {
 
 
 
