@@ -86,6 +86,7 @@ import {
 
 import {
   markNotificationRead,
+  createNotification,
   markAllNotificationsRead,
   clearNotification,
   clearReadNotifications,
@@ -501,6 +502,26 @@ function Dashboard() {
       !["Completed"].includes(String(row.status || "Received"))
     ).length;
 
+    // Dashboard overview: one latest assessment per student, not one row per attempt.
+    // Use the stable account ID; never merge distinct students by display name.
+    const latestAssessmentsByStudent = new Map();
+    [...departmentCases]
+      .sort((a, b) =>
+        (recordDateObject(b.createdAt)?.getTime() || 0) -
+        (recordDateObject(a.createdAt)?.getTime() || 0)
+      )
+      .forEach(row => {
+        const studentKey = row.ownerId || `record:${row.id}`;
+        if (!latestAssessmentsByStudent.has(studentKey)) {
+          latestAssessmentsByStudent.set(studentKey, {
+            ...row,
+            assessmentCount: 0
+          });
+        }
+        latestAssessmentsByStudent.get(studentKey).assessmentCount += 1;
+      });
+    const studentAssessmentSummaries = [...latestAssessmentsByStudent.values()];
+
     return (
       <>
         <PageTitle
@@ -526,9 +547,52 @@ function Dashboard() {
         </section>
 
         <section className="panel">
-          <h2>Recent assessment records</h2>
-          <p>Use Cases for complete case details. Only authorized records appear here.</p>
-          <CaseTable rows={departmentCases.slice(0, 8)} />
+          <h2>Student Assessment Overview</h2>
+          <p>One entry per student, showing their latest assessment. View all assessment attempts and answers in Assessment Cases.</p>
+          {studentAssessmentSummaries.length === 0 ? (
+            <Empty text="No student assessment records yet." />
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Program</th>
+                    <th>Latest assessment</th>
+                    <th>Assessments</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentAssessmentSummaries.map(row => (
+                    <tr key={row.ownerId || row.id}>
+                      <td>{row.ownerName || "Student"}</td>
+                      <td>{counselorProgramLabel(row.program)}</td>
+                      <td>{formatRecordDateTime(row.createdAt)}</td>
+                      <td>{row.assessmentCount}</td>
+                      <td>{assessmentCaseStatusDisplayLabel(row.status)}</td>
+                      <td>
+                        {row.ownerId ? (
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => navigate("/cases", {
+                              state: { assessmentOwnerId: row.ownerId, returnToDashboard: true }
+                            })}
+                          >
+                            View Assessments
+                          </button>
+                        ) : (
+                          <span>Assessments unavailable</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </>
     );
@@ -4397,7 +4461,7 @@ function Consultations() {
       "",
 
     category:
-      "Academic concern",
+      "",
 
     message:
       ""
@@ -4603,6 +4667,10 @@ function Consultations() {
       alert("Select a counseling mode and describe your concern.");
       return;
     }
+    if (!form.category?.trim()) {
+      alert("Please select a counseling concern.");
+      return;
+    }
     const dateError = validateRequestDate(form.date);
     if (dateError) { alert(dateError); return; }
     if (!COUNSELING_TIME_SLOTS.includes(form.time)) {
@@ -4666,7 +4734,7 @@ function Consultations() {
 
       category:
         row.category ||
-        "Academic concern",
+        "",
 
       message:
         row.message ||
@@ -4688,6 +4756,10 @@ function Consultations() {
     if (!editForm || savingEdit) return;
     if (!editForm.mode || !editForm.message.trim()) {
       alert("Select a counseling mode and describe your concern.");
+      return;
+    }
+    if (!editForm.category?.trim()) {
+      alert("Please select a counseling concern.");
       return;
     }
     const dateError = validateRequestDate(editForm.date);
@@ -5026,7 +5098,7 @@ function Consultations() {
 
             Concern
 
-            <select
+            <select required
 
               value={
                 form.category
@@ -5042,6 +5114,10 @@ function Consultations() {
               }
 
             >
+
+              <option value="" disabled>
+                Select concern
+              </option>
 
               <option>
                 Academic concern
@@ -5370,7 +5446,7 @@ function Consultations() {
 
                               Concern
 
-                              <select
+                              <select required
 
                                 value={
                                   editForm.category
@@ -5387,7 +5463,11 @@ function Consultations() {
 
                               >
 
-                                <option>
+                                <option value="" disabled>
+                Select concern
+              </option>
+
+              <option>
                                   Academic concern
                                 </option>
 
@@ -9160,6 +9240,8 @@ function UserProfiles() {
 function UserProfilesContent({
   currentUser
 }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const isSuperAdmin = currentUser.role === "super_admin";
   const profileRows = useRows("users");
   // The server returns all accounts for Super Admin and only actively
@@ -9199,6 +9281,16 @@ function UserProfilesContent({
 
   const [selected, setSelected] =
     useState(null);
+  const requestedStudentProfileId = location.state?.openStudentProfileId;
+  useEffect(() => {
+    if (!requestedStudentProfileId || loadingUsers || usersError) return;
+    const requestedStudent = users.find(account =>
+      String(account.id) === String(requestedStudentProfileId)
+    );
+    if (requestedStudent) setSelected(requestedStudent);
+    // Clear navigation state so closing the profile doesn't reopen it.
+    navigate(location.pathname, { replace: true, state: null });
+  }, [requestedStudentProfileId, loadingUsers, usersError, users, navigate, location.pathname]);
   const [deletingStudentId, setDeletingStudentId] = useState(null);
 
   async function confirmDeleteTestStudent(account) {
@@ -11732,7 +11824,7 @@ function Cases() {
     if (!requestedOwner || assessmentRows.loading || assessmentRows.error) return;
     const matching = accountCaseRows.find(row => row.ownerId === requestedOwner);
     if (matching) {
-      assessmentReturnRef.current = location.state?.returnToCounseling || null;
+      assessmentReturnRef.current = location.state?.returnToCounseling || (location.state?.returnToDashboard ? { returnToDashboard: true } : null);
       setAssessmentResultsOnly(true);
       selectAssessmentAccount(matching);
     }
@@ -11746,7 +11838,9 @@ function Cases() {
     setAssessmentResultsOnly(false);
     setSelected(null);
     setSelectedOwnerKey("");
-    if (returnContext?.requestId) {
+    if (returnContext?.returnToDashboard) {
+      navigate("/dashboard", { replace: true });
+    } else if (returnContext?.requestId) {
       navigate("/counseling-requests", {
         replace: true,
         state: { requestId: returnContext.requestId, requestNavigationKey: `assessment-return-${returnContext.requestId}` }
@@ -14110,6 +14204,16 @@ function CounselingRequestsManagement() {
 
   // Phase 6C: only the highest-numbered session remains editable.
   // Session 1 is the legacy consultation, so it is locked as soon as a follow-up exists.
+  // Request numbering is independent of internal follow-up session IDs.
+  const selectedRequestOrdinal = selected ? (() => {
+    const requests = enrichedRows.filter(row => row.ownerId === selected.ownerId);
+    const ordered = [...requests].sort((a, b) =>
+      String(a.createdAt || a.date || "").localeCompare(String(b.createdAt || b.date || "")) ||
+      String(a.id).localeCompare(String(b.id)));
+    const index = ordered.findIndex(row => row.id === selected.id);
+    return index >= 0 ? index + 1 : 1;
+  })() : 1;
+  const followupSessionLabel = number => `Session ${selectedRequestOrdinal}.${Math.max(1, Number(number || 2) - 1)}`;
   const latestFollowupNumber = Math.max(0, ...caseSessions.map(item => Number(item.sessionNumber) || 0));
   const originalSessionLocked = caseSessions.length > 0;
   // The original request can retain a legacy Pending approval status even after follow-ups.
@@ -14198,10 +14302,34 @@ function CounselingRequestsManagement() {
     setFollowupNotesSaving(true);
     setFollowupNotesError("");
     setFollowupNotesMessage("");
+    let notificationFailed = false;
     try {
       // Save documentation before closing the session. Terminated sessions are immutable.
       if (followupNotesDirty) await saveSessionPrivateNotes(activeFollowupSessionId, followupNotes);
-      if (followupRemarksDirty) await saveSessionRemarks(activeFollowupSessionId, followupRemarks);
+      if (followupRemarksDirty) {
+        const previousRemarks = String(activeFollowupRecord?.counselorRemarks || "").trim();
+        const updatedRemarks = String(followupRemarks || "").trim();
+        await saveSessionRemarks(activeFollowupSessionId, followupRemarks);
+        if (updatedRemarks !== previousRemarks && selected.ownerId) {
+          // No confidential note content in student-facing notifications.
+          try {
+            await createNotification({
+              ownerId: selected.ownerId,
+              title: "Counseling session updated",
+              message: "Your Guidance Counselor updated your counseling session remarks. Open Counseling to review your updates.",
+              notificationType: "counselor_update",
+              sourceType: "consultation",
+              sourceId: selected.id,
+              consultationId: selected.id,
+              targetPath: "/counseling"
+            });
+          } catch (notificationError) {
+            // Remarks were already saved. Do not falsely report that saving failed.
+            notificationFailed = true;
+            console.error("MindTrack student notification failed", notificationError);
+          }
+        }
+      }
       if (followupStatusDirty) {
         if (!followupStatus) throw new Error("Choose a session status.");
         if (["Rescheduled", "Follow-up Counseling"].includes(followupStatus)) {
@@ -14246,7 +14374,7 @@ function CounselingRequestsManagement() {
         setActiveFollowupSessionId("");
         setFollowupNotesMode("view");
       } else {
-        setFollowupNotesMessage("Session changes saved securely.");
+        setFollowupNotesMessage(notificationFailed ? "Session saved, but student notification failed. Check notification RPC permissions." : "Session changes saved securely.");
       }
     } catch (err) {
       setFollowupNotesError(err?.message || "Unable to save session notes.");
@@ -14997,20 +15125,20 @@ function CounselingRequestsManagement() {
       />
 
 
-      <section className="panel counselor-filter-panel">
+      <section className="panel counselor-filter-panel counseling-requests-unified-panel">
 
         <div className="counselor-filter-heading">
 
           <div>
 
             <h2>
-              Filter Counseling Requests
+              Pending Counseling Requests
             </h2>
 
             <p>
               {isSuperAdmin
-                ? "Filter requests by college, program, and request status."
-                : "Filter requests by program and request status. Assessment severity is reviewed separately in Assessment Cases."}
+                ? "Review requests needing action. Filter by college, program, or status."
+                : "Review requests needing action. Filter by program or request status."}
             </p>
 
           </div>
@@ -15021,7 +15149,7 @@ function CounselingRequestsManagement() {
               actionableRequestRows.length
             }
             {" "}
-            active request
+            pending request
             {
               actionableRequestRows.length ===
                 1
@@ -15144,41 +15272,9 @@ function CounselingRequestsManagement() {
 
         </div>
 
-      </section>
+      <div className="counseling-request-list-panel" style={{ marginTop: 24 }}>
 
 
-      <section className="panel counseling-request-list-panel">
-
-        <div className="counseling-request-list-heading">
-
-          <div>
-
-            <h2>
-              Request List
-            </h2>
-
-            <p>
-              Only users with counseling requests that still need action are shown here. Scheduled, rescheduled, and terminated sessions are removed from this request list and remain available through Schedule and User Profiles.
-            </p>
-
-          </div>
-
-
-          <span className="counselor-filter-count">
-            {
-              groupedRequestUsers.length
-            }
-            {" "}
-            user
-            {
-              groupedRequestUsers.length ===
-                1
-                ? ""
-                : "s"
-            }
-          </span>
-
-        </div>
 
 
         {groupedRequestUsers.length === 0
@@ -15187,8 +15283,8 @@ function CounselingRequestsManagement() {
 
             <Empty
               text={statusFilter === "all"
-                ? "No active counseling requests requiring review."
-                : "No requests with this status need action. See All Counseling Requests below."}
+                ? "No pending counseling requests requiring review."
+                : "No requests matching these filters require action."}
             />
 
           )
@@ -15288,40 +15384,14 @@ function CounselingRequestsManagement() {
           )
         }
 
+      </div>
       </section>
 
 
-      {/* Group active requests by student; keep terminated requests in separate history. */}
+      {/* Historical records remain accessible; active scheduled sessions belong in Schedule and User Profiles. */}
       {(() => {
-        const activeRows = filteredRequestRows.filter(row => !counselingRequestIsTerminal(row.status));
         const historicalRows = filteredRequestRows.filter(row => counselingRequestIsTerminal(row.status));
-        const byStudent = new Map();
-        [...activeRows].sort(newestRecordFirst).forEach(row => {
-          const key = row.ownerId || row.ownerName || row.id;
-          if (!byStudent.has(key)) byStudent.set(key, row);
-        });
         return <>
-          <section className="panel counseling-request-list-panel" style={{marginTop:20}}>
-            <div className="counseling-request-list-heading">
-              <div><h2>Active Counseling Requests</h2>
-                <p>One profile per student. Open a profile to view the latest active request and its counseling sessions.</p></div>
-              <span className="counselor-filter-count">{byStudent.size} students</span>
-            </div>
-            {byStudent.size === 0 ? <Empty text="No active counseling requests." /> :
-              <div className="counseling-request-user-grid">
-                {[...byStudent.values()].map(row => <article className="counseling-request-user-card" key={row.ownerId || row.id}>
-                  <div className="counseling-request-user-main">
-                    <strong>{row.ownerName || "User"}</strong>
-                    <div className="counseling-request-user-meta">
-                      <span>{normalizeCounselingRequestStatus(row.status) || "Pending approval"}</span>
-                      {row.category && <><span aria-hidden="true">·</span><span>{row.category}</span></>}
-                      {row.date && <><span aria-hidden="true">·</span><span>{row.date}</span></>}
-                    </div>
-                  </div>
-                  <button type="button" className="secondary-button" onClick={() => selectRequest(row)}>View profile</button>
-                </article>)}
-              </div>}
-          </section>
           <section className="panel counseling-request-list-panel" style={{marginTop:20}}>
             <div className="counseling-request-list-heading">
               <div><h2>Counseling History</h2>
@@ -15371,21 +15441,21 @@ function CounselingRequestsManagement() {
                 <div>
                   <span className="mindtrack-history-eyebrow">COUNSELING HISTORY</span>
                   <h2>{studentName}</h2>
-                  <p>Previous counseling requests — latest first. Historical records are read-only.</p>
+                  <p>Previous counseling sessions — latest first. Historical records are read-only.</p>
                 </div>
                 <button type="button" className="secondary-button" onClick={() => setExpandedCounselingHistoryStudent(null)}>
                   Close History
                 </button>
               </header>
               <div className="mindtrack-history-screen-body" style={{background:"#fff",border:"1px solid #dbe4f1",borderRadius:16,padding:"24px 28px"}}>
-                <div className="mindtrack-history-screen-count">{studentRequests.length} previous {studentRequests.length === 1 ? "request" : "requests"}</div>
+                <div className="mindtrack-history-screen-count">{studentRequests.length} previous {studentRequests.length === 1 ? "session" : "sessions"}</div>
                 {studentRequests.map((row, index) => (
                   <article key={row.id} className="mindtrack-history-screen-request" style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16,border:"1px solid #dbe4f1",borderRadius:12,padding:18,marginBottom:12,background:"#f8fbff"}}>
                     <div>
-                      <strong>Request {studentRequests.length - index} — {row.category || "Counseling request"}</strong>
+                      <strong>Session {studentRequests.length - index} — {row.category || "Counseling concern"}</strong>
                       <p>{row.date || "Date unavailable"} · {normalizeCounselingRequestStatus(row.status)}</p>
                     </div>
-                    <button type="button" className="secondary-button" onClick={() => selectRequest(row)}>View request</button>
+                    <button type="button" className="secondary-button" onClick={() => selectRequest(row)}>View session</button>
                   </article>
                 ))}
               </div>
@@ -15527,7 +15597,7 @@ function CounselingRequestsManagement() {
                         </button>
                       </div>
                       <div className="mindtrack-session-card">
-                        <div className="mindtrack-session-card-top"><strong>Session 1 — Initial Counseling</strong><span>Historical record</span></div>
+                        <div className="mindtrack-session-card-top"><strong>Session {selectedRequestOrdinal} — Initial Counseling</strong><span>Historical record</span></div>
                         <div>{selected.scheduledDate || selected.date || "Date pending"} · {selected.scheduledTime || selected.time || "Time pending"}</div>
                         <div style={{marginTop:8}}>
                           <button type="button" className="secondary-button" onClick={() => setShowInitialSessionDetails(value => !value)}>
@@ -15544,7 +15614,7 @@ function CounselingRequestsManagement() {
                         <div className="mindtrack-followup-grid">
                           {caseSessions.map(session => (
                             <div key={session.id} className="mindtrack-session-card">
-                              <div className="mindtrack-session-card-top"><strong>Session {session.sessionNumber}</strong><span>{session.status || "Scheduled"}</span></div>
+                              <div className="mindtrack-session-card-top"><strong>{followupSessionLabel(session.sessionNumber)}</strong><span>{session.status || "Scheduled"}</span></div>
                               <div>{session.date || "Date pending"} · {session.time || "Time pending"}</div>
                               <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
                                 <button type="button" className="secondary-button" style={{padding:"8px 14px",borderRadius:10}} disabled={followupNotesSaving}
@@ -16320,7 +16390,7 @@ function CounselingRequestsManagement() {
                 style={{background:"white",color:"#17243b",width:"min(760px,100%)",maxHeight:"90vh",overflowY:"auto",borderRadius:16,padding:24,boxShadow:"0 20px 70px #0005"}}>
                 <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"start"}}>
                   <div>
-                    <h2 style={{margin:0}}>Session {caseSessions.find(item=>item.id===activeFollowupSessionId)?.sessionNumber}</h2>
+                    <h2 style={{margin:0}}>{followupSessionLabel(caseSessions.find(item=>item.id===activeFollowupSessionId)?.sessionNumber)}</h2>
                     <p style={{marginTop:6}}>
                       {caseSessions.find(item=>item.id===activeFollowupSessionId)?.date} · {caseSessions.find(item=>item.id===activeFollowupSessionId)?.time}
                     </p>
@@ -16414,12 +16484,10 @@ function Schedule() {
     useNavigate();
 
 
-  const [
-    scheduleFilter,
-    setScheduleFilter
-  ] = useState(
-    "Terminated"
-  );
+  const [scheduleView, setScheduleView] = useState("schedule");
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState(null);
+  const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
+  const [isCalendarVisible, setIsCalendarVisible] = useState(true);
 
 
   const isSuperAdmin =
@@ -16824,82 +16892,29 @@ function Schedule() {
     );
 
 
-  const visibleAppointments =
-    useMemo(
-      () =>
-        appointments.filter(
-          row => {
-
-            if (
-              scheduleFilter ===
-              "Today"
-            ) {
-
-              return (
-                isTodayAppointment(
-                  row
-                ) &&
-                isOperationalAppointment(
-                  row
-                )
-              );
-            }
-
-
-            if (
-              scheduleFilter ===
-              "Terminated"
-            ) {
-
-              return isTerminatedScheduleRecord(
-                row
-              );
-            }
-
-
-            if (
-              scheduleFilter ===
-              "Pending"
-            ) {
-
-              return isPendingAppointment(
-                row
-              );
-            }
-
-
-            if (
-              scheduleFilter ===
-              "Scheduled"
-            ) {
-
-              return isScheduledAppointment(
-                row
-              );
-            }
-
-
-            if (
-              scheduleFilter ===
-              "Transfers"
-            ) {
-
-              return isTransferRelatedAppointment(
-                row
-              );
-            }
-
-
-            return true;
-          }
-        ),
-      [
-        appointments,
-        scheduleFilter,
-        todayKey
-      ]
-    );
-
+  // Pending requests belong to Counseling Requests, not confirmed appointments.
+  const scheduledAppointments = appointments.filter(row =>
+    isScheduledAppointment(row) && !isTerminatedScheduleRecord(row)
+  );
+  const historyAppointments = appointments.filter(row =>
+    isTerminatedScheduleRecord(row)
+  );
+  const todayAppointments = scheduledAppointments.filter(row => row.date === todayKey);
+  const upcomingAppointments = scheduledAppointments.filter(row => row.date >= todayKey);
+  const activeDate = selectedScheduleDate || todayKey;
+  const visibleAppointments = scheduleView === "history"
+    ? historyAppointments
+    : scheduledAppointments.filter(row => row.date === activeDate);
+  const calendarAnchor = new Date(`${todayKey}T12:00:00`);
+  const calendarMonth = new Date(calendarAnchor.getFullYear(), calendarAnchor.getMonth() + calendarMonthOffset, 1);
+  const calendarYear = calendarMonth.getFullYear();
+  const calendarMonthNumber = calendarMonth.getMonth();
+  const calendarStartOffset = calendarMonth.getDay();
+  const calendarDays = new Date(calendarYear, calendarMonthNumber + 1, 0).getDate();
+  const calendarDateKey = day => `${calendarYear}-${String(calendarMonthNumber + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const calendarCounts = new Map();
+  scheduledAppointments.forEach(row => calendarCounts.set(row.date, (calendarCounts.get(row.date) || 0) + 1));
+  const displayDate = date => new Date(`${date}T12:00:00`).toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
   const groupedAppointments =
     useMemo(
@@ -17274,313 +17289,79 @@ function Schedule() {
   }
 
 
-  const filterOptions = [
-    "Terminated",
-    "Today",
-    "Pending",
-    "Scheduled",
-    "Transfers",
-    "All"
-  ];
-
-
   return (
-
     <>
-
-      <PageTitle
-
-        title="Counselor Schedule"
-
-        subtitle="Counseling activity is grouped by date and time. Use the filters to review pending, scheduled, transferred, or terminated sessions."
-
-      />
-
-
-      <section
-        className="panel"
-        style={{
-          maxWidth:
-            "1180px",
-
-          marginLeft:
-            "auto",
-
-          marginRight:
-            "auto"
-        }}
-      >
-
-        <div
-          style={{
-            display:
-              "grid",
-
-            gridTemplateColumns:
-              "repeat(5, minmax(0, 1fr))",
-
-            gap:
-              "12px",
-
-            marginBottom:
-              "18px"
-          }}
-          className="schedule-summary-grid"
-        >
-
-          {[
-            {
-              label:
-                "Today",
-
-              value:
-                scheduleCounts.today,
-
-              tone:
-                "primary"
-            },
-
-            {
-              label:
-                "Pending",
-
-              value:
-                scheduleCounts.pending,
-
-              tone:
-                "moderate"
-            },
-
-            {
-              label:
-                "Scheduled",
-
-              value:
-                scheduleCounts.scheduled,
-
-              tone:
-                "low"
-            },
-
-            {
-              label:
-                "Terminated",
-
-              value:
-                scheduleCounts.terminated,
-
-              tone:
-                "terminated"
-            },
-
-            {
-              label:
-                "Transfers",
-
-              value:
-                scheduleCounts.transfers,
-
-              tone:
-                "transfer"
-            }
-          ].map(
-            item => (
-
-              <div
-                key={
-                  item.label
-                }
-                className={
-                  `schedule-summary-card schedule-summary-${item.tone}`
-                }
-              >
-
-                <div
-                  style={{
-                    fontSize:
-                      "0.82rem",
-
-                    color:
-                      "#64748b",
-
-                    marginBottom:
-                      "4px"
-                  }}
-                >
-                  {item.label}
-                </div>
-
-                <strong
-                  style={{
-                    fontSize:
-                      "1.35rem"
-                  }}
-                >
-                  {item.value}
-                </strong>
-
-              </div>
-
-            )
-          )}
-
+      <PageTitle title="My Counseling Schedule" subtitle="See today's appointments at a glance, or select a date on the calendar." />
+      <section className="panel" style={{ maxWidth: 1180, margin: "0 auto" }}>
+        <div className="mindtrack-schedule-stats">
+          <div className="mindtrack-schedule-stat"><span>Today</span><strong>{todayAppointments.length}</strong></div>
+          <div className="mindtrack-schedule-stat"><span>Upcoming</span><strong>{upcomingAppointments.length}</strong></div>
+          <div className="mindtrack-schedule-stat"><span>Session history</span><strong>{historyAppointments.length}</strong></div>
         </div>
-
-
-        <div
-          style={{
-            display:
-              "flex",
-
-            flexWrap:
-              "wrap",
-
-            gap:
-              "8px",
-
-            alignItems:
-              "center",
-
-            marginBottom:
-              "18px"
-          }}
-        >
-
-          {filterOptions.map(
-            option => {
-
-              const selected =
-                scheduleFilter ===
-                option;
-
-
-              return (
-
-                <button
-                  type="button"
-                  className={
-                    `schedule-filter-pill ${
-                      selected
-                        ? "active"
-                        : ""
-                    }`
-                  }
-                  key={
-                    option
-                  }
-                  onClick={
-                    () =>
-                      setScheduleFilter(
-                        option
-                      )
-                  }
-                  style={{
-                    border:
-                      selected
-                        ? "1px solid #1d4ed8"
-                        : "1px solid #d7e0ee",
-
-                    background:
-                      selected
-                        ? "#1d4ed8"
-                        : "#ffffff",
-
-                    color:
-                      selected
-                        ? "#ffffff"
-                        : "#334155",
-
-                    borderRadius:
-                      "999px",
-
-                    padding:
-                      "8px 14px",
-
-                    fontWeight:
-                      700,
-
-                    cursor:
-                      "pointer"
-                  }}
-                >
-                  {option}
-                </button>
-
-              );
-            }
-          )}
-
+        <div className="mindtrack-schedule-tabs" role="group" aria-label="Schedule views">
+          <button type="button" className={scheduleView === "schedule" ? "active" : ""} onClick={() => setScheduleView("schedule")}>My Schedule</button>
+          <button type="button" className={scheduleView === "history" ? "active" : ""} onClick={() => setScheduleView("history")}>Session History</button>
         </div>
-
-
-        {!isSuperAdmin && scheduleFilter === "Transfers" && (
-
-          <div
-            className="notice"
-            style={{
-              marginBottom:
-                "18px",
-
-              display:
-                "flex",
-
-              alignItems:
-                "center",
-
-              justifyContent:
-                "space-between",
-
-              gap:
-                "14px",
-
-              flexWrap:
-                "wrap"
-            }}
-          >
-
-            <div>
-
-              <strong>
-                Counselor transfer tools
-              </strong>
-
-              <div
-                style={{
-                  marginTop:
-                    "4px"
-                }}
-              >
-                The Transfers filter shows only counseling records that were
-                already transferred. Pending transfer requests remain available
-                through the transfer request workflow.
-              </div>
-
+        {scheduleView === "schedule" && (
+          <>
+            <div className="mindtrack-schedule-section-heading">
+              <div><h3>Today's Schedule</h3><p>{displayDate(todayKey)}</p></div>
+              <span>{todayAppointments.length} {todayAppointments.length === 1 ? "session" : "sessions"}</span>
             </div>
-
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={
-                () =>
-                  navigate(
-                    "/transfers"
-                  )
-              }
-            >
-              {
-                incomingTransferRequests.length >
-                0
-                  ? `Incoming transfer requests (${incomingTransferRequests.length})`
-                  : "View transfer requests"
-              }
-            </button>
-
-          </div>
-
+            {todayAppointments.length === 0 ? (
+              <div className="mindtrack-schedule-empty">No confirmed counseling sessions today.</div>
+            ) : (
+              <div className="mindtrack-today-list">
+                {todayAppointments.map(row => (
+                  <button key={row.id} type="button" onClick={() => openAppointment(row)}>
+                    <strong>{row.time}</strong><span>{row.ownerName || "Student"}</span>
+                    <small>{normalizedStatus(row)}{row.sessionNumber ? ` · Session ${row.sessionNumber}` : ""}</small>
+                    <span className="mindtrack-schedule-open">View session</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mindtrack-calendar-heading">
+              <h3>Monthly Calendar</h3>
+              <div className="mindtrack-calendar-controls">
+                <button type="button" aria-expanded={isCalendarVisible} aria-controls="mindtrack-monthly-calendar" onClick={() => setIsCalendarVisible(visible => !visible)}>{isCalendarVisible ? "Hide Calendar ▲" : "Show Calendar ▼"}</button>
+                {isCalendarVisible && (<>
+                <button type="button" aria-label="Previous month" onClick={() => setCalendarMonthOffset(n => n - 1)}>‹</button>
+                <strong>{calendarMonth.toLocaleDateString("en-PH", { month: "long", year: "numeric" })}</strong>
+                <button type="button" aria-label="Next month" onClick={() => setCalendarMonthOffset(n => n + 1)}>›</button>
+                <button type="button" onClick={() => { setCalendarMonthOffset(0); setSelectedScheduleDate(null); }}>Today</button>
+                </>)}
+              </div>
+            </div>
+            <div id="mindtrack-monthly-calendar" hidden={!isCalendarVisible}>
+            <div className="mindtrack-calendar-grid" role="group" aria-label="Choose appointment date">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => <div key={day} className="mindtrack-calendar-weekday">{day}</div>)}
+              {Array.from({ length: calendarStartOffset }, (_, i) => <div key={`blank-${i}`} className="mindtrack-calendar-blank" />)}
+              {Array.from({ length: calendarDays }, (_, i) => {
+                const day = i + 1;
+                const date = calendarDateKey(day);
+                const count = calendarCounts.get(date) || 0;
+                const holiday = counselingHolidayName(date);
+                const weekend = isWeekendCounselingDate(date);
+                const disabled = weekend || Boolean(holiday);
+                const unavailableReason = holiday || (weekend ? "Weekend" : "");
+                return <button key={date} type="button" disabled={disabled} title={unavailableReason || displayDate(date)} className={`mindtrack-calendar-day ${date === activeDate && !disabled ? "selected" : ""} ${date === todayKey ? "today" : ""} ${disabled ? "unavailable" : ""}`} aria-label={`${displayDate(date)}${unavailableReason ? `, ${unavailableReason}, unavailable` : ""}, ${count} scheduled sessions`} aria-pressed={!disabled && date === activeDate} onClick={() => { if (!disabled) setSelectedScheduleDate(date); }}>
+                  <span className="mindtrack-calendar-date-number">{day}</span>
+                  {holiday && <span className="mindtrack-calendar-holiday-name" title={holiday}>{holiday}</span>}
+                  {count > 0 && <small>{count}</small>}
+                </button>;
+              })}
+            </div>
+            </div>
+            <div className="mindtrack-schedule-section-heading">
+              <div><h3>Appointments for {displayDate(activeDate)}</h3><p>Select a calendar date to see its confirmed sessions.</p></div>
+              <span>{visibleAppointments.length} {visibleAppointments.length === 1 ? "session" : "sessions"}</span>
+            </div>
+          </>
         )}
-
-
+        {scheduleView === "history" && (
+          <div className="mindtrack-schedule-section-heading"><div><h3>Session History</h3><p>Previously terminated counseling sessions.</p></div><span>{historyAppointments.length} records</span></div>
+        )}
         {
           duplicateOperationalSlots.size >
           0
@@ -17621,29 +17402,8 @@ function Schedule() {
 
 
         {
-          visibleAppointments.length ===
-          0
-
-            ? (
-
-              <Empty
-                text={
-                  scheduleFilter ===
-                  "Terminated"
-
-                    ? "No terminated counseling sessions."
-
-                    : scheduleFilter ===
-                        "Transfers"
-
-                      ? "No transferred counseling users."
-
-                      : `No ${scheduleFilter.toLowerCase()} appointments.`
-                }
-              />
-
-            )
-
+          visibleAppointments.length === 0
+            ? <Empty text={scheduleView === "history" ? "No terminated counseling sessions." : "No confirmed sessions for this date."} />
             : groupedAppointments.map(
                 group => (
 

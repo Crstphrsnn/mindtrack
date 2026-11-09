@@ -1961,11 +1961,11 @@ export default function UserProfileFullScreen({
               <div>
 
                 <h3>
-                  Previous Counseling Requests
+                  Previous Counseling Sessions
                 </h3>
 
                 <p>
-                  Completed counseling requests are shown from most recent to oldest. Select a request to view its concern and saved counseling records.
+                  Completed counseling concerns are shown from most recent to oldest. Select a session to view its concern and saved counseling records.
                 </p>
 
               </div>
@@ -1982,7 +1982,7 @@ export default function UserProfileFullScreen({
               ? (
 
                 <div className="user-profile-empty">
-                  No previous terminated counseling requests yet.
+                  No previous completed counseling sessions yet.
                 </div>
 
               )
@@ -2022,7 +2022,7 @@ export default function UserProfileFullScreen({
                                 )
                             }
                           >
-                            Request
+                            Session
                             {" "}
                             {requestNumber}
                           </button>
@@ -2085,13 +2085,13 @@ export default function UserProfileFullScreen({
               <div>
 
                 <p className="review-request-modal-eyebrow">
-                  Previous Counseling Requests
+                  Previous Counseling Sessions
                 </p>
 
                 <div className="review-request-modal-title-row">
 
                   <h2>
-                    Request {selectedHistoryRequestNumber}
+                    Session {selectedHistoryRequestNumber}
                   </h2>
 
                   <span className="status">
@@ -2142,8 +2142,8 @@ export default function UserProfileFullScreen({
                 <div className="referral-review-summary-grid">
 
                   <div className="review-request-detail-item">
-                    <span>Request</span>
-                    <strong>Request {selectedHistoryRequestNumber}</strong>
+                    <span>Session</span>
+                    <strong>Session {selectedHistoryRequestNumber}</strong>
                   </div>
 
                   <div className="review-request-detail-item">
@@ -2205,18 +2205,18 @@ export default function UserProfileFullScreen({
 
               <section className="review-request-modal-card" style={{gridColumn:"1 / -1"}}>
                 <h3>Counseling Session History</h3>
-                <p style={{color:"#667085",marginBottom:12}}>Session 1 is the initial meeting. Sessions 2 onward are follow-up meetings for this request only. Historical records are read-only.</p>
+                <p style={{color:"#667085",marginBottom:12}}>The initial meeting is Session {selectedHistoryRequestNumber}. Follow-ups are numbered {selectedHistoryRequestNumber}.1, {selectedHistoryRequestNumber}.2, and so on for this request only. Historical records are read-only.</p>
                 {historySessionsLoading && <p>Loading sessions...</p>}
                 {historySessionsError && <p role="alert" style={{color:"#b42318"}}>{historySessionsError}</p>}
                 <div style={{display:"grid",gap:10}}>
                   <div style={{border:"1px solid #d8e2ef",borderRadius:12,padding:14}}>
-                    <strong>Session 1 — Initial Counseling</strong>
+                    <strong>Session {selectedHistoryRequestNumber} — Initial Counseling</strong>
                     <p>{formatDate(selectedHistorySession.date)} · {selectedHistorySession.time || "Time not provided"}</p>
                     <p>Status: {selectedHistorySession.status || "Not provided"}</p>
                     <p>Counselor remarks: {selectedHistorySession.counselorRemarks || "No remarks saved."}</p>
                     {selectedHistoryNote && (
                       <div className="mindtrack-history-notes-panel">
-                        <h4>Session 1 — Private Counseling Notes</h4>
+                        <h4>Session {selectedHistoryRequestNumber} — Private Counseling Notes</h4>
                         <div className="mindtrack-history-notes-grid">
                           {[
                             ["Case History", selectedHistoryNote.caseHistory],
@@ -2235,7 +2235,7 @@ export default function UserProfileFullScreen({
                   </div>
                   {[...historySessions].sort((a,b)=>Number(a.sessionNumber)-Number(b.sessionNumber)).map(session => (
                     <div key={session.id} style={{border:"1px solid #d8e2ef",borderRadius:12,padding:14}}>
-                      <strong>Session {session.sessionNumber} — Follow-up Counseling</strong>
+                      <strong>Session {selectedHistoryRequestNumber}.{Math.max(1, Number(session.sessionNumber || 2) - 1)} — Follow-up Counseling</strong>
                       <p>{formatDate(session.scheduledDate || session.date)} · {session.scheduledTime || session.time || "Time not provided"}</p>
                       <p>Status: {session.status || "Not provided"}</p>
                       <p>Counselor remarks: {session.counselorRemarks || "No remarks saved."}</p>

@@ -9055,3 +9055,35 @@ th {
 .mindtrack-history-screen-backdrop { background:rgba(11,23,50,.58)!important; display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; }
 .mindtrack-history-screen { min-height:0!important; max-height:90vh; overflow-y:auto; width:min(1100px,100%); margin:0; border-radius:18px; background:#f2f7fd; }
 @media(max-width:640px){.mindtrack-history-screen-backdrop{padding:10px}.mindtrack-history-screen{max-height:95vh;padding:12px!important}.mindtrack-history-screen-header,.mindtrack-history-screen-body{padding:16px!important}}
+
+/* Counselor schedule: today-first calendar layout */
+.mindtrack-schedule-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.mindtrack-schedule-stat{border:1px solid #dbe4f0;border-radius:14px;padding:16px;background:#f8fbff;display:flex;flex-direction:column;gap:6px}
+.mindtrack-schedule-stat span{color:#64748b;font-size:.84rem}.mindtrack-schedule-stat strong{font-size:1.65rem;color:#1e3a8a}
+.mindtrack-schedule-tabs{display:flex;gap:8px;border-bottom:1px solid #e2e8f0;margin-bottom:20px}
+.mindtrack-schedule-tabs button{border:0;background:transparent;padding:11px 17px;color:#475569;font-weight:700;cursor:pointer;border-bottom:3px solid transparent}
+.mindtrack-schedule-tabs button.active{color:#1d4ed8;border-bottom-color:#1d4ed8}
+.mindtrack-schedule-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 12px}
+.mindtrack-schedule-section-heading h3,.mindtrack-calendar-heading h3{margin:0;font-size:1.05rem;color:#0f172a}
+.mindtrack-schedule-section-heading p{margin:5px 0 0;color:#64748b;font-size:.85rem}
+.mindtrack-schedule-section-heading>span{font-size:.8rem;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:6px 10px;white-space:nowrap}
+.mindtrack-schedule-empty{border:1px dashed #cbd5e1;border-radius:12px;padding:22px;text-align:center;color:#64748b;background:#f8fafc}
+.mindtrack-today-list{display:grid;gap:8px}.mindtrack-today-list button{display:flex;align-items:center;gap:14px;text-align:left;border:1px solid #dbe4f0;border-radius:12px;padding:14px;background:#fff;cursor:pointer;flex-wrap:wrap}
+.mindtrack-today-list button>strong{color:#1d4ed8;min-width:90px}.mindtrack-today-list button>span:nth-child(2){font-weight:700;color:#0f172a}.mindtrack-today-list small{color:#64748b}.mindtrack-schedule-open{margin-left:auto;color:#1d4ed8;font-size:.85rem;font-weight:700}
+.mindtrack-calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:26px 0 14px}
+.mindtrack-calendar-controls{display:flex;align-items:center;gap:8px}.mindtrack-calendar-controls strong{min-width:145px;text-align:center;font-size:.9rem}
+.mindtrack-calendar-controls button{border:1px solid #dbe4f0;background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;color:#1d4ed8;font-weight:700}
+.mindtrack-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.mindtrack-calendar-weekday{text-align:center;color:#64748b;font-size:.78rem;font-weight:700;padding:9px 0}
+.mindtrack-calendar-day{min-height:58px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;background:#fff;border:1px solid #e2e8f0;border-radius:9px;cursor:pointer;color:#334155}
+.mindtrack-calendar-day.today{border-color:#93c5fd}.mindtrack-calendar-day.selected{background:#1d4ed8;color:#fff;border-color:#1d4ed8}.mindtrack-calendar-day small{font-size:.7rem;font-weight:700;border-radius:999px;background:#dbeafe;color:#1d4ed8;padding:1px 7px}.mindtrack-calendar-day.selected small{background:#fff;color:#1d4ed8}
+@media(max-width:640px){.mindtrack-schedule-stats{gap:6px}.mindtrack-schedule-stat{padding:10px}.mindtrack-calendar-day{min-height:43px}.mindtrack-calendar-controls strong{min-width:110px}.mindtrack-today-list button{gap:7px}.mindtrack-schedule-open{margin-left:0}}
+
+/* Weekends and Philippine non-working holidays cannot be selected in Schedule. */
+.mindtrack-calendar-day.unavailable,.mindtrack-calendar-day:disabled{background:#f1f5f9;border-color:#e2e8f0;color:#94a3b8;cursor:not-allowed;opacity:.85}
+.mindtrack-calendar-day.unavailable.selected{background:#f1f5f9;color:#94a3b8;border-color:#e2e8f0}
+
+/* Holiday names stay visible even when the date button is disabled. */
+.mindtrack-calendar-day{padding:5px 3px;min-width:0}
+.mindtrack-calendar-holiday-name{display:block;width:100%;max-width:100%;font-size:10px;font-weight:600;line-height:1.2;text-align:center;color:#9f1239;overflow-wrap:anywhere;white-space:normal}
+.mindtrack-calendar-day.unavailable .mindtrack-calendar-holiday-name{color:#9f1239}
+@media(max-width:640px){.mindtrack-calendar-holiday-name{font-size:8px;line-height:1.1}.mindtrack-calendar-day:has(.mindtrack-calendar-holiday-name){min-height:65px}}
